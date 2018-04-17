@@ -28,7 +28,12 @@ int destroy_chunk_space(const std::string& path) {
     chnk_path /= fs_path;
 
     // remove chunk dir with all contents if path exists
-    bfs::remove_all(chnk_path);
+    try {
+        bfs::remove_all(chnk_path);
+    } catch (const bfs::filesystem_error& e){
+        ADAFS_DATA->spdlogger()->error("{}() Recursive remove failed; {}", __func__, e.what());
+        return -1;
+    }
     return 0;
 }
 
