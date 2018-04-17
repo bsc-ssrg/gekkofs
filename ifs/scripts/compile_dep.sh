@@ -333,7 +333,7 @@ echo "############################################################ Installing:  
 CURR=${SOURCE}/rocksdb
 cd ${CURR}
 make clean
-make -j${CORES} static_lib
+make USE_RTTI=1 -j${CORES} static_lib
 make INSTALL_PATH=${INSTALL} install
 
 echo "Done"
