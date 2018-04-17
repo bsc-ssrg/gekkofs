@@ -9,6 +9,7 @@ set(DAEMON_SRC
     classes/metadata.cpp
     db/db_util.cpp
     db/db_ops.cpp
+    db/merge.cpp
     handler/h_metadentry.cpp
     handler/h_data.cpp
     handler/h_preload.cpp
@@ -29,6 +30,7 @@ set(DAEMON_HEADERS
     ../../include/daemon/classes/rpc_data.hpp
     ../../include/daemon/db/db_ops.hpp
     ../../include/daemon/db/db_util.hpp
+    ../../include/daemon/db/merge.hpp
     ../../include/daemon/handler/rpc_defs.hpp
     )
 add_executable(adafs_daemon ${DAEMON_SRC} ${DAEMON_HEADERS})

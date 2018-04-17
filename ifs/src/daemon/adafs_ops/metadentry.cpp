@@ -107,32 +107,19 @@ int get_metadentry_size(const string& path, size_t& ret_size) {
  * @param io_size
  * @return the updated size
  */
-int update_metadentry_size(const string& path, size_t io_size, off64_t offset, bool append, size_t& read_size) {
-    // XXX This function will be replaced soon by the rocksdb function - just to test for the random IO
+int update_metadentry_size(const string& path, size_t io_size, off64_t offset, bool append,  size_t& read_size) {
 #ifdef LOG_TRACE
     db_iterate_all_entries();
 #endif
-    string val;
-    auto err = db_get_metadentry(path, val);
-    if (!err || val.empty()) {
-        return ENOENT;
+    auto err = db_update_metadentry_size(path, io_size, offset, append);
+    if (!err) {
+        return EBUSY;
     }
-    Metadata md{path, val};
-    // update io_size
-    if (append)
-        md.size(md.size() + io_size);
-    else { // if no append but io_size exceeds the file's size, update the size correspondingly
-        if (io_size + static_cast<unsigned long>(offset) > md.size())
-            md.size(io_size + offset);
-        else { // if not keep the current size
-            read_size = md.size();
-            return 0;
-        }
-    }
-    read_size = db_update_metadentry(path, path, md.to_KVentry()) ? md.size() : -1; // update database atomically
 #ifdef LOG_TRACE
     db_iterate_all_entries();
 #endif
+    //XXX This breaks append writes, needs to be fixed
+    read_size = 0;
     return 0;
 }
 

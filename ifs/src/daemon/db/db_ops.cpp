@@ -1,5 +1,6 @@
 
 #include <daemon/db/db_ops.hpp>
+#include <daemon/db/merge.hpp>
 
 using namespace rocksdb;
 using namespace std;
@@ -46,6 +47,17 @@ bool db_update_metadentry(const std::string& old_key, const std::string& new_key
     batch.Delete(old_key);
     batch.Put(new_key, val);
     return db->Write(ADAFS_DATA->rdb_write_options(), &batch).ok();
+}
+
+bool db_update_metadentry_size(const std::string& key,
+        size_t size, off64_t offset, bool append) {
+    auto db = ADAFS_DATA->rdb();
+    auto uop = UpdateSizeOperand(size, offset, append);
+    auto s = db->Merge(ADAFS_DATA->rdb_write_options(), key, uop.serialize());
+    if(!s.ok()){
+        ADAFS_DATA->spdlogger()->error("Failed to update metadentry size. RDB error: [{}]", s.ToString());
+    }
+    return s.ok();
 }
 
 void db_iterate_all_entries() {
