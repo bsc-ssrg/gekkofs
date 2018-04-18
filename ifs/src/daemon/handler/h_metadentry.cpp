@@ -209,7 +209,7 @@ static hg_return_t rpc_srv_update_metadentry_size(hg_handle_t handle) {
     if (ret != HG_SUCCESS)
         ADAFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
     assert(ret == HG_SUCCESS);
-    ADAFS_DATA->spdlogger()->debug("Got update metadentry size RPC with path {}", in.path);
+    ADAFS_DATA->spdlogger()->debug("{}() Got update metadentry size RPC with path {}", __func__, in.path);
 
     // do update
     size_t read_size;
@@ -221,10 +221,10 @@ static hg_return_t rpc_srv_update_metadentry_size(hg_handle_t handle) {
         out.err = err;
         out.ret_size = 0;
     }
-    ADAFS_DATA->spdlogger()->debug("Sending output {}", out.err);
+    ADAFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to respond");
+        ADAFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
     }
 
     // Destroy handle when finished
