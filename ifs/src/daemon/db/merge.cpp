@@ -1,25 +1,19 @@
 #include <daemon/db/merge.hpp>
 
 
-const char UpdateSizeOperand::separator = ',';
-const char UpdateSizeOperand::true_char = 't';
-const char UpdateSizeOperand::false_char = 'f';
+const char IncreaseSizeOperand::separator = ',';
+const char IncreaseSizeOperand::true_char = 't';
+const char IncreaseSizeOperand::false_char = 'f';
 
-UpdateSizeOperand::UpdateSizeOperand(const size_t size,
-        const off64_t offset,
-        const bool append): size(size), offset(offset), append(append) {}
+IncreaseSizeOperand::IncreaseSizeOperand(const size_t size, const bool append):
+    size(size), append(append) {}
 
-UpdateSizeOperand::UpdateSizeOperand(const std::string& serialized_op){
+IncreaseSizeOperand::IncreaseSizeOperand(const std::string& serialized_op){
     size_t chrs_parsed = 0;
     size_t read = 0;
 
     //Parse size
     size = std::stoul(&serialized_op.at(chrs_parsed), &read);
-    chrs_parsed += read + 1;
-    assert(serialized_op.at(chrs_parsed - 1) == separator);
-
-    //Parse offset
-    offset = std::stoll(&serialized_op.at(chrs_parsed), &read);
     chrs_parsed += read + 1;
     assert(serialized_op.at(chrs_parsed - 1) == separator);
 
@@ -31,11 +25,9 @@ UpdateSizeOperand::UpdateSizeOperand(const std::string& serialized_op){
     assert(chrs_parsed + 1 == serialized_op.size());
 }
 
-std::string UpdateSizeOperand::serialize() const {
+std::string IncreaseSizeOperand::serialize() const {
     std::string s;
     s += std::to_string(size);
-    s += this->separator;
-    s += std::to_string(offset);
     s += this->separator;
     s += (append == false)? false_char : true_char;
     return s;
@@ -54,19 +46,16 @@ bool MetadataMergeOperator::FullMergeV2(
         return false;
     }
 
-
     Metadata md{merge_in.key.ToString(), merge_in.existing_value->ToString()};
     size_t fsize = md.size();
 
     for(const auto& operand: merge_in.operand_list){
-        auto op = UpdateSizeOperand(operand.ToString());
+        auto op = IncreaseSizeOperand(operand.ToString());
         if(op.append){
             //append mode, just increment file
             fsize += op.size;
-        } else if((op.offset + op.size) > fsize){
-            //not append: increment only if we beyond
-            //current file size
-            fsize = op.offset + op.size;
+        } else {
+            fsize = std::max(op.size, fsize);
         }
     }
 

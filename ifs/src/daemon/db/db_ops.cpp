@@ -52,7 +52,7 @@ bool db_update_metadentry(const std::string& old_key, const std::string& new_key
 bool db_update_metadentry_size(const std::string& key,
         size_t size, off64_t offset, bool append) {
     auto db = ADAFS_DATA->rdb();
-    auto uop = UpdateSizeOperand(size, offset, append);
+    auto uop = IncreaseSizeOperand(offset + size, append);
     auto s = db->Merge(ADAFS_DATA->rdb_write_options(), key, uop.serialize());
     if(!s.ok()){
         ADAFS_DATA->spdlogger()->error("Failed to update metadentry size. RDB error: [{}]", s.ToString());

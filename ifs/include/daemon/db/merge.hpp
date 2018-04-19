@@ -8,18 +8,17 @@
 namespace rdb = rocksdb;
 
 
-class UpdateSizeOperand {
+class IncreaseSizeOperand {
     public:
         const static char separator;
         const static char true_char;
         const static char false_char;
 
         size_t size;
-        off64_t offset;
         bool append;
 
-        UpdateSizeOperand(const size_t size, const off64_t offset, const bool append);
-        UpdateSizeOperand(const std::string& serialized_op);
+        IncreaseSizeOperand(const size_t size, const bool append);
+        IncreaseSizeOperand(const std::string& serialized_op);
 
         std::string serialize() const;
 };
