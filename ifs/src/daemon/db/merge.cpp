@@ -15,6 +15,14 @@ std::string MergeOperand::serialize() const {
     return s;
 }
 
+OperandID MergeOperand::get_id(const rdb::Slice& serialized_op){
+        return static_cast<OperandID>(serialized_op[0]);
+}
+
+rdb::Slice MergeOperand::get_params(const rdb::Slice& serialized_op){
+    assert(serialized_op[1] == operand_id_suffix);
+    return rdb::Slice(serialized_op.data() + 2, serialized_op.size() - 2);
+}
 
 IncreaseSizeOperand::IncreaseSizeOperand(const size_t size, const bool append):
     size(size), append(append) {}
@@ -50,26 +58,47 @@ std::string IncreaseSizeOperand::serialize_params() const {
 }
 
 
+CreateOperand::CreateOperand(const std::string& metadata): metadata(metadata) {}
+
+const OperandID CreateOperand::id() const{
+    return OperandID::create;
+}
+
+std::string CreateOperand::serialize_params() const {
+    return metadata;
+}
+
+
 bool MetadataMergeOperator::FullMergeV2(
         const MergeOperationInput& merge_in,
         MergeOperationOutput* merge_out) const {
 
+    std::string prev_md_value;
+    auto ops_it = merge_in.operand_list.cbegin();
+
     if(merge_in.existing_value == nullptr){
         //The key to operate on doesn't exists in DB
-
-        // TODO use logger to print err info;
-        //Log(logger, "Key %s do not exists", existing_value->ToString().c_str());
-
-        return false;
+        if(MergeOperand::get_id(ops_it[0]) != OperandID::create){
+            throw std::runtime_error("Merge operation failed: key do not exists and first operand is not a creation");
+            // TODO use logger to print err info;
+            //Log(logger, "Key %s do not exists", existing_value->ToString().c_str());
+            //return false;
+        }
+        prev_md_value = MergeOperand::get_params(ops_it[0]).ToString();
+        ops_it++;
+    } else {
+        prev_md_value = merge_in.existing_value->ToString();
     }
 
-    Metadata md{merge_in.key.ToString(), merge_in.existing_value->ToString()};
+    Metadata md{merge_in.key.ToString(), prev_md_value};
+
     size_t fsize = md.size();
 
-    for(const auto& serialized_op: merge_in.operand_list){
+    for (; ops_it != merge_in.operand_list.cend(); ++ops_it){
+        const rdb::Slice& serialized_op = *ops_it;
         assert(serialized_op.size() >= 2);
-        auto operand_id = static_cast<OperandID>(serialized_op[0]);
-        auto parameters = rdb::Slice(serialized_op.data() + 2, serialized_op.size() - 2);
+        auto operand_id = MergeOperand::get_id(serialized_op);
+        auto parameters = MergeOperand::get_params(serialized_op);
 
         if(operand_id == OperandID::increase_size){
             auto op = IncreaseSizeOperand(parameters);
@@ -79,6 +108,8 @@ bool MetadataMergeOperator::FullMergeV2(
             } else {
                 fsize = std::max(op.size, fsize);
             }
+        } else if(operand_id == OperandID::create){
+            continue;
         } else {
             throw std::runtime_error(fmt::format("Unrecognized merge operand ID: {}", (char)operand_id));
         }

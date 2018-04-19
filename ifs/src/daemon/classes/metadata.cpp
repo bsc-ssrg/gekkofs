@@ -126,13 +126,13 @@ void Metadata::update_ACM_time(bool a, bool c, bool m) {
  * Creates a key value metadentry string that is used as a value in the KV store
  * @return
  */
-std::string Metadata::to_KVentry() {
+std::string Metadata::to_KVentry() const {
     std::string val;
     this->serialize(val);
     return val;
 }
 
-void Metadata::serialize(std::string& s) {
+void Metadata::serialize(std::string& s) const {
     // The order is important. don't change.
     s += fmt::FormatInt(mode_).c_str(); // add mandatory mode
     s += dentry_val_delim + fmt::FormatInt(size_).c_str(); // add mandatory size

@@ -16,6 +16,8 @@ class MergeOperand {
     public:
         constexpr static char operand_id_suffix = ':';
         std::string serialize() const;
+        static OperandID get_id(const rdb::Slice& serialized_op);
+        static rdb::Slice get_params(const rdb::Slice& serialized_op);
 
     protected:
         std::string serialize_id() const;
@@ -34,6 +36,15 @@ class IncreaseSizeOperand: public MergeOperand {
 
         IncreaseSizeOperand(const size_t size, const bool append);
         IncreaseSizeOperand(const rdb::Slice& serialized_op);
+
+        virtual const OperandID id() const override;
+        virtual std::string serialize_params() const override;
+};
+
+class CreateOperand: public MergeOperand {
+    public:
+        std::string metadata;
+        CreateOperand(const std::string& metadata);
 
         virtual const OperandID id() const override;
         virtual std::string serialize_params() const override;

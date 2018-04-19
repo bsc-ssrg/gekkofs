@@ -15,7 +15,12 @@ bool db_get_metadentry(const std::string& key, std::string& val) {
 
 bool db_put_metadentry(const std::string& key, const std::string& val) {
     auto db = ADAFS_DATA->rdb();
-    return db->Put(ADAFS_DATA->rdb_write_options(), key, val).ok();
+    auto cop = CreateOperand(val);
+    auto s = db->Merge(ADAFS_DATA->rdb_write_options(), key, cop.serialize());
+    if(!s.ok()){
+        ADAFS_DATA->spdlogger()->error("Failed to create metadentry size. RDB error: [{}]", s.ToString());
+    }
+    return s.ok();
 }
 
 bool db_delete_metadentry(const std::string& key) {
