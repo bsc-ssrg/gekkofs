@@ -1,44 +1,61 @@
 #include <daemon/db/merge.hpp>
 
 
-const char IncreaseSizeOperand::separator = ',';
-const char IncreaseSizeOperand::true_char = 't';
-const char IncreaseSizeOperand::false_char = 'f';
+std::string MergeOperand::serialize_id() const {
+    std::string s;
+    s.reserve(2);
+    s += (char)id();
+    s += operand_id_suffix;
+    return s;
+}
+
+std::string MergeOperand::serialize() const {
+    std::string s = serialize_id();
+    s += serialize_params();
+    return s;
+}
+
 
 IncreaseSizeOperand::IncreaseSizeOperand(const size_t size, const bool append):
     size(size), append(append) {}
 
-IncreaseSizeOperand::IncreaseSizeOperand(const std::string& serialized_op){
+IncreaseSizeOperand::IncreaseSizeOperand(const rdb::Slice& serialized_op){
     size_t chrs_parsed = 0;
     size_t read = 0;
 
     //Parse size
-    size = std::stoul(&serialized_op.at(chrs_parsed), &read);
+    size = std::stoul(serialized_op.data() + chrs_parsed, &read);
     chrs_parsed += read + 1;
-    assert(serialized_op.at(chrs_parsed - 1) == separator);
+    assert(serialized_op[chrs_parsed - 1] == separator);
 
     //Parse append flag
-    assert(serialized_op.at(chrs_parsed) == false_char ||
-           serialized_op.at(chrs_parsed) == true_char);
-    append = (serialized_op.at(chrs_parsed) == false_char) ? false : true;
+    assert(serialized_op[chrs_parsed] == false_char ||
+           serialized_op[chrs_parsed] == true_char);
+    append = (serialized_op[chrs_parsed] == false_char) ? false : true;
     //check that we consumed all the input string
     assert(chrs_parsed + 1 == serialized_op.size());
 }
 
-std::string IncreaseSizeOperand::serialize() const {
+const OperandID IncreaseSizeOperand::id() const {
+    return OperandID::increase_size;
+}
+
+std::string IncreaseSizeOperand::serialize_params() const {
     std::string s;
+    s.reserve(3);
     s += std::to_string(size);
     s += this->separator;
     s += (append == false)? false_char : true_char;
     return s;
 }
 
+
 bool MetadataMergeOperator::FullMergeV2(
         const MergeOperationInput& merge_in,
         MergeOperationOutput* merge_out) const {
 
     if(merge_in.existing_value == nullptr){
-        //The key to operate on doesn't exists in DB 
+        //The key to operate on doesn't exists in DB
 
         // TODO use logger to print err info;
         //Log(logger, "Key %s do not exists", existing_value->ToString().c_str());
@@ -49,13 +66,21 @@ bool MetadataMergeOperator::FullMergeV2(
     Metadata md{merge_in.key.ToString(), merge_in.existing_value->ToString()};
     size_t fsize = md.size();
 
-    for(const auto& operand: merge_in.operand_list){
-        auto op = IncreaseSizeOperand(operand.ToString());
-        if(op.append){
-            //append mode, just increment file
-            fsize += op.size;
+    for(const auto& serialized_op: merge_in.operand_list){
+        assert(serialized_op.size() >= 2);
+        auto operand_id = static_cast<OperandID>(serialized_op[0]);
+        auto parameters = rdb::Slice(serialized_op.data() + 2, serialized_op.size() - 2);
+
+        if(operand_id == OperandID::increase_size){
+            auto op = IncreaseSizeOperand(parameters);
+            if(op.append){
+                //append mode, just increment file
+                fsize += op.size;
+            } else {
+                fsize = std::max(op.size, fsize);
+            }
         } else {
-            fsize = std::max(op.size, fsize);
+            throw std::runtime_error(fmt::format("Unrecognized merge operand ID: {}", (char)operand_id));
         }
     }
 

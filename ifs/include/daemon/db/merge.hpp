@@ -7,20 +7,36 @@
 
 namespace rdb = rocksdb;
 
+enum class OperandID: char {
+    increase_size = 's',
+    create = 'c'
+};
 
-class IncreaseSizeOperand {
+class MergeOperand {
     public:
-        const static char separator;
-        const static char true_char;
-        const static char false_char;
+        constexpr static char operand_id_suffix = ':';
+        std::string serialize() const;
+
+    protected:
+        std::string serialize_id() const;
+        virtual std::string serialize_params() const = 0;
+        virtual const OperandID id() const = 0;
+};
+
+class IncreaseSizeOperand: public MergeOperand {
+    public:
+        constexpr const static char separator = ',';
+        constexpr const static char true_char = 't';
+        constexpr const static char false_char = 'f';
 
         size_t size;
         bool append;
 
         IncreaseSizeOperand(const size_t size, const bool append);
-        IncreaseSizeOperand(const std::string& serialized_op);
+        IncreaseSizeOperand(const rdb::Slice& serialized_op);
 
-        std::string serialize() const;
+        virtual const OperandID id() const override;
+        virtual std::string serialize_params() const override;
 };
 
 class MetadataMergeOperator: public rocksdb::MergeOperator {
