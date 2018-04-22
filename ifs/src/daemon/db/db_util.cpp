@@ -49,6 +49,7 @@ bool init_rocksdb() {
 }
 
 void optimize_rocksdb(rocksdb::Options& options) {
+    options.max_successive_merges = 128;
 #if defined(KV_OPTIMIZE_RAMDISK)
     // as described at https://github.com/facebook/rocksdb/wiki/RocksDB-Tuning-Guide
     // use mmap read
