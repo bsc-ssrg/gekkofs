@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -50,6 +51,20 @@ int main(int argc, char* argv[]) {
 
     if(close(fd) != 0){
         cerr << "Error closing file" << endl;
+        return -1;
+    }
+
+    /* Check file size */
+    struct stat st;
+
+    ret = stat(p.c_str(), &st);
+    if(ret != 0){
+        cerr << "Error stating file: " << strerror(errno) << endl;
+        return -1;
+    };
+
+    if(st.st_size != strlen(buffIn)){
+        cerr << "Wrong file size after creation: " << st.st_size << endl;
         return -1;
     }
 
