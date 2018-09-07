@@ -43,6 +43,7 @@ find_package(RocksDB REQUIRED)
 find_package(Mercury REQUIRED)
 find_package(Abt REQUIRED)
 find_package(Margo REQUIRED)
+find_package(Syscall_intercept REQUIRED)
 
 # boost dependencies, system is required for filesystem
 find_package(Boost 1.53 REQUIRED
