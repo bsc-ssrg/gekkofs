@@ -3,9 +3,9 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include <cassert>
+#include <libsyscall_intercept_hook_point.h>
 
 #include "global/path_util.hpp"
-#include "preload/passthrough.hpp"
 #include "preload/preload.hpp"
 
 /* Match components in path
@@ -131,7 +131,7 @@ unsigned int path_match_components(const std::string& path, unsigned int &path_c
                 path.compare(start, comp_size, mnt_components.at(matched_components)) == 0) {
                 ++matched_components;
             }
-            if (LIBC_FUNC(__lxstat, _STAT_VER, resolved.c_str(), &st) < 0) {
+            if (lstat(resolved.c_str(), &st) < 0) {
 #ifndef NDEBUG
                 CTX->log()->debug("{}() path does not exists: '{}'", __func__, resolved.c_str());
 #endif
@@ -143,7 +143,7 @@ unsigned int path_match_components(const std::string& path, unsigned int &path_c
                     continue;
                 }
                 auto link_resolved = std::unique_ptr<char[]>(new char[PATH_MAX]);
-                if (LIBC_FUNC(realpath, resolved.c_str(), link_resolved.get()) == nullptr) {
+                if (realpath(resolved.c_str(), link_resolved.get()) == nullptr) {
                     CTX->log()->error("{}() Failed to get realpath for link '{}'. Error: {}", __func__, resolved, strerror(errno));
                     resolved.append(path, end, std::string::npos);
                     return false;
@@ -180,8 +180,8 @@ unsigned int path_match_components(const std::string& path, unsigned int &path_c
 
 std::string get_sys_cwd() {
     char temp[PATH_MAX_LEN];
-    if(LIBC_FUNC(getcwd, temp, PATH_MAX_LEN) == NULL) {
-        throw std::system_error(errno,
+    if (long ret = syscall_no_intercept(SYS_getcwd, temp, PATH_MAX_LEN) < 0) {
+        throw std::system_error(syscall_error_code(ret),
                                 std::system_category(),
                                 "Failed to retrieve current working directory");
     }
@@ -195,10 +195,10 @@ std::string get_sys_cwd() {
 
 void set_sys_cwd(const std::string& path) {
     CTX->log()->debug("{}() to '{}'", __func__, path);
-    if (LIBC_FUNC(chdir, path.c_str())) {
+    if (long ret = syscall_no_intercept(SYS_chdir, path.c_str())) {
         CTX->log()->error("{}() failed to set system current working directory: {}",
-                __func__, std::strerror(errno));
-        throw std::system_error(errno,
+                __func__, std::strerror(syscall_error_code(ret)));
+        throw std::system_error(syscall_error_code(ret),
                                 std::system_category(),
                                 "Failed to set system current working directory");
     }
