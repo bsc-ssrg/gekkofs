@@ -36,6 +36,8 @@ RUN yum -y -q update  && yum -y -q install \
 	libzstd-devel \
 	lz4-devel \
 	bzip2-devel \
+	# syscall_intercept dependencies
+	capstone-devel \
 	# ada-fs requires C++ 14
 	devtoolset-7-gcc \
 	devtoolset-7-gcc-c++ \
@@ -90,6 +92,8 @@ RUN yum -y -q update  && yum -y -q install \
 	libzstd-devel \
 	lz4-devel \
 	bzip2-devel \
+	# syscall_intercept dependencies
+	capstone-devel \
 	# ada-fs requires C++ 14
 	devtoolset-7-gcc \
 	devtoolset-7-gcc-c++ \

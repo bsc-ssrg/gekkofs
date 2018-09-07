@@ -314,4 +314,11 @@ make clean
 USE_RTTI=1 make -j${CORES} static_lib
 INSTALL_PATH=${INSTALL} make install
 
+echo "############################################################ Installing:  Syscall_intercept"
+CURR=${SOURCE}/syscall_intercept
+prepare_build_dir ${CURR}
+cd ${CURR}/build
+$CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTS:BOOK=OFF ..
+make install
+
 echo "Done"

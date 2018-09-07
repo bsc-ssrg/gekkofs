@@ -1,10 +1,10 @@
 set(PRELOAD_SRC
     preload_context.cpp
     adafs_functions.cpp
-    intcp_functions.cpp
+    intercept.cpp
+    hooks.cpp
     open_file_map.cpp
     open_dir.cpp
-    passthrough.cpp
     preload.cpp
     resolve.cpp
     preload_util.cpp
@@ -26,10 +26,11 @@ set(PRELOAD_HEADERS
     ../../include/global/chunk_calc_util.hpp
     ../../include/preload/preload_context.hpp
     ../../include/preload/adafs_functions.hpp
-    ../../include/preload/intcp_functions.hpp
+    ../../include/preload/intercept.hpp
+    ../../include/preload/syscall_names.hpp
+    ../../include/preload/hooks.hpp
     ../../include/preload/open_file_map.hpp
     ../../include/preload/open_dir.hpp
-    ../../include/preload/passthrough.hpp
     ../../include/preload/preload.hpp
     ../../include/preload/resolve.hpp
     ../../include/preload/preload_util.hpp
@@ -46,6 +47,7 @@ target_link_libraries(adafs_preload_client
     distributor
     log_util
     # external
+    Syscall_intercept::Syscall_intercept
     dl
     ${ABT_LIBRARIES}
     mercury
