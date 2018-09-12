@@ -30,6 +30,38 @@ static inline int hook(long syscall_number,
                               static_cast<mode_t>(arg2));
         break;
 
+    case SYS_openat:
+        *result = hook_openat(static_cast<int>(arg0),
+                              reinterpret_cast<const char*>(arg1),
+                              static_cast<int>(arg2),
+                              static_cast<mode_t>(arg3));
+        break;
+
+    case SYS_close:
+        *result = hook_close(static_cast<int>(arg0));
+        break;
+
+    case SYS_stat:
+        *result = hook_stat(reinterpret_cast<char*>(arg0),
+                            reinterpret_cast<struct stat*>(arg1));
+        break;
+
+    case SYS_read:
+        *result = hook_read(static_cast<int>(arg0),
+                            reinterpret_cast<void*>(arg1),
+                            static_cast<size_t>(arg2));
+        break;
+
+    case SYS_write:
+        *result = hook_write(static_cast<int>(arg0),
+                             reinterpret_cast<void*>(arg1),
+                             static_cast<size_t>(arg2));
+        break;
+
+    case SYS_unlink:
+        *result = hook_unlink(reinterpret_cast<char*>(arg0));
+        break;
+
     default:
         /*
          * Ignore any other syscalls
