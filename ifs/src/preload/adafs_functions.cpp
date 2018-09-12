@@ -287,6 +287,18 @@ int adafs_dup2(const int oldfd, const int newfd) {
     return CTX->file_map()->dup2(oldfd, newfd);
 }
 
+ssize_t adafs_write(int fd, void* buf, size_t count) {
+            auto adafs_fd = CTX->file_map()->get(fd);
+            auto pos = adafs_fd->pos(); //retrieve the current offset
+            if (adafs_fd->get_flag(OpenFile_flags::append))
+                adafs_lseek(adafs_fd, 0, SEEK_END);
+            auto ret = adafs_pwrite_ws(fd, buf, count, pos);
+            // Update offset in file descriptor in the file map
+            if (ret > 0) {
+                adafs_fd->pos(pos + count);
+            }
+            return ret;
+}
 
 ssize_t adafs_pwrite_ws(int fd, const void* buf, size_t count, off64_t offset) {
     auto adafs_fd = CTX->file_map()->get(fd);

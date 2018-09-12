@@ -33,6 +33,7 @@ int hook_openat(int dirfd, const char *cpath, int flags, mode_t mode) {
             if(ret < 0) {
                 return -errno;
             }
+            return ret;
         }
     } else {
         // cpath is relative
@@ -44,8 +45,7 @@ int hook_openat(int dirfd, const char *cpath, int flags, mode_t mode) {
         auto dir = CTX->file_map()->get_dir(dirfd);
         if(dir == nullptr) {
             CTX->log()->error("{}() dirfd is not a directory ", __func__);
-            errno = ENOTDIR;
-            return -1;
+            return -ENOTDIR;
         }
 
         std::string path = CTX->mountdir();
@@ -57,7 +57,64 @@ int hook_openat(int dirfd, const char *cpath, int flags, mode_t mode) {
             if(ret < 0) {
                 return -errno;
             }
+            return ret;
         }
     }
-    return 0;
+    return syscall_no_intercept(SYS_openat, dirfd, resolved.c_str(), flags, mode);
+}
+
+int hook_close(int fd) {
+    CTX->log()->trace("{}() called with fd {}", __func__, fd);
+    if(CTX->file_map()->exist(fd)) {
+        // No call to the daemon is required
+        CTX->file_map()->remove(fd);
+        return 0;
+    }
+    return syscall_no_intercept(SYS_close, fd);
+}
+
+int hook_stat(const char* path, struct stat* buf) {
+    CTX->log()->trace("{}() called with path '{}'", __func__, path);
+    std::string rel_path;
+    if (CTX->relativize_path(path, rel_path)) {
+            return with_errno(adafs_stat(rel_path, buf));
+    }
+    return syscall_no_intercept(SYS_stat, rel_path.c_str(), buf);
+}
+
+int hook_read(int fd, void* buf, size_t count) {
+    CTX->log()->trace("{}() called with fd {}, count {}", __func__, fd, count);
+    if (CTX->file_map()->exist(fd)) {
+        auto ret = adafs_read(fd, buf, count);
+        if(ret < 0) {
+            return -errno;
+        }
+        return ret;
+    }
+    return syscall_no_intercept(SYS_read, fd, buf, count);
+}
+
+int hook_write(int fd, void* buf, size_t count) {
+    CTX->log()->trace("{}() called with fd {}, count {}", __func__, fd, count);
+    if (CTX->file_map()->exist(fd)) {
+        auto ret = adafs_write(fd, buf, count);
+        if(ret < 0) {
+            return -errno;
+        }
+        return ret;
+    }
+    return syscall_no_intercept(SYS_write, fd, buf, count);
+}
+
+int hook_unlink(const char* path) {
+    CTX->log()->trace("{}() called with path '{}'", __func__, path);
+    std::string rel_path;
+    if (CTX->relativize_path(path, rel_path)) {
+        auto ret = adafs_rm_node(rel_path);
+        if(ret < 0) {
+            return -errno;
+        }
+        return ret;
+    }
+    return syscall_no_intercept(SYS_unlink, rel_path.c_str());
 }
