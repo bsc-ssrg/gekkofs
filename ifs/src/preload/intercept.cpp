@@ -62,7 +62,17 @@ static inline int hook(long syscall_number,
         *result = hook_unlink(reinterpret_cast<char*>(arg0));
         break;
 
-    default:
+    case SYS_access:
+        *result = hook_access(reinterpret_cast<char*>(arg0),
+                              static_cast<int>(arg1));
+        break;
+
+    case SYS_lseek:
+        *result = hook_lseek(static_cast<unsigned int>(arg0),
+                             static_cast<off_t>(arg1),
+                             static_cast<unsigned int>(arg2));
+        break;
+
         /*
          * Ignore any other syscalls
          * i.e.: pass them on to the kernel
