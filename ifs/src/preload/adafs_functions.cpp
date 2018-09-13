@@ -200,12 +200,15 @@ off64_t adafs_lseek(int fd, off64_t offset, int whence) {
 off64_t adafs_lseek(shared_ptr<OpenFile> adafs_fd, off64_t offset, int whence) {
     switch (whence) {
         case SEEK_SET:
+            CTX->log()->debug("{}() whence is SEEK_SET", __func__);
             adafs_fd->pos(offset);
             break;
         case SEEK_CUR:
+            CTX->log()->debug("{}() whence is SEEK_CUR", __func__);
             adafs_fd->pos(adafs_fd->pos() + offset);
             break;
         case SEEK_END: {
+            CTX->log()->debug("{}() whence is SEEK_END", __func__);
             off64_t file_size;
             auto err = rpc_send_get_metadentry_size(adafs_fd->path(), file_size);
             if (err < 0) {
@@ -216,14 +219,17 @@ off64_t adafs_lseek(shared_ptr<OpenFile> adafs_fd, off64_t offset, int whence) {
             break;
         }
         case SEEK_DATA:
+            CTX->log()->warn("{}() SEEK_DATA whence is not supported", __func__);
             // We do not support this whence yet
             errno = EINVAL;
             return -1;
         case SEEK_HOLE:
+            CTX->log()->warn("{}() SEEK_HOLE whence is not supported", __func__);
             // We do not support this whence yet
             errno = EINVAL;
             return -1;
         default:
+            CTX->log()->warn("{}() unknown whence {}", __func__, whence);
             errno = EINVAL;
             return -1;
     }
