@@ -96,3 +96,32 @@ int hook_unlink(const char* path) {
     }
     return syscall_no_intercept(SYS_unlink, rel_path.c_str());
 }
+
+int hook_access(const char* path, int mask) {
+    CTX->log()->trace("{}() called path '{}', mask {}", __func__, path, mask);
+    std::string rel_path;
+    if (CTX->relativize_path(path, rel_path)) {
+        auto ret = adafs_access(rel_path, mask);
+        if(ret < 0) {
+            return -errno;
+        }
+        return ret;
+    }
+    return syscall_no_intercept(SYS_access, rel_path.c_str(), mask);
+}
+
+int hook_lseek(unsigned int fd, off_t offset, unsigned int whence) {
+    CTX->log()->trace("{}() called with fd {}, offset {}, whence {}", __func__, fd, offset, whence);
+    if (CTX->file_map()->exist(fd)) {
+        auto off_ret = adafs_lseek(fd, static_cast<off64_t>(offset), whence);
+        if (off_ret > std::numeric_limits<off_t>::max()) {
+            return -EOVERFLOW;
+        } else if(off_ret < 0) {
+            return -errno;
+        }
+        CTX->log()->trace("{}() returning {}", __func__, off_ret);
+        return off_ret;
+    }
+   return syscall_no_intercept(SYS_lseek, fd, offset, whence);
+}
+
