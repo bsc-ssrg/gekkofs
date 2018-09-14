@@ -11,7 +11,6 @@
 using namespace std;
 
 int adafs_open(const std::string& path, mode_t mode, int flags) {
-    init_ld_env_if_needed();
     int err = 0;
 
     if(flags & O_PATH){
@@ -102,7 +101,6 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
 }
 
 int adafs_mk_node(const std::string& path, const mode_t mode) {
-    init_ld_env_if_needed();
 
     //file type must be set
     assert((mode & S_IFMT) != 0);
@@ -131,7 +129,6 @@ int adafs_mk_node(const std::string& path, const mode_t mode) {
  * @return
  */
 int adafs_rm_node(const std::string& path) {
-    init_ld_env_if_needed();
     struct stat node_metadentry{};
     auto err = adafs_stat(path, &node_metadentry);
     if (err != 0)
@@ -140,7 +137,6 @@ int adafs_rm_node(const std::string& path) {
 }
 
 int adafs_access(const std::string& path, const int mask) {
-    init_ld_env_if_needed();
 #if !defined(DO_LOOKUP)
     // object is assumed to be existing, even though it might not
     return 0;
@@ -153,7 +149,6 @@ int adafs_access(const std::string& path, const int mask) {
 }
 
 int adafs_stat(const string& path, struct stat* buf) {
-    init_ld_env_if_needed();
     std::string attr;
     auto err = rpc_send_stat(path, attr);
     if (err) {
@@ -165,7 +160,6 @@ int adafs_stat(const string& path, struct stat* buf) {
 }
 
 int adafs_statfs(const string& path, struct statfs* adafs_buf, struct statfs& realfs_buf) {
-    init_ld_env_if_needed();
     // Check that file path exists
     auto ret = rpc_send_access(path, F_OK);
     // Valid fs error
@@ -200,12 +194,10 @@ int adafs_statfs(const string& path, struct statfs* adafs_buf, struct statfs& re
 }
 
 off64_t adafs_lseek(int fd, off64_t offset, int whence) {
-    init_ld_env_if_needed();
     return adafs_lseek(CTX->file_map()->get(fd), offset, whence);
 }
 
 off64_t adafs_lseek(shared_ptr<OpenFile> adafs_fd, off64_t offset, int whence) {
-    init_ld_env_if_needed();
     switch (whence) {
         case SEEK_SET:
             adafs_fd->pos(offset);
@@ -267,7 +259,6 @@ int adafs_truncate(const std::string& path, off_t length) {
      * adafs_trunc_data, some more data could have been added to the file and the
      * length increased.
      */
-    init_ld_env_if_needed();
     if(length < 0) {
         CTX->log()->debug("{}() length is negative: {}", __func__, length);
         errno = EINVAL;
@@ -298,7 +289,6 @@ int adafs_dup2(const int oldfd, const int newfd) {
 
 
 ssize_t adafs_pwrite_ws(int fd, const void* buf, size_t count, off64_t offset) {
-    init_ld_env_if_needed();
     auto adafs_fd = CTX->file_map()->get(fd);
     if (adafs_fd->type() != FileType::regular) {
         assert(adafs_fd->type() == FileType::directory);
@@ -336,7 +326,6 @@ ssize_t adafs_read(int fd, void* buf, size_t count) {
 }
 
 ssize_t adafs_pread_ws(int fd, void* buf, size_t count, off64_t offset) {
-    init_ld_env_if_needed();
     auto adafs_fd = CTX->file_map()->get(fd);
     if (adafs_fd->type() != FileType::regular) {
         assert(adafs_fd->type() == FileType::directory);
@@ -359,7 +348,6 @@ ssize_t adafs_pread_ws(int fd, void* buf, size_t count, off64_t offset) {
 }
 
 int adafs_opendir(const std::string& path) {
-    init_ld_env_if_needed();
 
     struct stat st;
     if(adafs_stat(path, &st)) {
@@ -377,7 +365,6 @@ int adafs_opendir(const std::string& path) {
 }
 
 int adafs_rmdir(const std::string& path) {
-    init_ld_env_if_needed();
 #if defined(DO_LOOKUP)
     auto err = rpc_send_access(path, F_OK);
     if(err != 0){
@@ -394,7 +381,6 @@ int adafs_rmdir(const std::string& path) {
 }
 
 struct dirent * adafs_readdir(int fd){
-    init_ld_env_if_needed();
     CTX->log()->trace("{}() called on fd: {}", __func__, fd);
     auto open_file = CTX->file_map()->get(fd);
     assert(open_file != nullptr);
