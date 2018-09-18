@@ -57,15 +57,42 @@ static inline int hook(long syscall_number,
         break;
 
     case SYS_read:
-        *result = hook_read(static_cast<int>(arg0),
+        *result = hook_read(static_cast<unsigned int>(arg0),
                             reinterpret_cast<void*>(arg1),
                             static_cast<size_t>(arg2));
         break;
 
+    case SYS_pread64:
+        *result = hook_pread(static_cast<unsigned int>(arg0),
+                             reinterpret_cast<char *>(arg1),
+                             static_cast<size_t>(arg2),
+                             static_cast<loff_t>(arg3));
+        break;
+
+    case SYS_pwrite64:
+        *result = hook_pwrite(static_cast<unsigned int>(arg0),
+                              reinterpret_cast<const char *>(arg1),
+                              static_cast<size_t>(arg2),
+                              static_cast<loff_t>(arg3));
+        break;
     case SYS_write:
-        *result = hook_write(static_cast<int>(arg0),
-                             reinterpret_cast<void*>(arg1),
+        *result = hook_write(static_cast<unsigned int>(arg0),
+                             reinterpret_cast<const char *>(arg1),
                              static_cast<size_t>(arg2));
+        break;
+
+    case SYS_writev:
+        *result = hook_writev(static_cast<unsigned long>(arg0),
+                              reinterpret_cast<const struct iovec *>(arg1),
+                              static_cast<unsigned long>(arg2));
+        break;
+
+    case SYS_pwritev:
+        *result = hook_pwritev(static_cast<unsigned long>(arg0),
+                               reinterpret_cast<const struct iovec *>(arg1),
+                               static_cast<unsigned long>(arg2),
+                               static_cast<unsigned long>(arg3),
+                               static_cast<unsigned long>(arg4));
         break;
 
     case SYS_unlink:

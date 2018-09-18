@@ -78,28 +78,59 @@ int hook_fstat(unsigned int fd, struct stat* buf) {
     return syscall_no_intercept(SYS_fstat, fd, buf);
 }
 
-int hook_read(int fd, void* buf, size_t count) {
+int hook_read(unsigned int fd, void* buf, size_t count) {
     CTX->log()->trace("{}() called with fd {}, count {}", __func__, fd, count);
     if (CTX->file_map()->exist(fd)) {
-        auto ret = adafs_read(fd, buf, count);
-        if(ret < 0) {
-            return -errno;
-        }
-        return ret;
+        return  with_errno(adafs_read(fd, buf, count));
     }
     return syscall_no_intercept(SYS_read, fd, buf, count);
 }
 
-int hook_write(int fd, void* buf, size_t count) {
+int hook_pread(unsigned int fd, char * buf, size_t count, loff_t pos) {
+    CTX->log()->trace("{}() called with fd {}, count {}, pos {}",
+                      __func__, fd, count, pos);
+    if (CTX->file_map()->exist(fd)) {
+        return with_errno(adafs_pread_ws(fd, buf, count, pos));
+    }
+    /* Since kernel 2.6: pread() became pread64(), and pwrite() became pwrite64(). */
+    return syscall_no_intercept(SYS_pread64, fd, buf, count, pos);
+}
+
+int hook_write(unsigned int fd, const char * buf, size_t count) {
     CTX->log()->trace("{}() called with fd {}, count {}", __func__, fd, count);
     if (CTX->file_map()->exist(fd)) {
-        auto ret = adafs_write(fd, buf, count);
-        if(ret < 0) {
-            return -errno;
-        }
-        return ret;
+        return with_errno(adafs_write(fd, buf, count));
     }
     return syscall_no_intercept(SYS_write, fd, buf, count);
+}
+
+int hook_pwrite(unsigned int fd, const char * buf, size_t count, loff_t pos) {
+    CTX->log()->trace("{}() called with fd {}, count {}, pos {}",
+                      __func__, fd, count, pos);
+    if (CTX->file_map()->exist(fd)) {
+        return with_errno(adafs_pwrite_ws(fd, buf, count, pos));
+    }
+    /* Since kernel 2.6: pread() became pread64(), and pwrite() became pwrite64(). */
+    return syscall_no_intercept(SYS_pwrite64, fd, buf, count, pos);
+}
+
+int hook_writev(unsigned long fd, const struct iovec * iov, unsigned long iovcnt) {
+    CTX->log()->trace("{}() called with fd {}, ops_num {}", __func__, fd, iovcnt);
+    if (CTX->file_map()->exist(fd)) {
+        return with_errno(adafs_writev(fd, iov, iovcnt));
+    }
+    return syscall_no_intercept(SYS_writev, fd, iov, iovcnt);
+}
+
+int hook_pwritev(unsigned long fd, const struct iovec * iov, unsigned long iovcnt,
+                 unsigned long pos_l, unsigned long pos_h) {
+    CTX->log()->trace("{}() called with fd {}, ops_num {}, low position {},"
+                      "high postion {}", __func__, fd, iovcnt, pos_l, pos_h);
+    if (CTX->file_map()->exist(fd)) {
+        CTX->log()->warn("{}() Not supported", __func__);
+        return -ENOTSUP;
+    }
+    return syscall_no_intercept(SYS_pwritev, fd, iov, iovcnt);
 }
 
 int hook_unlinkat(int dirfd, const char * cpath, int flags) {
