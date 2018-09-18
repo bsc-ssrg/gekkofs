@@ -69,7 +69,9 @@ ssize_t adafs_read(int fd, void* buf, size_t count);
 
 int adafs_opendir(const std::string& path);
 
-struct dirent * adafs_readdir(int fd);
+int getdents(unsigned int fd,
+             struct linux_dirent *dirp,
+             unsigned int count);
 
 int adafs_rmdir(const std::string& path);
 
