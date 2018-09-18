@@ -8,7 +8,7 @@
 #include <libsyscall_intercept_hook_point.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
+#include <memory>
 
 static inline int with_errno(int ret) {
     return (ret < 0)? -errno : ret;
@@ -252,4 +252,80 @@ int hook_mkdirat(int dirfd, const char * cpath, mode_t mode) {
             CTX->log()->error("{}() relativize status unknown: {}", __func__);
             return -EINVAL;
     }
+}
+
+int hook_chdir(const char * path) {
+    CTX->log()->trace("{}() called with path '{}'", __func__, path);
+    std::string rel_path;
+    bool internal = CTX->relativize_path(path, rel_path);
+    if (internal) {
+        //path falls in our namespace
+        auto md = adafs_metadata(rel_path);
+        if (md == nullptr) {
+            CTX->log()->error("{}() path does not exists", __func__);
+            return -ENOENT;
+        }
+        if(!S_ISDIR(md->mode())) {
+            CTX->log()->error("{}() path is not a directory", __func__);
+            return -ENOTDIR;
+        }
+        //TODO get complete path from relativize_path instead of
+        // removing mountdir and then adding again here
+        rel_path.insert(0, CTX->mountdir());
+        if (has_trailing_slash(rel_path)) {
+            // open_dir is '/'
+            rel_path.pop_back();
+        }
+    }
+    try {
+        set_cwd(rel_path, internal);
+    } catch (const std::system_error& se) {
+        return -(se.code().value());
+    }
+    return 0;
+}
+
+int hook_fchdir(unsigned int fd) {
+    CTX->log()->trace("{}() called with fd {}", __func__, fd);
+    if (CTX->file_map()->exist(fd)) {
+        auto open_dir = CTX->file_map()->get_dir(fd);
+        if (open_dir == nullptr) {
+            //Cast did not succeeded: open_file is a regular file
+            CTX->log()->error("{}() file descriptor refers to a normal file: '{}'",
+                    __func__, open_dir->path());
+            return -EBADF;
+        }
+
+        std::string new_path = CTX->mountdir() + open_dir->path();
+        if (has_trailing_slash(new_path)) {
+            // open_dir is '/'
+            new_path.pop_back();
+        }
+        try {
+            set_cwd(new_path, true);
+        } catch (const std::system_error& se) {
+            return -(se.code().value());
+        }
+    } else {
+        long ret = syscall_no_intercept(SYS_fchdir, fd);
+        if (ret < 0) {
+            throw std::system_error(syscall_error_code(ret),
+                                    std::system_category(),
+                                    "Failed to change directory (fchdir syscall)");
+        }
+        unset_env_cwd();
+        CTX->cwd(get_sys_cwd());
+    }
+    return 0;
+}
+
+int hook_getcwd(char * buf, unsigned long size) {
+    CTX->log()->trace("{}() called with size {}", __func__, size);
+    if(CTX->cwd().size() + 1 > size) {
+        CTX->log()->error("{}() buffer too small to host current working dir", __func__);
+        return -ERANGE;
+    }
+
+    strcpy(buf, CTX->cwd().c_str());
+    return (CTX->cwd().size() + 1);
 }

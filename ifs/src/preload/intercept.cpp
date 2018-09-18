@@ -151,6 +151,19 @@ static inline int hook(long syscall_number,
                                static_cast<mode_t>(arg1));
         break;
 
+    case SYS_chdir:
+        *result = hook_chdir(reinterpret_cast<const char *>(arg0));
+        break;
+
+    case SYS_fchdir:
+        *result = hook_fchdir(static_cast<unsigned int>(arg0));
+        break;
+
+    case SYS_getcwd:
+        *result = hook_getcwd(reinterpret_cast<char *>(arg0),
+                               static_cast<unsigned long>(arg1));
+        break;
+
     default:
         /*
          * Ignore any other syscalls
