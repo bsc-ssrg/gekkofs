@@ -100,28 +100,54 @@ int hook_fstat(unsigned int fd, struct stat* buf) {
     return syscall_no_intercept(SYS_fstat, fd, buf);
 }
 
-int hook_read(int fd, void* buf, size_t count) {
+int hook_read(unsigned int fd, void* buf, size_t count) {
     CTX->log()->trace("{}() called with fd {}, count {}", __func__, fd, count);
     if (CTX->file_map()->exist(fd)) {
-        auto ret = adafs_read(fd, buf, count);
-        if(ret < 0) {
-            return -errno;
-        }
-        return ret;
+        return  with_errno(adafs_read(fd, buf, count));
     }
     return syscall_no_intercept(SYS_read, fd, buf, count);
 }
 
-int hook_write(int fd, void* buf, size_t count) {
+int hook_write(unsigned int fd, void* buf, size_t count) {
     CTX->log()->trace("{}() called with fd {}, count {}", __func__, fd, count);
     if (CTX->file_map()->exist(fd)) {
-        auto ret = adafs_write(fd, buf, count);
-        if(ret < 0) {
-            return -errno;
-        }
-        return ret;
+        return with_errno(adafs_write(fd, buf, count));
     }
     return syscall_no_intercept(SYS_write, fd, buf, count);
+}
+
+int hook_writev(unsigned long fd, const struct iovec * iov, unsigned long iovcnt) {
+    CTX->log()->trace("{}() called with fd {}", __func__, fd);
+    if (CTX->file_map()->exist(fd)) {
+        auto adafs_fd = CTX->file_map()->get(fd);
+        auto pos = adafs_fd->pos(); // retrieve the current offset
+        ssize_t written = 0;
+        ssize_t ret;
+        for (unsigned long i = 0; i < iovcnt; ++i){
+            auto count = (iov+i)->iov_len;
+            if(count == 0) {
+                continue;
+            }
+            auto buf = (iov+i)->iov_base;
+            ret = adafs_pwrite_ws(fd, buf, count, pos);
+            if(ret == -1) {
+                break;
+            }
+            written += ret;
+            pos += ret;
+
+            if(static_cast<size_t>(ret) < count){
+                break;
+            }
+        }
+
+        if(written == 0){
+            return -1;
+        }
+        adafs_fd->pos(pos);
+        return written;
+    }
+    return syscall_no_intercept(SYS_writev, fd, iov, iovcnt);
 }
 
 int hook_unlink(const char* path) {

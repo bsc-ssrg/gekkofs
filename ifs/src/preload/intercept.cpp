@@ -57,15 +57,21 @@ static inline int hook(long syscall_number,
         break;
 
     case SYS_read:
-        *result = hook_read(static_cast<int>(arg0),
+        *result = hook_read(static_cast<unsigned int>(arg0),
                             reinterpret_cast<void*>(arg1),
                             static_cast<size_t>(arg2));
         break;
 
     case SYS_write:
-        *result = hook_write(static_cast<int>(arg0),
+        *result = hook_write(static_cast<unsigned int>(arg0),
                              reinterpret_cast<void*>(arg1),
                              static_cast<size_t>(arg2));
+        break;
+
+    case SYS_writev:
+        *result = hook_writev(static_cast<unsigned long>(arg0),
+                              reinterpret_cast<const struct iovec *>(arg1),
+                              static_cast<unsigned long>(arg2));
         break;
 
     case SYS_unlink:
