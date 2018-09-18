@@ -176,3 +176,28 @@ int hook_getdents(unsigned int fd, struct linux_dirent *dirp, unsigned int count
     }
     return syscall_no_intercept(SYS_getdents, fd, dirp, count);
 }
+
+int hook_mkdirat(int dirfd, const char * cpath, mode_t mode) {
+    CTX->log()->trace("{}() called with fd: {}, path: {}, mode: {}",
+                      __func__, dirfd, cpath, mode);
+
+    std::string resolved;
+    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved);
+    switch(rstatus) {
+        case RelativizeStatus::external:
+            return syscall_no_intercept(SYS_mkdirat, dirfd, resolved.c_str(), mode);
+
+        case RelativizeStatus::fd_unknown:
+            return syscall_no_intercept(SYS_mkdirat, dirfd, cpath, mode);
+
+        case RelativizeStatus::fd_not_a_dir:
+            return -ENOTDIR;
+
+        case RelativizeStatus::internal:
+            return with_errno(adafs_mk_node(resolved, mode | S_IFDIR));
+
+        default:
+            CTX->log()->error("{}() relativize status unknown: {}", __func__);
+            return -EINVAL;
+    }
+}
