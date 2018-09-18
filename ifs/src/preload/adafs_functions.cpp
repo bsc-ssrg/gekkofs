@@ -8,6 +8,20 @@
 #include <preload/rpc/ld_rpc_data_ws.hpp>
 #include <preload/open_dir.hpp>
 
+#include <dirent.h>
+
+
+#define __ALIGN_KERNEL_MASK(x, mask)	(((x) + (mask)) & ~(mask))
+#define __ALIGN_KERNEL(x, a)		    __ALIGN_KERNEL_MASK(x, (typeof(x))(a) - 1)
+#define ALIGN(x, a)                     __ALIGN_KERNEL((x), (a))
+
+struct linux_dirent {
+    unsigned long	d_ino;
+    unsigned long	d_off;
+    unsigned short	d_reclen;
+    char		d_name[1];
+};
+
 using namespace std;
 
 int adafs_open(const std::string& path, mode_t mode, int flags) {
@@ -469,15 +483,55 @@ int adafs_rmdir(const std::string& path) {
     return rpc_send_rm_node(path, true);
 }
 
-struct dirent * adafs_readdir(int fd){
-    CTX->log()->trace("{}() called on fd: {}", __func__, fd);
-    auto open_file = CTX->file_map()->get(fd);
-    assert(open_file != nullptr);
-    auto open_dir = static_pointer_cast<OpenDir>(open_file);
-    if(!open_dir){
+
+int getdents(unsigned int fd,
+             struct linux_dirent *dirp,
+             unsigned int count) {
+    CTX->log()->trace("{}() called on fd: {}, count {}", __func__, fd, count);
+    auto open_dir = CTX->file_map()->get_dir(fd);
+    if(open_dir == nullptr){
         //Cast did not succeeded: open_file is a regular file
         errno = EBADF;
-        return nullptr;
+        return -1;
     }
-    return open_dir->readdir();
+
+    auto pos = open_dir->pos();
+    if (pos >= open_dir->size()) {
+        return 0;
+    }
+
+    unsigned int written = 0;
+    struct linux_dirent * current_dirp = nullptr;
+    while(pos < open_dir->size()) {
+        DirEntry de = open_dir->getdent(pos);
+        auto total_size = ALIGN(offsetof(struct linux_dirent, d_name) +
+                de.name().size() + 3, sizeof(long));
+        if (total_size > (count - written)) {
+            //no enough space left on user buffer to insert next dirent
+            break;
+        }
+        current_dirp = reinterpret_cast<struct linux_dirent *>(
+                        reinterpret_cast<char*>(dirp) + written);
+        current_dirp->d_ino = std::hash<std::string>()(
+                open_dir->path() + "/" + de.name());
+
+        current_dirp->d_reclen = total_size;
+
+        *(reinterpret_cast<char*>(current_dirp) + total_size - 1) =
+            ((de.type() == FileType::regular)? DT_REG : DT_DIR);
+
+        CTX->log()->trace("{}() name {}: {}", __func__, pos, de.name());
+        std::strcpy(&(current_dirp->d_name[0]), de.name().c_str());
+        ++pos;
+        current_dirp->d_off = pos;
+        written += total_size;
+    }
+
+    if (written == 0) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    open_dir->pos(pos);
+    return written;
 }

@@ -10,28 +10,25 @@
 #include <preload/open_file_map.hpp>
 
 
+class DirEntry {
+    private:
+        std::string name_;
+        FileType type_;
+    public:
+        DirEntry(const std::string& name, const FileType type);
+        const std::string& name();
+        FileType type();
+};
+
 class OpenDir: public OpenFile {
     private:
-
-        class DirEntry {
-            public:
-                std::string name;
-                FileType type;
-
-                DirEntry(const std::string& name, const FileType type);
-        };
-
         std::vector<DirEntry> entries;
-        struct dirent dirent_;
-        bool is_dirent_valid;
-
-        void update_dirent(unsigned int pos);
 
 
     public:
         OpenDir(const std::string& path);
         void add(const std::string& name, const FileType& type);
-        struct dirent * readdir();
+        const DirEntry& getdent(unsigned int pos);
         size_t size();
 };
 
