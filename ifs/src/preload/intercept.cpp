@@ -104,6 +104,18 @@ static inline int hook(long syscall_number,
                                 static_cast<unsigned int>(arg2));
         break;
 
+    case SYS_mkdirat:
+        *result = hook_mkdirat(static_cast<unsigned int>(arg0),
+                               reinterpret_cast<const char *>(arg1),
+                               static_cast<mode_t>(arg2));
+        break;
+
+    case SYS_mkdir:
+        *result = hook_mkdirat(AT_FDCWD,
+                               reinterpret_cast<const char *>(arg0),
+                               static_cast<mode_t>(arg1));
+        break;
+
     default:
         /*
          * Ignore any other syscalls

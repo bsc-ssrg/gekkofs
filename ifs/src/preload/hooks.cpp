@@ -198,3 +198,43 @@ int hook_getdents(unsigned int fd, struct linux_dirent *dirp, unsigned int count
     }
     return syscall_no_intercept(SYS_getdents, fd, dirp, count);
 }
+
+int hook_mkdirat(int dirfd, const char * cpath, mode_t mode) {
+    if(cpath == nullptr || cpath[0] == '\0') {
+        CTX->log()->error("{}() path is invalid", __func__);
+        return -EINVAL;
+    }
+
+    CTX->log()->trace("{}() called with fd: {}, path: {}, mode: {}",
+                      __func__, dirfd, cpath, mode);
+
+    std::string resolved;
+
+    if((cpath[0] == PSP) || (dirfd == AT_FDCWD)) {
+        // cpath is absolute or relative to CWD
+        if (CTX->relativize_path(cpath, resolved)) {
+            return with_errno(adafs_mk_node(resolved, mode | S_IFDIR));
+        }
+    } else {
+        // cpath is relative
+        if(!(CTX->file_map()->exist(dirfd))) {
+            //TODO relative cpath could still lead to our FS
+            return syscall_no_intercept(SYS_mkdirat, dirfd, cpath, mode);
+        }
+
+        auto dir = CTX->file_map()->get_dir(dirfd);
+        if(dir == nullptr) {
+            CTX->log()->error("{}() dirfd is not a directory ", __func__);
+            return -ENOTDIR;
+        }
+
+        std::string path = CTX->mountdir();
+        path.append(dir->path());
+        path.push_back(PSP);
+        path.append(cpath);
+        if(resolve_path(path, resolved)) {
+            return with_errno(adafs_mk_node(resolved, mode | S_IFDIR));
+        }
+    }
+    return syscall_no_intercept(SYS_mkdirat, dirfd, resolved.c_str(), mode);
+}
