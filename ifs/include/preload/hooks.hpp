@@ -18,6 +18,7 @@ int hook_dup(unsigned int fd);
 int hook_dup2(unsigned int oldfd, unsigned int newfd);
 int hook_dup3(unsigned int oldfd, unsigned int newfd, int flags);
 int hook_getdents(unsigned int fd, struct linux_dirent *dirp, unsigned int count);
+int hook_mkdirat(int dirfd, const char * cpath, mode_t mode);
 
 
 #endif
