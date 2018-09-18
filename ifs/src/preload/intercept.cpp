@@ -343,7 +343,7 @@ void start_interception() {
 void stop_interception() {
     assert(CTX->initialized());
 #ifndef NDEBUG
-    CTX->log()->debug("Deactivating interception of syscalls");
+    //CTX->log()->debug("Deactivating interception of syscalls");
 #endif
     // Reset callback function pointer
     intercept_hook_point = nullptr;
