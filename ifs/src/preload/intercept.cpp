@@ -98,6 +98,12 @@ static inline int hook(long syscall_number,
                             static_cast<int>(arg2));
         break;
 
+    case SYS_getdents:
+        *result = hook_getdents(static_cast<unsigned int>(arg0),
+                                reinterpret_cast<struct linux_dirent *>(arg1),
+                                static_cast<unsigned int>(arg2));
+        break;
+
     default:
         /*
          * Ignore any other syscalls
