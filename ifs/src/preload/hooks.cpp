@@ -190,3 +190,11 @@ int hook_dup3(unsigned int oldfd, unsigned int newfd, int flags) {
     }
     return syscall_no_intercept(SYS_dup3, oldfd, newfd, flags);
 }
+
+int hook_getdents(unsigned int fd, struct linux_dirent *dirp, unsigned int count) {
+    CTX->log()->trace("{}() called with fd {}, count {}", __func__, fd, count);
+    if (CTX->file_map()->exist(fd)) {
+        return with_errno(getdents(fd, dirp, count));
+    }
+    return syscall_no_intercept(SYS_getdents, fd, dirp, count);
+}
