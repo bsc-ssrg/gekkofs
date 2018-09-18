@@ -9,8 +9,13 @@ int hook_close(int fd);
 int hook_stat(const char* path, struct stat* buf);
 int hook_lstat(const char* path, struct stat* buf);
 int hook_fstat(unsigned int, struct stat* buf);
-int hook_read(int fd, void* buf, size_t count);
-int hook_write(int fd, void* buf, size_t count);
+int hook_read(unsigned int fd, void* buf, size_t count);
+int hook_pread(unsigned int fd, char * buf, size_t count, loff_t pos);
+int hook_write(unsigned int fd, const char * buf, size_t count);
+int hook_pwrite(unsigned int fd, const char * buf, size_t count, loff_t pos);
+int hook_writev(unsigned long fd, const struct iovec * iov, unsigned long iovcnt);
+int hook_pwritev(unsigned long fd, const struct iovec * iov, unsigned long iovcnt,
+                 unsigned long pos_l, unsigned long pos_h);
 int hook_unlinkat(int dirfd, const char * cpath, int flags);
 int hook_access(const char* path, int mask);
 int hook_lseek(unsigned int fd, off_t offset, unsigned int whence);
