@@ -297,43 +297,28 @@ int hook_getdents(unsigned int fd, struct linux_dirent *dirp, unsigned int count
 }
 
 int hook_mkdirat(int dirfd, const char * cpath, mode_t mode) {
-    if(cpath == nullptr || cpath[0] == '\0') {
-        CTX->log()->error("{}() path is invalid", __func__);
-        return -EINVAL;
-    }
-
     CTX->log()->trace("{}() called with fd: {}, path: {}, mode: {}",
                       __func__, dirfd, cpath, mode);
 
     std::string resolved;
+    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved);
+    switch(rstatus) {
+        case RelativizeStatus::external:
+            return syscall_no_intercept(SYS_mkdirat, dirfd, resolved.c_str(), mode);
 
-    if((cpath[0] == PSP) || (dirfd == AT_FDCWD)) {
-        // cpath is absolute or relative to CWD
-        if (CTX->relativize_path(cpath, resolved)) {
-            return with_errno(adafs_mk_node(resolved, mode | S_IFDIR));
-        }
-    } else {
-        // cpath is relative
-        if(!(CTX->file_map()->exist(dirfd))) {
-            //TODO relative cpath could still lead to our FS
+        case RelativizeStatus::fd_unknown:
             return syscall_no_intercept(SYS_mkdirat, dirfd, cpath, mode);
-        }
 
-        auto dir = CTX->file_map()->get_dir(dirfd);
-        if(dir == nullptr) {
-            CTX->log()->error("{}() dirfd is not a directory ", __func__);
+        case RelativizeStatus::fd_not_a_dir:
             return -ENOTDIR;
-        }
 
-        std::string path = CTX->mountdir();
-        path.append(dir->path());
-        path.push_back(PSP);
-        path.append(cpath);
-        if(resolve_path(path, resolved)) {
+        case RelativizeStatus::internal:
             return with_errno(adafs_mk_node(resolved, mode | S_IFDIR));
-        }
+
+        default:
+            CTX->log()->error("{}() relativize status unknown: {}", __func__);
+            return -EINVAL;
     }
-    return syscall_no_intercept(SYS_mkdirat, dirfd, resolved.c_str(), mode);
 }
 
 int hook_fchmodat(int dirfd, const char * cpath, mode_t mode) {
