@@ -171,6 +171,12 @@ static inline int hook(long syscall_number,
                                static_cast<unsigned long>(arg1));
         break;
 
+    case SYS_fcntl:
+        *result = hook_fcntl(static_cast<unsigned int>(arg0),
+                             static_cast<unsigned int>(arg1),
+                             static_cast<unsigned long>(arg2));
+        break;
+
     default:
         /*
          * Ignore any other syscalls
