@@ -94,8 +94,14 @@ static inline int hook(long syscall_number,
         break;
 
     case SYS_access:
-        *result = hook_access(reinterpret_cast<char*>(arg0),
+        *result = hook_access(reinterpret_cast<const char*>(arg0),
                               static_cast<int>(arg1));
+        break;
+
+    case SYS_faccessat:
+        *result = hook_faccessat(static_cast<int>(arg0),
+                                 reinterpret_cast<const char*>(arg1),
+                                 static_cast<int>(arg2));
         break;
 
     case SYS_lseek:
