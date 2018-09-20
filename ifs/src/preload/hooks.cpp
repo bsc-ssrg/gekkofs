@@ -485,6 +485,32 @@ int hook_getcwd(char * buf, unsigned long size) {
     return (CTX->cwd().size() + 1);
 }
 
+int hook_readlinkat(int dirfd, const char * cpath, char * buf, int bufsiz) {
+    CTX->log()->trace("{}() called with path '{}' dirfd {}, bufsize {}",
+                      __func__, cpath, dirfd, bufsiz);
+
+    std::string resolved;
+    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved);
+    switch(rstatus) {
+        case RelativizeStatus::fd_unknown:
+            return syscall_no_intercept(SYS_readlinkat, dirfd, cpath, buf, bufsiz);
+
+        case RelativizeStatus::external:
+            return syscall_no_intercept(SYS_readlinkat, dirfd, resolved.c_str(), buf, bufsiz);
+
+        case RelativizeStatus::fd_not_a_dir:
+            return -ENOTDIR;
+
+        case RelativizeStatus::internal:
+            CTX->log()->warn("{}() not supported", __func__);
+            return -ENOTSUP;
+
+        default:
+            CTX->log()->error("{}() relativize status unknown: {}", __func__);
+            return -EINVAL;
+    }
+}
+
 int hook_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg) {
     CTX->log()->trace("{}() called with fd {}, cmd {}, arg {}", __func__, fd, cmd, arg);
     if (!CTX->file_map()->exist(fd)) {
