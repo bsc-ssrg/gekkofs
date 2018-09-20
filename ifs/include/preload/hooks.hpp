@@ -19,6 +19,7 @@ int hook_pwritev(unsigned long fd, const struct iovec * iov, unsigned long iovcn
                  unsigned long pos_l, unsigned long pos_h);
 int hook_unlinkat(int dirfd, const char * cpath, int flags);
 int hook_access(const char* path, int mask);
+int hook_faccessat(int dirfd, const char * cpath, int mode);
 int hook_lseek(unsigned int fd, off_t offset, unsigned int whence);
 int hook_truncate(const char *path, long length);
 int hook_ftruncate(unsigned int fd, unsigned long length);
