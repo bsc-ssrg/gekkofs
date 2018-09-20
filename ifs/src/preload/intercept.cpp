@@ -83,6 +83,22 @@ static inline int hook(long syscall_number,
                              static_cast<unsigned int>(arg2));
         break;
 
+    case SYS_dup:
+        *result = hook_dup(static_cast<unsigned int>(arg0));
+        break;
+
+    case SYS_dup2:
+        *result = hook_dup2(static_cast<unsigned int>(arg0),
+                            static_cast<unsigned int>(arg1));
+        break;
+
+    case SYS_dup3:
+        *result = hook_dup3(static_cast<unsigned int>(arg0),
+                            static_cast<unsigned int>(arg1),
+                            static_cast<int>(arg2));
+        break;
+
+    default:
         /*
          * Ignore any other syscalls
          * i.e.: pass them on to the kernel

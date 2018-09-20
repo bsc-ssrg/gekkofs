@@ -14,6 +14,9 @@ int hook_write(int fd, void* buf, size_t count);
 int hook_unlink(const char* path);
 int hook_access(const char* path, int mask);
 int hook_lseek(unsigned int fd, off_t offset, unsigned int whence);
+int hook_dup(unsigned int fd);
+int hook_dup2(unsigned int oldfd, unsigned int newfd);
+int hook_dup3(unsigned int oldfd, unsigned int newfd, int flags);
 
 
 #endif
