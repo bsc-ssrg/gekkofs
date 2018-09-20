@@ -13,7 +13,7 @@ int hook_fstatat(int dirfd, const char * cpath, struct stat * buf, int flags);
 int hook_read(unsigned int fd, void* buf, size_t count);
 int hook_write(unsigned int fd, void* buf, size_t count);
 int hook_writev(unsigned long fd, const struct iovec * iov, unsigned long iovcnt);
-int hook_unlink(const char* path);
+int hook_unlinkat(int dirfd, const char * cpath, int flags);
 int hook_access(const char* path, int mask);
 int hook_lseek(unsigned int fd, off_t offset, unsigned int whence);
 int hook_truncate(const char *path, long length);

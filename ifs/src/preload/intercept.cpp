@@ -82,7 +82,15 @@ static inline int hook(long syscall_number,
         break;
 
     case SYS_unlink:
-        *result = hook_unlink(reinterpret_cast<char*>(arg0));
+        *result = hook_unlinkat(AT_FDCWD,
+                                reinterpret_cast<const char *>(arg0),
+                                0);
+        break;
+
+    case SYS_unlinkat:
+        *result = hook_unlinkat(static_cast<int>(arg0),
+                                reinterpret_cast<const char*>(arg1),
+                                static_cast<int>(arg2));
         break;
 
     case SYS_access:
