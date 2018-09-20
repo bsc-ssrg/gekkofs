@@ -56,6 +56,13 @@ static inline int hook(long syscall_number,
                             reinterpret_cast<struct stat*>(arg1));
         break;
 
+    case SYS_newfstatat:
+        *result = hook_fstatat(static_cast<int>(arg0),
+                              reinterpret_cast<const char*>(arg1),
+                              reinterpret_cast<struct stat *>(arg2),
+                              static_cast<int>(arg3));
+        break;
+
     case SYS_read:
         *result = hook_read(static_cast<unsigned int>(arg0),
                             reinterpret_cast<void*>(arg1),
