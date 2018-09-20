@@ -165,3 +165,28 @@ int hook_lseek(unsigned int fd, off_t offset, unsigned int whence) {
    return syscall_no_intercept(SYS_lseek, fd, offset, whence);
 }
 
+int hook_dup(unsigned int fd) {
+    CTX->log()->trace("{}() called with oldfd {}", __func__, fd);
+    if (CTX->file_map()->exist(fd)) {
+        return with_errno(adafs_dup(fd));
+    }
+    return syscall_no_intercept(SYS_dup, fd);
+}
+
+int hook_dup2(unsigned int oldfd, unsigned int newfd) {
+    CTX->log()->trace("{}() called with fd {} newfd {}", __func__, oldfd, newfd);
+    if (CTX->file_map()->exist(oldfd)) {
+        return with_errno(adafs_dup2(oldfd, newfd));
+    }
+    return syscall_no_intercept(SYS_dup2, oldfd, newfd);
+}
+
+int hook_dup3(unsigned int oldfd, unsigned int newfd, int flags) {
+    if (CTX->file_map()->exist(oldfd)) {
+        // TODO implement O_CLOEXEC flag first which is used with fcntl(2)
+        // It is in glibc since kernel 2.9. So maybe not that important :)
+        CTX->log()->warn("{}() Not supported", __func__);
+        return -ENOTSUP;
+    }
+    return syscall_no_intercept(SYS_dup3, oldfd, newfd, flags);
+}
