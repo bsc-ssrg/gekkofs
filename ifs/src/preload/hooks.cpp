@@ -78,6 +78,35 @@ int hook_fstat(unsigned int fd, struct stat* buf) {
     return syscall_no_intercept(SYS_fstat, fd, buf);
 }
 
+int hook_fstatat(int dirfd, const char * cpath, struct stat * buf, int flags) {
+    CTX->log()->trace("{}() called with path '{}' and fd {}", __func__, cpath, dirfd);
+
+    if(flags & AT_EMPTY_PATH) {
+        CTX->log()->error("{}() AT_EMPTY_PATH flag not supported", __func__);
+        return -ENOTSUP;
+    }
+
+    std::string resolved;
+    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved);
+    switch(rstatus) {
+        case RelativizeStatus::fd_unknown:
+            return syscall_no_intercept(SYS_newfstatat, dirfd, cpath, buf, flags);
+
+        case RelativizeStatus::external:
+            return syscall_no_intercept(SYS_newfstatat, dirfd, resolved.c_str(), buf, flags);
+
+        case RelativizeStatus::fd_not_a_dir:
+            return -ENOTDIR;
+
+        case RelativizeStatus::internal:
+            return with_errno(adafs_stat(resolved, buf));
+
+        default:
+            CTX->log()->error("{}() relativize status unknown: {}", __func__);
+            return -EINVAL;
+    }
+}
+
 int hook_read(unsigned int fd, void* buf, size_t count) {
     CTX->log()->trace("{}() called with fd {}, count {}", __func__, fd, count);
     if (CTX->file_map()->exist(fd)) {
