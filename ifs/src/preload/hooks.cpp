@@ -102,17 +102,38 @@ int hook_write(int fd, void* buf, size_t count) {
     return syscall_no_intercept(SYS_write, fd, buf, count);
 }
 
-int hook_unlink(const char* path) {
-    CTX->log()->trace("{}() called with path '{}'", __func__, path);
-    std::string rel_path;
-    if (CTX->relativize_path(path, rel_path)) {
-        auto ret = adafs_rm_node(rel_path);
-        if(ret < 0) {
-            return -errno;
-        }
-        return ret;
+int hook_unlinkat(int dirfd, const char * cpath, int flags) {
+    CTX->log()->trace("{}() called with path '{}' dirfd {}, flags {}",
+                      __func__, cpath, dirfd, flags);
+
+    if ((flags & ~AT_REMOVEDIR) != 0) {
+        CTX->log()->error("{}() Flags unknown: {}", __func__, flags);
+        return -EINVAL;
     }
-    return syscall_no_intercept(SYS_unlink, rel_path.c_str());
+
+    std::string resolved;
+    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved, false);
+    switch(rstatus) {
+        case RelativizeStatus::fd_unknown:
+            return syscall_no_intercept(SYS_unlinkat, dirfd, cpath, flags);
+
+        case RelativizeStatus::external:
+            return syscall_no_intercept(SYS_unlinkat, dirfd, resolved.c_str(), flags);
+
+        case RelativizeStatus::fd_not_a_dir:
+            return -ENOTDIR;
+
+        case RelativizeStatus::internal:
+            if(flags & AT_REMOVEDIR) {
+                return with_errno(adafs_rmdir(resolved));
+            } else {
+                return with_errno(adafs_rm_node(resolved));
+            }
+
+        default:
+            CTX->log()->error("{}() relativize status unknown: {}", __func__);
+            return -EINVAL;
+    }
 }
 
 int hook_access(const char* path, int mask) {
