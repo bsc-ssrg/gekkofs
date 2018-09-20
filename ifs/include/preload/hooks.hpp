@@ -24,6 +24,7 @@ int hook_mkdirat(int dirfd, const char * cpath, mode_t mode);
 int hook_chdir(const char* path);
 int hook_fchdir(unsigned int fd);
 int hook_getcwd(char * buf, unsigned long size);
+int hook_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg);
 
 
 #endif

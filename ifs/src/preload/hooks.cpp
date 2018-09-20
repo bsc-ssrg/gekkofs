@@ -386,3 +386,64 @@ int hook_getcwd(char * buf, unsigned long size) {
     strcpy(buf, CTX->cwd().c_str());
     return (CTX->cwd().size() + 1);
 }
+
+int hook_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg) {
+    CTX->log()->trace("{}() called with fd {}, cmd {}, arg {}", __func__, fd, cmd, arg);
+    if (!CTX->file_map()->exist(fd)) {
+        return syscall_no_intercept(SYS_fcntl, fd, cmd, arg);
+    }
+    int ret;
+    switch (cmd) {
+
+        case F_DUPFD:
+            CTX->log()->trace("{}() F_DUPFD on fd {}", __func__, fd);
+            return with_errno(adafs_dup(fd));
+
+        case F_DUPFD_CLOEXEC:
+            CTX->log()->trace("{}() F_DUPFD_CLOEXEC on fd {}", __func__, fd);
+            ret = adafs_dup(fd);
+            if(ret == -1) {
+                return -errno;
+            }
+            CTX->file_map()->get(fd)->set_flag(OpenFile_flags::cloexec, true);
+            return ret;
+
+        case F_GETFD:
+            CTX->log()->trace("{}() F_GETFD on fd {}", __func__, fd);
+            if(CTX->file_map()->get(fd)
+                    ->get_flag(OpenFile_flags::cloexec)) {
+                return FD_CLOEXEC;
+            }
+            return 0;
+
+        case F_GETFL:
+            CTX->log()->trace("{}() F_GETFL on fd {}", __func__, fd);
+            ret = 0;
+            if(CTX->file_map()->get(fd)
+                    ->get_flag(OpenFile_flags::rdonly)) {
+                ret |= O_RDONLY;
+            }
+            if(CTX->file_map()->get(fd)
+                    ->get_flag(OpenFile_flags::wronly)) {
+                ret |= O_WRONLY;
+            }
+            if(CTX->file_map()->get(fd)
+                    ->get_flag(OpenFile_flags::rdwr)) {
+                ret |= O_RDWR;
+            }
+            return ret;
+
+        case F_SETFD:
+            CTX->log()->trace("{}() [fd: {}, cmd: F_SETFD, FD_CLOEXEC: {}]",
+                __func__, fd, (arg & FD_CLOEXEC));
+            CTX->file_map()->get(fd)
+                ->set_flag(OpenFile_flags::cloexec, (arg & FD_CLOEXEC));
+            return 0;
+
+
+        default:
+            CTX->log()->error("{}() unrecognized command {} on fd {}",
+                    __func__, cmd, fd);
+            return -ENOTSUP;
+    }
+}
