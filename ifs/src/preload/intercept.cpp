@@ -93,6 +93,12 @@ static inline int hook(long syscall_number,
                                 static_cast<int>(arg2));
         break;
 
+    case SYS_rmdir:
+        *result = hook_unlinkat(AT_FDCWD,
+                                reinterpret_cast<const char *>(arg0),
+                                AT_REMOVEDIR);
+        break;
+
     case SYS_access:
         *result = hook_access(reinterpret_cast<const char*>(arg0),
                               static_cast<int>(arg1));
