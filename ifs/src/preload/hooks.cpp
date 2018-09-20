@@ -329,7 +329,40 @@ int hook_mkdirat(int dirfd, const char * cpath, mode_t mode) {
     return syscall_no_intercept(SYS_mkdirat, dirfd, resolved.c_str(), mode);
 }
 
+int hook_fchmodat(int dirfd, const char * cpath, mode_t mode) {
+    CTX->log()->trace("{}() called dirfd {}, path '{}', mode {}", __func__, dirfd, cpath, mode);
+
     std::string resolved;
+    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved);
+    switch(rstatus) {
+        case RelativizeStatus::fd_unknown:
+            return syscall_no_intercept(SYS_fchmodat, dirfd, cpath, mode);
+
+        case RelativizeStatus::external:
+            return syscall_no_intercept(SYS_fchmodat, dirfd, resolved.c_str(), mode);
+
+        case RelativizeStatus::fd_not_a_dir:
+            return -ENOTDIR;
+
+        case RelativizeStatus::internal:
+            CTX->log()->warn("{}() operation not supported", __func__);
+            return -ENOTSUP;
+
+        default:
+            CTX->log()->error("{}() relativize status unknown: {}", __func__);
+            return -EINVAL;
+    }
+}
+
+int hook_fchmod(unsigned int fd, mode_t mode) {
+    CTX->log()->trace("{}() called with fd {}, mode {}", __func__, fd, mode);
+    if (CTX->file_map()->exist(fd)) {
+        CTX->log()->warn("{}() operation not supported", __func__);
+        return -ENOTSUP;
+    }
+    return syscall_no_intercept(SYS_fchmod, fd, mode);
+}
+
 int hook_chdir(const char * path) {
     CTX->log()->trace("{}() called with path '{}'", __func__, path);
     std::string rel_path;

@@ -139,6 +139,23 @@ static inline int hook(long syscall_number,
                                static_cast<mode_t>(arg1));
         break;
 
+    case SYS_chmod:
+        *result = hook_fchmodat(AT_FDCWD,
+                                reinterpret_cast<char*>(arg0),
+                                static_cast<mode_t>(arg1));
+        break;
+
+    case SYS_fchmod:
+        *result = hook_fchmod(static_cast<unsigned int>(arg0),
+                              static_cast<mode_t>(arg1));
+        break;
+
+    case SYS_fchmodat:
+        *result = hook_fchmodat(static_cast<unsigned int>(arg0),
+                                reinterpret_cast<char*>(arg1),
+                                static_cast<mode_t>(arg2));
+        break;
+
     case SYS_chdir:
         *result = hook_chdir(reinterpret_cast<const char *>(arg0));
         break;

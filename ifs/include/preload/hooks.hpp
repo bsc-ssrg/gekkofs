@@ -23,6 +23,8 @@ int hook_dup2(unsigned int oldfd, unsigned int newfd);
 int hook_dup3(unsigned int oldfd, unsigned int newfd, int flags);
 int hook_getdents(unsigned int fd, struct linux_dirent *dirp, unsigned int count);
 int hook_mkdirat(int dirfd, const char * cpath, mode_t mode);
+int hook_fchmodat(int dirfd, const char* path, mode_t mode);
+int hook_fchmod(unsigned int dirfd, mode_t mode);
 int hook_chdir(const char* path);
 int hook_fchdir(unsigned int fd);
 int hook_getcwd(char * buf, unsigned long size);
