@@ -16,6 +16,8 @@ int hook_writev(unsigned long fd, const struct iovec * iov, unsigned long iovcnt
 int hook_unlink(const char* path);
 int hook_access(const char* path, int mask);
 int hook_lseek(unsigned int fd, off_t offset, unsigned int whence);
+int hook_truncate(const char *path, long length);
+int hook_ftruncate(unsigned int fd, unsigned long length);
 int hook_dup(unsigned int fd);
 int hook_dup2(unsigned int oldfd, unsigned int newfd);
 int hook_dup3(unsigned int oldfd, unsigned int newfd, int flags);

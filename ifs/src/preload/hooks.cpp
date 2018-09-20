@@ -237,6 +237,24 @@ int hook_lseek(unsigned int fd, off_t offset, unsigned int whence) {
    return syscall_no_intercept(SYS_lseek, fd, offset, whence);
 }
 
+int hook_truncate(const char* path, long length) {
+    CTX->log()->trace("{}() called with path: {}, offset: {}", __func__, path, length);
+    std::string rel_path;
+    if (CTX->relativize_path(path, rel_path)) {
+        return with_errno(adafs_truncate(rel_path, length));
+    }
+    return syscall_no_intercept(SYS_truncate, rel_path.c_str(), length);
+}
+
+int hook_ftruncate(unsigned int fd, unsigned long length) {
+    CTX->log()->trace("{}() called  [fd: {}, offset: {}]", __func__, fd, length);
+    if (CTX->file_map()->exist(fd)) {
+        auto path = CTX->file_map()->get(fd)->path();
+        return with_errno(adafs_truncate(path, length));
+    }
+    return syscall_no_intercept(SYS_ftruncate, fd, length);
+}
+
 int hook_dup(unsigned int fd) {
     CTX->log()->trace("{}() called with oldfd {}", __func__, fd);
     if (CTX->file_map()->exist(fd)) {
@@ -311,6 +329,7 @@ int hook_mkdirat(int dirfd, const char * cpath, mode_t mode) {
     return syscall_no_intercept(SYS_mkdirat, dirfd, resolved.c_str(), mode);
 }
 
+    std::string resolved;
 int hook_chdir(const char * path) {
     CTX->log()->trace("{}() called with path '{}'", __func__, path);
     std::string rel_path;
