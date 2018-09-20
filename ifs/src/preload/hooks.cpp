@@ -10,6 +10,11 @@
 #include <fcntl.h>
 
 
+static inline int with_errno(int ret) {
+    return (ret < 0)? -errno : ret;
+}
+
+
 int hook_openat(int dirfd, const char *cpath, int flags, mode_t mode) {
 
     if(cpath == nullptr || cpath[0] == '\0') {
