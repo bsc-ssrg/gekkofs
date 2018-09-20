@@ -125,6 +125,16 @@ static inline int hook(long syscall_number,
                              static_cast<unsigned int>(arg2));
         break;
 
+    case SYS_truncate:
+        *result = hook_truncate(reinterpret_cast<const char*>(arg0),
+                                static_cast<long>(arg1));
+        break;
+
+    case SYS_ftruncate:
+        *result = hook_ftruncate(static_cast<unsigned int>(arg0),
+                                 static_cast<unsigned long>(arg1));
+        break;
+
     case SYS_dup:
         *result = hook_dup(static_cast<unsigned int>(arg0));
         break;
