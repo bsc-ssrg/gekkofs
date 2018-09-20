@@ -204,6 +204,20 @@ static inline int hook(long syscall_number,
                                static_cast<unsigned long>(arg1));
         break;
 
+    case SYS_readlink:
+        *result = hook_readlinkat(AT_FDCWD,
+                                  reinterpret_cast<const char *>(arg0),
+                                  reinterpret_cast<char *>(arg1),
+                                  static_cast<int>(arg2));
+        break;
+
+    case SYS_readlinkat:
+        *result = hook_readlinkat(static_cast<int>(arg0),
+                                  reinterpret_cast<const char *>(arg1),
+                                  reinterpret_cast<char *>(arg2),
+                                  static_cast<int>(arg3));
+        break;
+
     case SYS_fcntl:
         *result = hook_fcntl(static_cast<unsigned int>(arg0),
                              static_cast<unsigned int>(arg1),
