@@ -60,6 +60,24 @@ int hook_stat(const char* path, struct stat* buf) {
     return syscall_no_intercept(SYS_stat, rel_path.c_str(), buf);
 }
 
+int hook_lstat(const char* path, struct stat* buf) {
+    CTX->log()->trace("{}() called with path '{}'", __func__, path);
+    std::string rel_path;
+    if (CTX->relativize_path(path, rel_path)) {
+        return with_errno(adafs_stat(rel_path, buf));
+    }
+    return syscall_no_intercept(SYS_lstat, rel_path.c_str(), buf);
+}
+
+int hook_fstat(unsigned int fd, struct stat* buf) {
+    CTX->log()->trace("{}() called with fd '{}'", __func__, fd);
+    if (CTX->file_map()->exist(fd)) {
+        auto path = CTX->file_map()->get(fd)->path();
+        return with_errno(adafs_stat(path, buf));
+    }
+    return syscall_no_intercept(SYS_fstat, fd, buf);
+}
+
 int hook_read(int fd, void* buf, size_t count) {
     CTX->log()->trace("{}() called with fd {}, count {}", __func__, fd, count);
     if (CTX->file_map()->exist(fd)) {
