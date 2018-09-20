@@ -79,11 +79,6 @@ int hook_fstat(unsigned int fd, struct stat* buf) {
 }
 
 int hook_fstatat(int dirfd, const char * cpath, struct stat * buf, int flags) {
-    if(cpath == nullptr || cpath[0] == '\0') {
-        CTX->log()->error("{}() path is invalid", __func__);
-        return -EINVAL;
-    }
-
     CTX->log()->trace("{}() called with path '{}' and fd {}", __func__, cpath, dirfd);
 
     if(flags & AT_EMPTY_PATH) {
@@ -92,36 +87,24 @@ int hook_fstatat(int dirfd, const char * cpath, struct stat * buf, int flags) {
     }
 
     std::string resolved;
-
-    if(cpath[0] != PSP) {
-        // cpath is relative
-        //TODO handle the case in which dirfd is AT_FDCWD
-        if(!(CTX->file_map()->exist(dirfd))) {
-            //TODO relative cpath could still lead to our FS
+    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved);
+    switch(rstatus) {
+        case RelativizeStatus::fd_unknown:
             return syscall_no_intercept(SYS_newfstatat, dirfd, cpath, buf, flags);
-        }
 
-        auto dir = CTX->file_map()->get_dir(dirfd);
-        if(dir == nullptr) {
-            CTX->log()->error("{}() dirfd is not a directory ", __func__);
+        case RelativizeStatus::external:
+            return syscall_no_intercept(SYS_newfstatat, dirfd, resolved.c_str(), buf, flags);
+
+        case RelativizeStatus::fd_not_a_dir:
             return -ENOTDIR;
-        }
 
-        std::string path = CTX->mountdir();
-        path.append(dir->path());
-        path.push_back(PSP);
-        path.append(cpath);
-        if(resolve_path(path, resolved)) {
+        case RelativizeStatus::internal:
             return with_errno(adafs_stat(resolved, buf));
-        }
-    } else {
-        // Path is absolute
 
-        if (CTX->relativize_path(cpath, resolved)) {
-            return with_errno(adafs_stat(resolved, buf));
-        }
+        default:
+            CTX->log()->error("{}() relativize status unknown: {}", __func__);
+            return -EINVAL;
     }
-    return syscall_no_intercept(SYS_newfstatat, dirfd, resolved.c_str(), buf, flags);
 }
 
 int hook_read(unsigned int fd, void* buf, size_t count) {
