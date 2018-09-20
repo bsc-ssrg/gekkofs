@@ -209,6 +209,31 @@ int hook_access(const char* path, int mask) {
     return syscall_no_intercept(SYS_access, rel_path.c_str(), mask);
 }
 
+int hook_faccessat(int dirfd, const char * cpath, int mode) {
+    CTX->log()->trace("{}() called with path '{}' dirfd {}, mode {}",
+                      __func__, cpath, dirfd, mode);
+
+    std::string resolved;
+    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved);
+    switch(rstatus) {
+        case RelativizeStatus::fd_unknown:
+            return syscall_no_intercept(SYS_faccessat, dirfd, cpath, mode);
+
+        case RelativizeStatus::external:
+            return syscall_no_intercept(SYS_faccessat, dirfd, resolved.c_str(), mode);
+
+        case RelativizeStatus::fd_not_a_dir:
+            return -ENOTDIR;
+
+        case RelativizeStatus::internal:
+            return with_errno(adafs_access(resolved, mode));
+
+        default:
+            CTX->log()->error("{}() relativize status unknown: {}", __func__);
+            return -EINVAL;
+    }
+}
+
 int hook_lseek(unsigned int fd, off_t offset, unsigned int whence) {
     CTX->log()->trace("{}() called with fd {}, offset {}, whence {}", __func__, fd, offset, whence);
     if (CTX->file_map()->exist(fd)) {
