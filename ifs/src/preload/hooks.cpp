@@ -63,7 +63,7 @@ int hook_stat(const char* path, struct stat* buf) {
 int hook_lstat(const char* path, struct stat* buf) {
     CTX->log()->trace("{}() called with path '{}'", __func__, path);
     std::string rel_path;
-    if (CTX->relativize_path(path, rel_path)) {
+    if (CTX->relativize_path(path, rel_path, false)) {
         return with_errno(adafs_stat(rel_path, buf));
     }
     return syscall_no_intercept(SYS_lstat, rel_path.c_str(), buf);
@@ -441,7 +441,7 @@ int hook_readlinkat(int dirfd, const char * cpath, char * buf, int bufsiz) {
                       __func__, cpath, dirfd, bufsiz);
 
     std::string resolved;
-    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved);
+    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved, false);
     switch(rstatus) {
         case RelativizeStatus::fd_unknown:
             return syscall_no_intercept(SYS_readlinkat, dirfd, cpath, buf, bufsiz);
