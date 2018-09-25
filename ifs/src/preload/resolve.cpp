@@ -144,7 +144,8 @@ unsigned int path_match_components(const std::string& path, unsigned int &path_c
                 char link_resolved[PATH_MAX_LEN];
                 if (realpath(resolved.c_str(), link_resolved) == nullptr) {
                     CTX->log()->error("{}() Failed to get realpath for link '{}'. Error: {}", __func__, resolved, strerror(errno));
-                    throw std::runtime_error("Failed to get realpath for link '" + resolved + "'. Error: " + strerror(errno));
+                    resolved.append(path, end, std::string::npos);
+                    return false;
                 }
                 // substituute resolved with new link path
                 resolved = link_resolved;
