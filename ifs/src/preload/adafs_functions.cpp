@@ -307,20 +307,7 @@ int adafs_dup2(const int oldfd, const int newfd) {
     return CTX->file_map()->dup2(oldfd, newfd);
 }
 
-ssize_t adafs_write(int fd, void* buf, size_t count) {
-            auto adafs_fd = CTX->file_map()->get(fd);
-            auto pos = adafs_fd->pos(); //retrieve the current offset
-            if (adafs_fd->get_flag(OpenFile_flags::append))
-                adafs_lseek(adafs_fd, 0, SEEK_END);
-            auto ret = adafs_pwrite_ws(fd, buf, count, pos);
-            // Update offset in file descriptor in the file map
-            if (ret > 0) {
-                adafs_fd->pos(pos + count);
-            }
-            return ret;
-}
-
-ssize_t adafs_pwrite_ws(int fd, const void* buf, size_t count, off64_t offset) {
+ssize_t adafs_pwrite_ws(int fd, const char * buf, size_t count, off64_t offset) {
     auto adafs_fd = CTX->file_map()->get(fd);
     if (adafs_fd->type() != FileType::regular) {
         assert(adafs_fd->type() == FileType::directory);
@@ -346,15 +333,73 @@ ssize_t adafs_pwrite_ws(int fd, const void* buf, size_t count, off64_t offset) {
     return ret; // return written size or -1 as error
 }
 
+ssize_t adafs_write(int fd, const char * buf, size_t count) {
+    auto adafs_fd = CTX->file_map()->get(fd);
+    auto pos = adafs_fd->pos(); //retrieve the current offset
+    if (adafs_fd->get_flag(OpenFile_flags::append))
+        adafs_lseek(adafs_fd, 0, SEEK_END);
+    auto ret = adafs_pwrite_ws(fd, buf, count, pos);
+    // Update offset in file descriptor in the file map
+    if (ret > 0) {
+        adafs_fd->pos(pos + count);
+    }
+    return ret;
+}
+
+ssize_t adafs_pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset) {
+    CTX->log()->trace("{}() called with fd {}, op num {}, offset {}",
+                      __func__, fd, iovcnt, offset);
+
+    auto pos = offset; // keep truck of current position
+    ssize_t written = 0;
+    ssize_t ret;
+    for (int i = 0; i < iovcnt; ++i) {
+        auto count = (iov+i)->iov_len;
+        if (count == 0) {
+            continue;
+        }
+        auto buf = (iov+i)->iov_base;
+        ret = adafs_pwrite_ws(fd, reinterpret_cast<char *>(buf), count, pos);
+        if (ret == -1) {
+            break;
+        }
+        written += ret;
+        pos += ret;
+
+        if (static_cast<size_t>(ret) < count) {
+            break;
+        }
+    }
+
+    if (written == 0) {
+        return -1;
+    }
+    return written;
+}
+
+ssize_t adafs_writev(int fd, const struct iovec * iov, int iovcnt) {
+    CTX->log()->trace("{}() called with fd {}, ops num {}",
+            __func__, fd, iovcnt);
+    auto adafs_fd = CTX->file_map()->get(fd);
+    auto pos = adafs_fd->pos(); // retrieve the current offset
+    auto ret = adafs_pwritev(fd, iov, iovcnt, pos);
+    assert(ret != 0);
+    if (ret < 0) {
+        return -1;
+    }
+    adafs_fd->pos(pos + ret);
+    return ret;
+}
+
 ssize_t adafs_read(int fd, void* buf, size_t count) {
-            auto adafs_fd = CTX->file_map()->get(fd);
-            auto pos = adafs_fd->pos(); //retrieve the current offset
-            auto ret = adafs_pread_ws(fd, buf, count, pos);
-            // Update offset in file descriptor in the file map
-            if (ret > 0) {
-                adafs_fd->pos(pos + ret);
-            }
-            return ret;
+    auto adafs_fd = CTX->file_map()->get(fd);
+    auto pos = adafs_fd->pos(); //retrieve the current offset
+    auto ret = adafs_pread_ws(fd, buf, count, pos);
+    // Update offset in file descriptor in the file map
+    if (ret > 0) {
+        adafs_fd->pos(pos + ret);
+    }
+    return ret;
 }
 
 ssize_t adafs_pread_ws(int fd, void* buf, size_t count, off64_t offset) {
