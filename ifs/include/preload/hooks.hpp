@@ -18,6 +18,7 @@ int hook_writev(unsigned long fd, const struct iovec * iov, unsigned long iovcnt
 int hook_pwritev(unsigned long fd, const struct iovec * iov, unsigned long iovcnt,
                  unsigned long pos_l, unsigned long pos_h);
 int hook_unlinkat(int dirfd, const char * cpath, int flags);
+int hook_symlinkat(const char * oldname, int newdfd, const char * newname);
 int hook_access(const char* path, int mask);
 int hook_faccessat(int dirfd, const char * cpath, int mode);
 int hook_lseek(unsigned int fd, off_t offset, unsigned int whence);
