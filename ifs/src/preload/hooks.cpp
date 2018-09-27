@@ -172,7 +172,7 @@ int hook_unlinkat(int dirfd, const char * cpath, int flags) {
     }
 
     std::string resolved;
-    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved);
+    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved, false);
     switch(rstatus) {
         case RelativizeStatus::fd_unknown:
             return syscall_no_intercept(SYS_unlinkat, dirfd, cpath, flags);
