@@ -38,6 +38,8 @@ int hook_readlinkat(int dirfd, const char * cpath, char * buf, int bufsiz);
 int hook_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg);
 int hook_renameat(int olddfd, const char * oldname, int newdfd, const char * newname,
                   unsigned int flags);
+int hook_statfs(const char * path, struct statfs * buf);
+int hook_fstatfs(unsigned int fd, struct statfs * buf);
 
 
 #endif

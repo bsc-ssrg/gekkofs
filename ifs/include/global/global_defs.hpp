@@ -20,6 +20,7 @@ namespace hg_tag {
     constexpr auto write_data = "rpc_srv_write_data";
     constexpr auto read_data = "rpc_srv_read_data";
     constexpr auto trunc_data = "rpc_srv_trunc_data";
+    constexpr auto chunk_stat = "rpc_srv_chunk_stat";
 }
 
 // typedefs

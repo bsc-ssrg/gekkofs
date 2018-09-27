@@ -14,6 +14,12 @@ namespace spdlog {
 }
 
 
+struct ChunkStat {
+    unsigned long chunk_size;
+    unsigned long chunk_total;
+    unsigned long chunk_free;
+};
+
 class ChunkStorage {
     private:
         static constexpr const char * LOGGER_NAME = "ChunkStorage";
@@ -40,6 +46,7 @@ class ChunkStorage {
         void delete_chunk(const fuid_t fuid, unsigned int chunk_id);
         void truncate_chunk(const fuid_t fuid, unsigned int chunk_id, off_t length);
         void destroy_chunk_space(const fuid_t fuid) const;
+        ChunkStat chunk_stat() const;
 };
 
 #endif //IFS_CHUNK_STORAGE_HPP

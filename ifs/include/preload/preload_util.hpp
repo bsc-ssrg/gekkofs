@@ -42,6 +42,7 @@ extern hg_id_t rpc_write_data_id;
 extern hg_id_t rpc_read_data_id;
 extern hg_id_t rpc_trunc_data_id;
 extern hg_id_t rpc_get_dirents_id;
+extern hg_id_t rpc_chunk_stat_id;
 
 // function definitions
 

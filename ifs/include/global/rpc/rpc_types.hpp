@@ -130,4 +130,15 @@ MERCURY_GEN_PROC(rpc_config_out_t, ((hg_const_string_t) (mountdir))
 ((hg_uint64_t) (host_id)) \
 ((hg_uint64_t) (host_size)))
 
+
+MERCURY_GEN_PROC(rpc_chunk_stat_in_t,
+        ((hg_int32_t) (dummy))
+)
+
+MERCURY_GEN_PROC(rpc_chunk_stat_out_t,
+        ((hg_uint64_t) (chunk_size))
+        ((hg_uint64_t) (chunk_total))
+        ((hg_uint64_t) (chunk_free))
+)
+
 #endif //LFS_RPC_TYPES_HPP

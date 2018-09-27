@@ -30,6 +30,7 @@ hg_id_t rpc_write_data_id;
 hg_id_t rpc_read_data_id;
 hg_id_t rpc_trunc_data_id;
 hg_id_t rpc_get_dirents_id;
+hg_id_t rpc_chunk_stat_id;
 // Margo instances
 margo_instance_id ld_margo_rpc_id;
 
@@ -77,6 +78,12 @@ void register_client_rpcs(margo_instance_id mid) {
 
     rpc_get_dirents_id = MARGO_REGISTER(mid, hg_tag::get_dirents, rpc_get_dirents_in_t, rpc_get_dirents_out_t,
                                       NULL);
+
+    rpc_chunk_stat_id = MARGO_REGISTER(mid,
+        hg_tag::chunk_stat,
+        rpc_chunk_stat_in_t,
+        rpc_chunk_stat_out_t,
+        NULL);
 }
 
 /**
