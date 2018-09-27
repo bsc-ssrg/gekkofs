@@ -30,6 +30,13 @@ static inline int hook(long syscall_number,
                               static_cast<mode_t>(arg2));
         break;
 
+    case SYS_creat:
+        *result = hook_openat(AT_FDCWD,
+                              reinterpret_cast<const char*>(arg0),
+                              O_WRONLY | O_CREAT | O_TRUNC,
+                              static_cast<mode_t>(arg1));
+        break;
+
     case SYS_openat:
         *result = hook_openat(static_cast<int>(arg0),
                               reinterpret_cast<const char*>(arg1),
