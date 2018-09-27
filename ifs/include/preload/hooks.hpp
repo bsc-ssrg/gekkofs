@@ -36,6 +36,8 @@ int hook_fchdir(unsigned int fd);
 int hook_getcwd(char * buf, unsigned long size);
 int hook_readlinkat(int dirfd, const char * cpath, char * buf, int bufsiz);
 int hook_fcntl(unsigned int fd, unsigned int cmd, unsigned long arg);
+int hook_renameat(int olddfd, const char * oldname, int newdfd, const char * newname,
+                  unsigned int flags);
 
 
 #endif
