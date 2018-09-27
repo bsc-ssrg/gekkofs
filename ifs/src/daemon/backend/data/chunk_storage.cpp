@@ -4,6 +4,7 @@
 #include <spdlog/spdlog.h>
 #include <cerrno>
 #include <boost/filesystem.hpp>
+#include <sys/statfs.h>
 
 namespace bfs = boost::filesystem;
 
@@ -174,4 +175,25 @@ void ChunkStorage::read_chunk(const std::string& file_path, unsigned int chunk_i
                 chunk_path, std::strerror(errno));
         //throw std::system_error(errno, std::system_category(), "Failed to close chunk file");
     }
+}
+
+ChunkStat ChunkStorage::chunk_stat() const {
+    struct statfs sfs;
+    if(statfs(root_path.c_str(), &sfs) != 0) {
+        log->error("Failed to get fs statitistic for chunk directory."
+                " Error: {}", std::strerror(errno));
+        throw std::system_error(errno, std::system_category(),
+                "statfs() failed on chunk directory");
+    }
+
+    log->debug("Chunksize {}, total {}, free {}", sfs.f_bsize, sfs.f_blocks, sfs.f_bavail);
+    unsigned long long bytes_total =
+        static_cast<unsigned long long>(sfs.f_bsize) *
+        static_cast<unsigned long long>(sfs.f_blocks);
+    unsigned long long bytes_free =
+        static_cast<unsigned long long>(sfs.f_bsize) *
+        static_cast<unsigned long long>(sfs.f_bavail);
+    return {chunksize,
+        bytes_total / chunksize,
+        bytes_free  / chunksize};
 }
