@@ -613,3 +613,20 @@ int hook_renameat(int olddfd, const char * oldname,
 
    return syscall_no_intercept(SYS_renameat2, olddfd, oldpath_pass, newdfd, newpath_pass, flags);
 }
+
+int hook_statfs(const char * path, struct statfs * buf) {
+    CTX->log()->trace("{}() called with path: {}", __func__, path);
+    std::string rel_path;
+    if (CTX->relativize_path(path, rel_path)) {
+        return with_errno(adafs_statfs(buf));
+    }
+    return syscall_no_intercept(SYS_statfs, rel_path.c_str(), buf);
+}
+
+int hook_fstatfs(unsigned int fd, struct statfs * buf) {
+    CTX->log()->trace("{}() called with fs: {}", __func__, fd);
+    if (CTX->file_map()->exist(fd)) {
+        return with_errno(adafs_statfs(buf));
+    }
+    return syscall_no_intercept(SYS_fstatfs, fd, buf);
+}

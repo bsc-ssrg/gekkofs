@@ -272,7 +272,17 @@ static inline int hook(long syscall_number,
                                 reinterpret_cast<const char *>(arg3),
                                 static_cast<unsigned int>(arg4));
         break;
-    
+
+    case SYS_fstatfs:
+        *result = hook_fstatfs(static_cast<unsigned int>(arg0),
+                               reinterpret_cast<struct statfs *>(arg1));
+        break;
+
+    case SYS_statfs:
+        *result = hook_statfs(reinterpret_cast<const char *>(arg0),
+                               reinterpret_cast<struct statfs *>(arg1));
+        break;
+
     default:
         /*
          * Ignore any other syscalls
