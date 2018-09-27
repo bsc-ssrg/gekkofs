@@ -37,4 +37,6 @@ DECLARE_MARGO_RPC_HANDLER(rpc_srv_write_data)
 
 DECLARE_MARGO_RPC_HANDLER(rpc_srv_trunc_data)
 
+DECLARE_MARGO_RPC_HANDLER(rpc_srv_chunk_stat)
+
 #endif //LFS_RPC_DEFS_HPP

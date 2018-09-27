@@ -40,7 +40,7 @@ int adafs_stat(const std::string& path, struct stat* buf);
 
 int adafs_stat64(const std::string& path, struct stat64* buf);
 
-int adafs_statfs(const std::string& path, struct statfs* adafs_buf, struct statfs& realfs_buf);
+int adafs_statfs(struct statfs* buf);
 
 off64_t adafs_lseek(int fd, off64_t offset, int whence);
 

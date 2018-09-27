@@ -179,37 +179,20 @@ std::shared_ptr<Metadata> adafs_metadata(const string& path) {
     return make_shared<Metadata>(attr);
 }
 
-int adafs_statfs(const string& path, struct statfs* adafs_buf, struct statfs& realfs_buf) {
-    // Check that file path exists
-    auto ret = rpc_send_access(path, F_OK);
-    // Valid fs error
-    if (ret > 0) {
-        errno = ret;
-        return -1;
-    }
-    // RPC error (errno has been set)
-    if (ret < 0)
-        return -1;
-
-    // fs object exists. Let's make up some fs values
-    adafs_buf->f_type = 0; // fs is not know to VFS. Therefore, no valid specifier possible
-    adafs_buf->f_bsize = static_cast<int>(CHUNKSIZE);
-    // some rough estimations
-    adafs_buf->f_blocks = realfs_buf.f_blocks * CTX->fs_conf()->host_size;
-    adafs_buf->f_bfree = realfs_buf.f_bfree * CTX->fs_conf()->host_size;
-    adafs_buf->f_bavail = realfs_buf.f_bavail * CTX->fs_conf()->host_size;
-    adafs_buf->f_files = realfs_buf.f_files * CTX->fs_conf()->host_size;
-    adafs_buf->f_ffree = realfs_buf.f_ffree * CTX->fs_conf()->host_size;
-    adafs_buf->f_fsid = realfs_buf.f_fsid; // "Nobody knows what f_fsid is supposed to contain"
-    adafs_buf->f_namelen = realfs_buf.f_namelen;
-    adafs_buf->f_frsize = realfs_buf.f_frsize;
-    adafs_buf->f_spare[0] = 0;
-    adafs_buf->f_spare[1] = 0;
-    adafs_buf->f_spare[2] = 0;
-    adafs_buf->f_spare[3] = 0;
-    adafs_buf->f_flags = ST_NOATIME | ST_NOSUID | ST_NODEV | ST_SYNCHRONOUS;
-    if (!CTX->fs_conf()->atime_state)
-        adafs_buf->f_flags = adafs_buf->f_flags | ST_NOATIME | ST_NODIRATIME;
+int adafs_statfs(struct statfs* buf) {
+    auto blk_stat = rpc_get_chunk_stat();
+    buf->f_type = 0;
+    buf->f_bsize = blk_stat.chunk_size;
+    buf->f_blocks = blk_stat.chunk_total;
+    buf->f_bfree = blk_stat.chunk_free;
+    buf->f_bavail = blk_stat.chunk_free;
+    buf->f_files = 0;
+    buf->f_ffree = 0;
+    buf->f_fsid = {0, 0};
+    buf->f_namelen = PATH_MAX_LEN;
+    buf->f_frsize = 0;
+    buf->f_flags =
+        ST_NOATIME | ST_NODIRATIME | ST_NOSUID | ST_NODEV | ST_SYNCHRONOUS;
     return 0;
 }
 

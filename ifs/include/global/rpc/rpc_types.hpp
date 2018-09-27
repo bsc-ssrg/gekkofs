@@ -100,4 +100,10 @@ MERCURY_GEN_PROC(rpc_get_dirents_out_t,
         ((hg_size_t) (dirents_size))
 )
 
+MERCURY_GEN_PROC(rpc_chunk_stat_out_t,
+        ((hg_uint64_t) (chunk_size))
+        ((hg_uint64_t) (chunk_total))
+        ((hg_uint64_t) (chunk_free))
+)
+
 #endif //LFS_RPC_TYPES_HPP
