@@ -196,6 +196,39 @@ int hook_unlinkat(int dirfd, const char * cpath, int flags) {
     }
 }
 
+int hook_symlinkat(const char * oldname, int newdfd, const char * newname) {
+    CTX->log()->trace("{}() called with oldname '{}', new fd {}, new name '{}'",
+                      __func__, oldname, newdfd, newname);
+
+    std::string oldname_resolved;
+    if (CTX->relativize_path(oldname, oldname_resolved)) {
+        CTX->log()->warn("{}() operation not supported", __func__);
+        return -ENOTSUP;
+    }
+
+    std::string newname_resolved;
+    auto rstatus = CTX->relativize_fd_path(newdfd, newname, newname_resolved, false);
+    switch(rstatus) {
+        case RelativizeStatus::fd_unknown:
+            return syscall_no_intercept(SYS_symlinkat, oldname, newdfd, newname);
+
+        case RelativizeStatus::external:
+            return syscall_no_intercept(SYS_symlinkat, oldname, newdfd, newname_resolved.c_str());
+
+        case RelativizeStatus::fd_not_a_dir:
+            return -ENOTDIR;
+
+        case RelativizeStatus::internal:
+            CTX->log()->warn("{}() operation not supported", __func__);
+            return -ENOTSUP;
+
+        default:
+            CTX->log()->error("{}() relativize status unknown", __func__);
+            return -EINVAL;
+    }
+}
+
+
 int hook_access(const char* path, int mask) {
     CTX->log()->trace("{}() called path '{}', mask {}", __func__, path, mask);
     std::string rel_path;

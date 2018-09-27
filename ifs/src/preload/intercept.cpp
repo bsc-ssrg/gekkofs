@@ -120,6 +120,18 @@ static inline int hook(long syscall_number,
                                 AT_REMOVEDIR);
         break;
 
+    case SYS_symlink:
+        *result = hook_symlinkat(reinterpret_cast<const char *>(arg0),
+                                 AT_FDCWD,
+                                 reinterpret_cast<const char *>(arg1));
+        break;
+
+    case SYS_symlinkat:
+        *result = hook_symlinkat(reinterpret_cast<const char *>(arg0),
+                                 static_cast<int>(arg1),
+                                 reinterpret_cast<const char *>(arg2));
+        break;
+
     case SYS_access:
         *result = hook_access(reinterpret_cast<const char*>(arg0),
                               static_cast<int>(arg1));
