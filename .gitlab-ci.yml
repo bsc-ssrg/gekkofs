@@ -1,0 +1,90 @@
+stages:
+  - download deps
+  - build deps
+  - build
+  - test
+
+variables:
+  DEPS_SRC_PATH:     "${CI_PROJECT_DIR}/deps/src"
+  DEPS_INSTALL_PATH: "${CI_PROJECT_DIR}/deps/build"
+  DEPS_COMMIT:       "${CI_PROJECT_DIR}/deps/build/gks_deps_commit"
+  BUILD_PATH:        "${CI_PROJECT_DIR}/ifs/build"
+  TESTS_BUILD_PATH:  "${CI_PROJECT_DIR}/ifs_test/build"
+  LOG_PATH:          "${CI_PROJECT_DIR}/logs"
+  # Configuration variables
+  ADAFS_LOG_LEVEL:   "100"
+  ADAFS_DAEMON_LOG_PATH:  "${CI_PROJECT_DIR}/logs/daemon.log"
+  ADAFS_PRELOAD_LOG_PATH: "${CI_PROJECT_DIR}/logs/preload.log"
+
+image: gekkofs/gekkofs:build_env
+
+compile dependencies:
+  stage: build deps
+  cache:
+    key: deps-cache
+    paths:
+     - ${DEPS_INSTALL_PATH}/
+  script:
+   # Folder of built dependencies is cached and marked with the ID of the commit from which have been built.
+   # If the download and compile script have been modified the cache gets invalidated and dependencies will be built again.
+   - ( [ -f "${DEPS_COMMIT}" ] && git diff --quiet "`cat ${DEPS_COMMIT}`" -- ifs/scripts/dl_dep.sh ifs/scripts/compile_dep.sh ) || (
+           rm -f ${DEPS_COMMIT} &&
+           ifs/scripts/dl_dep.sh ${DEPS_SRC_PATH} -n bmi &&
+           ifs/scripts/compile_dep.sh -n bmi ${DEPS_SRC_PATH} ${DEPS_INSTALL_PATH} &&
+           echo "${CI_COMMIT_SHA}" > "${DEPS_COMMIT}"
+     )
+  artifacts:
+    paths:
+     - ${DEPS_INSTALL_PATH}
+
+compile GekkoFS:
+  stage: build
+  dependencies:
+    - "compile dependencies"
+  script:
+    - mkdir -p ${BUILD_PATH} && cd ${BUILD_PATH}
+    - cmake
+      -Wdev
+      -Wdeprecate
+      -DCMAKE_BUILD_TYPE=Debug
+      -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_PATH}
+      -DUSE_BMI:BOOL=ON
+      ..
+    - make -j$(nproc)
+  artifacts:
+    paths:
+     - ${BUILD_PATH}
+
+compile tests:
+  stage: build
+  dependencies:
+    - "compile dependencies"
+  script:
+    - mkdir -p ${TESTS_BUILD_PATH} && cd ${TESTS_BUILD_PATH}
+    - cmake -DCMAKE_BUILD_TYPE=Debug ..
+    - make -j$(nproc)
+  artifacts:
+    paths:
+     - ${TESTS_BUILD_PATH}
+
+test wr:
+  stage: test
+  script:
+    - mkdir -p "${LOG_PATH}"
+    - ${BUILD_PATH}/bin/adafs_daemon --mount /tmp/mountdir --root /tmp/adafs_root &
+    - sleep 4
+    - LD_PRELOAD=${BUILD_PATH}/lib/libadafs_preload_client.so ${TESTS_BUILD_PATH}/ifs_test_wr
+  artifacts:
+    paths:
+     - "${LOG_PATH}"
+
+test directories:
+  stage: test
+  script:
+    - mkdir -p "${LOG_PATH}"
+    - ${BUILD_PATH}/bin/adafs_daemon --mount /tmp/mountdir --root /tmp/adafs_root &
+    - sleep 4
+    - LD_PRELOAD=${BUILD_PATH}/lib/libadafs_preload_client.so ${TESTS_BUILD_PATH}/ifs_test_dir
+  artifacts:
+    paths:
+     - "${LOG_PATH}"
