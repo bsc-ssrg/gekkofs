@@ -16,6 +16,9 @@ namespace hg_tag {
     constexpr auto get_metadentry_size = "rpc_srv_get_metadentry_size";
     constexpr auto update_metadentry_size = "rpc_srv_update_metadentry_size";
     constexpr auto get_dirents = "rpc_srv_get_dirents";
+#ifdef HAS_SYMLINKS
+    constexpr auto mk_symlink = "rpc_srv_mk_symlink";
+#endif
     constexpr auto write_data = "rpc_srv_write_data";
     constexpr auto read_data = "rpc_srv_read_data";
     constexpr auto trunc_data = "rpc_srv_trunc_data";

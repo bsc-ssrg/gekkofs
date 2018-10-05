@@ -38,6 +38,8 @@ int adafs_access(const std::string& path, int mask);
 
 int adafs_stat(const std::string& path, struct stat* buf);
 
+int adafs_lstat(const std::string& path, struct stat* buf);
+
 int adafs_stat64(const std::string& path, struct stat64* buf);
 
 int adafs_statfs(struct statfs* buf);
@@ -53,6 +55,11 @@ int adafs_truncate(const std::string& path, off_t old_size, off_t new_size);
 int adafs_dup(int oldfd);
 
 int adafs_dup2(int oldfd, int newfd);
+
+#ifdef HAS_SYMLINKS
+int adafs_mk_symlink(const std::string& path, const std::string& target_path);
+int adafs_readlink(const std::string& path, char *buf, int bufsize);
+#endif
 
 
 ssize_t adafs_pwrite_ws(int fd, const char * buf, size_t count, off64_t offset);

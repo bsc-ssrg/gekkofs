@@ -37,6 +37,7 @@ hg_id_t ipc_read_data_id;
 hg_id_t ipc_trunc_data_id;
 hg_id_t ipc_get_dirents_id;
 hg_id_t ipc_chunk_stat_id;
+hg_id_t ipc_mk_symlink_id;
 // RPC IDs
 hg_id_t rpc_minimal_id;
 hg_id_t rpc_mk_node_id;
@@ -52,6 +53,7 @@ hg_id_t rpc_read_data_id;
 hg_id_t rpc_trunc_data_id;
 hg_id_t rpc_get_dirents_id;
 hg_id_t rpc_chunk_stat_id;
+hg_id_t rpc_mk_symlink_id;
 // Margo instances
 margo_instance_id ld_margo_ipc_id;
 margo_instance_id ld_margo_rpc_id;
@@ -125,6 +127,9 @@ void register_client_rpcs(margo_instance_id mid, Margo_mode mode) {
                                                        rpc_update_metadentry_size_in_t,
                                                        rpc_update_metadentry_size_out_t,
                                                        NULL);
+#ifdef HAS_SYMLINKS
+        ipc_mk_symlink_id = MARGO_REGISTER(mid, hg_tag::mk_symlink, rpc_mk_symlink_in_t, rpc_err_out_t, NULL);
+#endif
         ipc_write_data_id = MARGO_REGISTER(mid, hg_tag::write_data, rpc_write_data_in_t, rpc_data_out_t,
                                            NULL);
         ipc_read_data_id = MARGO_REGISTER(mid, hg_tag::read_data, rpc_read_data_in_t, rpc_data_out_t,
@@ -153,6 +158,9 @@ void register_client_rpcs(margo_instance_id mid, Margo_mode mode) {
                                                        rpc_update_metadentry_size_in_t,
                                                        rpc_update_metadentry_size_out_t,
                                                        NULL);
+#ifdef HAS_SYMLINKS
+        rpc_mk_symlink_id = MARGO_REGISTER(mid, hg_tag::mk_symlink, rpc_mk_symlink_in_t, rpc_err_out_t, NULL);
+#endif
         rpc_write_data_id = MARGO_REGISTER(mid, hg_tag::write_data, rpc_write_data_in_t, rpc_data_out_t,
                                            NULL);
         rpc_read_data_id = MARGO_REGISTER(mid, hg_tag::read_data, rpc_read_data_in_t, rpc_data_out_t,
