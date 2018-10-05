@@ -65,6 +65,11 @@ set_property(CACHE RPC_PROTOCOL PROPERTY STRINGS
 message(STATUS "RPC protocol: '${RPC_PROTOCOL}'")
 add_definitions(-DRPC_PROTOCOL="${RPC_PROTOCOL}")
 
+option(SYMLINK_SUPPORT "Compile with support for symlinks" ON)
+if(SYMLINK_SUPPORT)
+    add_compile_definitions(HAS_SYMLINKS)
+endif()
+
 # Imported target
 add_library(RocksDB INTERFACE IMPORTED GLOBAL)
 target_link_libraries(RocksDB
