@@ -44,6 +44,11 @@ extern hg_id_t rpc_trunc_data_id;
 extern hg_id_t rpc_get_dirents_id;
 extern hg_id_t rpc_chunk_stat_id;
 
+#ifdef HAS_SYMLINKS
+extern hg_id_t ipc_mk_symlink_id;
+extern hg_id_t rpc_mk_symlink_id;
+#endif
+
 // function definitions
 
 bool is_fs_path(const char* path);

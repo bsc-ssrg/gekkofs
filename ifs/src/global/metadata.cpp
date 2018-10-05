@@ -21,7 +21,32 @@ Metadata::Metadata(const mode_t mode) :
     link_count_(0),
     size_(0),
     blocks_(0)
-{}
+{
+    assert(S_ISDIR(mode_) || S_ISREG(mode_));
+}
+
+#ifdef HAS_SYMLINKS
+
+Metadata::Metadata(const mode_t mode, const std::string& target_path) :
+    atime_(),
+    mtime_(),
+    ctime_(),
+    uid_(),
+    gid_(),
+    mode_(mode),
+    link_count_(0),
+    size_(0),
+    blocks_(0),
+    target_path_(target_path)
+{
+    assert(S_ISLNK(mode_) || S_ISDIR(mode_) || S_ISREG(mode_));
+    // target_path should be there only if this is a link
+    assert(target_path_.empty() || S_ISLNK(mode_));
+    // target_path should be absolute
+    assert(target_path_.empty() || target_path_[0] == '/');
+}
+
+#endif
 
 Metadata::Metadata(const std::string& binary_str) {
     size_t read = 0;
@@ -83,6 +108,16 @@ Metadata::Metadata(const std::string& binary_str) {
         assert(read > 0);
         ptr += read;
     }
+
+#ifdef HAS_SYMLINKS
+    // Read target_path
+    assert(*ptr == MSP);
+    target_path_ = ++ptr;
+    // target_path should be there only if this is a link
+    assert(target_path_.size() == 0 || S_ISLNK(mode_));
+    ptr += target_path_.size();
+#endif
+
     // we consumed all the binary string
     assert(*ptr == '\0');
 }
@@ -122,6 +157,12 @@ std::string Metadata::serialize() const
         s += MSP;
         s += fmt::format_int(blocks_).c_str();
     }
+
+#ifdef HAS_SYMLINKS
+    s += MSP;
+    s += target_path_;
+#endif
+
     return s;
 }
 
@@ -217,3 +258,24 @@ blkcnt_t Metadata::blocks() const {
 void Metadata::blocks(blkcnt_t blocks_) {
     Metadata::blocks_ = blocks_;
 }
+
+#ifdef HAS_SYMLINKS
+
+std::string Metadata::target_path() const {
+    assert(!target_path_.empty());
+    return target_path_;
+}
+
+void Metadata::target_path(const std::string& target_path) {
+    // target_path should be there only if this is a link
+    assert(target_path.empty() || S_ISLNK(mode_));
+    // target_path should be absolute
+    assert(target_path.empty() || target_path[0] == '/');
+    target_path_ = target_path;
+}
+
+bool Metadata::is_link() const {
+    return S_ISLNK(mode_);
+}
+
+#endif

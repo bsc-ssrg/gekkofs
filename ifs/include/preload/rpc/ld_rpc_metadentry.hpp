@@ -34,4 +34,8 @@ int rpc_send_get_metadentry_size(const std::string& path, off64_t& ret_size);
 
 void rpc_send_get_dirents(OpenDir& open_dir);
 
+#ifdef HAS_SYMLINKS
+int rpc_send_mk_symlink(const std::string& path, const std::string& target_path);
+#endif
+
 #endif //IFS_PRELOAD_C_METADENTRY_HPP
