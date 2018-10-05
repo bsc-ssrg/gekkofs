@@ -114,6 +114,10 @@ if (NOT USE_OFI_VERBS AND NOT USE_OFI_PSM2 AND NOT USE_CCI AND NOT USE_BMI)
     add_definitions(-DRPC_PROTOCOL="bmi+tcp")
 endif()
 
+option(SYMLINK_SUPPORT "Compile with support for symlinks" ON)
+if(SYMLINK_SUPPORT)
+    add_compile_definitions(HAS_SYMLINKS)
+endif()
 
 # Imported target
 add_library(RocksDB INTERFACE IMPORTED GLOBAL)

@@ -78,6 +78,17 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
             return -1;
         }
 
+#ifdef HAS_SYMLINKS
+        if (md->is_link()) {
+            if (flags & O_NOFOLLOW) {
+                CTX->log()->warn("{}() symlink found and O_NOFOLLOW flag was specified", __func__);
+                errno = ELOOP;
+                return -1;
+            }
+            return adafs_open(md->target_path(), mode, flags);
+        }
+#endif
+
 #if defined(CHECK_ACCESS_DURING_OPEN)
         auto mask = F_OK; // F_OK == 0
         if ((mode & S_IRUSR) || (mode & S_IRGRP) || (mode & S_IROTH))
@@ -112,12 +123,28 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
     return CTX->file_map()->add(std::make_shared<OpenFile>(path, flags));
 }
 
-int adafs_mk_node(const std::string& path, const mode_t mode) {
+int adafs_mk_node(const std::string& path, mode_t mode) {
 
     //file type must be set
-    assert((mode & S_IFMT) != 0);
-    //file type must be either regular file or directory
-    assert(S_ISREG(mode) || S_ISDIR(mode));
+    switch (mode & S_IFMT) {
+        case 0:
+            mode |= S_IFREG;
+            break;
+        case S_IFREG: // intentionally fall-through
+        case S_IFDIR:
+            break;
+        case S_IFCHR: // intentionally fall-through
+        case S_IFBLK:
+        case S_IFIFO:
+        case S_IFSOCK:
+            CTX->log()->warn("{}() unsupported node type", __func__);
+            errno = ENOTSUP;
+            return -1;
+        default:
+            CTX->log()->warn("{}() unrecognized node type", __func__);
+            errno = EINVAL;
+            return -1;
+    }
 
     auto p_comp = dirname(path);
     auto md = adafs_metadata(p_comp);
@@ -131,9 +158,76 @@ int adafs_mk_node(const std::string& path, const mode_t mode) {
         errno = ENOTDIR;
         return -1;
     }
+
     return rpc_send_mk_node(path, mode);
 }
 
+#ifdef HAS_SYMLINKS
+
+int adafs_mk_symlink(const std::string& path, const std::string& target_path) {
+    /* The following check is not POSIX compliant.
+     * In POSIX the target is not checked at all.
+    *  Here if the target is a directory we raise a NOTSUP error.
+    *  So that application know we don't support link to directory.
+    */
+    auto target_md = adafs_metadata(target_path);
+    if (target_md != nullptr) {
+        auto trg_mode = target_md->mode();
+        if (!(S_ISREG(trg_mode) || S_ISLNK(trg_mode))) {
+            assert(S_ISDIR(trg_mode));
+            CTX->log()->debug("{}() target path is a directory. Not supported", __func__);
+            errno = ENOTSUP;
+            return -1;
+        }
+    }
+
+    auto p_comp = dirname(path);
+    auto md = adafs_metadata(p_comp);
+    if (md == nullptr) {
+        CTX->log()->debug("{}() parent component does not exist: '{}'", __func__, p_comp);
+        errno = ENOENT;
+        return -1;
+    }
+    if (!S_ISDIR(md->mode())) {
+        CTX->log()->debug("{}() parent component is not a directory: '{}'", __func__, p_comp);
+        errno = ENOTDIR;
+        return -1;
+    }
+    
+    auto link_md = adafs_metadata(path);
+    if (link_md != nullptr) {
+        CTX->log()->debug("{}() Link exists: '{}'", __func__, p_comp);
+        errno = EEXIST;
+        return -1;
+    }
+
+    return rpc_send_mk_symlink(path, target_path);
+}
+
+int adafs_readlink(const std::string& path, char *buf, int bufsize) {
+    auto md = adafs_metadata(path);
+    if (md == nullptr) {
+        CTX->log()->debug("{}() named link doesn't exists", __func__);
+        return -1;
+    }
+    if (!(md->is_link())) {
+        CTX->log()->debug("{}() The named file is not a symbolic link", __func__);
+        errno = EINVAL;
+        return -1;
+    }
+    int path_size = md->target_path().size() + CTX->mountdir().size();
+    if (path_size >= bufsize) {
+        CTX->log()->warn("{}() destination buffer size is to short: {} < {}, {} ", __func__, bufsize, path_size, md->target_path());
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    CTX->mountdir().copy(buf, CTX->mountdir().size());
+    std::strcpy(buf + CTX->mountdir().size(), md->target_path().c_str());
+    return path_size;
+}
+
+#endif
 /**
  * This sends internally a broadcast (i.e. n RPCs) to clean their chunk folders for that path
  * @param path
@@ -159,11 +253,26 @@ int adafs_access(const std::string& path, const int mask) {
 #endif
 }
 
-int adafs_stat(const string& path, struct stat* buf) {
+int adafs_lstat(const string& path, struct stat* buf) {
     auto md = adafs_metadata(path);
     if (md == nullptr) {
         return -1;
     }
+    metadata_to_stat(path, *md, *buf);
+    return 0;
+}
+
+int adafs_stat(const string& path, struct stat* buf) {
+    CTX->log()->trace("{}() with path: {}", __func__, path);
+    auto md = adafs_metadata(path);
+    if (md == nullptr) {
+        return -1;
+    }
+#ifdef HAS_SYMLINKS
+    if (md->is_link()) {
+        return adafs_stat(md->target_path(), buf);
+    }
+#endif
     metadata_to_stat(path, *md, *buf);
     return 0;
 }
@@ -276,7 +385,11 @@ int adafs_truncate(const std::string& path, off_t length) {
     if (md == nullptr) {
         return -1;
     }
-
+#ifdef HAS_SYMLINKS
+    if (md->is_link()) {
+        return adafs_truncate(md->target_path(), length);
+    }
+#endif
     auto size = md->size();
     if(static_cast<unsigned long>(length) > size) {
         CTX->log()->debug("{}() length is greater then file size: {} > {}",

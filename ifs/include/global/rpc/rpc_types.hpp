@@ -17,8 +17,16 @@ MERCURY_GEN_PROC(rpc_err_out_t, ((hg_int32_t) (err)))
 
 // Metadentry
 MERCURY_GEN_PROC(rpc_mk_node_in_t,
-                 ((hg_const_string_t) (path))\
-((uint32_t) (mode)))
+    ((hg_const_string_t) (path))\
+    ((uint32_t) (mode))\
+)
+
+#ifdef HAS_SYMLINKS
+MERCURY_GEN_PROC(rpc_mk_symlink_in_t,
+    ((hg_const_string_t) (path))\
+    ((hg_const_string_t) (target_path))
+)
+#endif
 
 MERCURY_GEN_PROC(rpc_access_in_t,
                  ((hg_const_string_t) (path))\

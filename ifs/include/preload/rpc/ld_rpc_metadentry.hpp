@@ -17,6 +17,10 @@ void send_minimal_rpc(hg_id_t minimal_id);
 
 int rpc_send_mk_node(const std::string& path, mode_t mode);
 
+#ifdef HAS_SYMLINKS
+int rpc_send_mk_symlink(const std::string& path, const std::string& target_path);
+#endif
+
 int rpc_send_access(const std::string& path, int mask);
 
 int rpc_send_stat(const std::string& path, std::string& attr);

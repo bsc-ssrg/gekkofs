@@ -25,6 +25,7 @@ static pthread_once_t init_env_thread = PTHREAD_ONCE_INIT;
 hg_id_t ipc_minimal_id;
 hg_id_t ipc_config_id;
 hg_id_t ipc_mk_node_id;
+hg_id_t ipc_mk_symlink_id;
 hg_id_t ipc_access_id;
 hg_id_t ipc_stat_id;
 hg_id_t ipc_rm_node_id;
@@ -40,6 +41,7 @@ hg_id_t ipc_chunk_stat_id;
 // RPC IDs
 hg_id_t rpc_minimal_id;
 hg_id_t rpc_mk_node_id;
+hg_id_t rpc_mk_symlink_id;
 hg_id_t rpc_access_id;
 hg_id_t rpc_stat_id;
 hg_id_t rpc_rm_node_id;
@@ -111,6 +113,9 @@ void register_client_rpcs(margo_instance_id mid, Margo_mode mode) {
                                        NULL);
         ipc_minimal_id = MARGO_REGISTER(mid, hg_tag::minimal, rpc_minimal_in_t, rpc_minimal_out_t, NULL);
         ipc_mk_node_id = MARGO_REGISTER(mid, hg_tag::create, rpc_mk_node_in_t, rpc_err_out_t, NULL);
+#ifdef HAS_SYMLINKS
+        ipc_mk_symlink_id = MARGO_REGISTER(mid, hg_tag::mk_symlink, rpc_mk_symlink_in_t, rpc_err_out_t, NULL);
+#endif
         ipc_access_id = MARGO_REGISTER(mid, hg_tag::access, rpc_access_in_t, rpc_err_out_t, NULL);
         ipc_stat_id = MARGO_REGISTER(mid, hg_tag::stat, rpc_path_only_in_t, rpc_stat_out_t, NULL);
         ipc_rm_node_id = MARGO_REGISTER(mid, hg_tag::remove, rpc_rm_node_in_t,
@@ -139,6 +144,9 @@ void register_client_rpcs(margo_instance_id mid, Margo_mode mode) {
         // RPC IDs
         rpc_minimal_id = MARGO_REGISTER(mid, hg_tag::minimal, rpc_minimal_in_t, rpc_minimal_out_t, NULL);
         rpc_mk_node_id = MARGO_REGISTER(mid, hg_tag::create, rpc_mk_node_in_t, rpc_err_out_t, NULL);
+#ifdef HAS_SYMLINKS
+        rpc_mk_symlink_id = MARGO_REGISTER(mid, hg_tag::mk_symlink, rpc_mk_symlink_in_t, rpc_err_out_t, NULL);
+#endif
         rpc_access_id = MARGO_REGISTER(mid, hg_tag::access, rpc_access_in_t, rpc_err_out_t, NULL);
         rpc_stat_id = MARGO_REGISTER(mid, hg_tag::stat, rpc_path_only_in_t, rpc_stat_out_t, NULL);
         rpc_rm_node_id = MARGO_REGISTER(mid, hg_tag::remove, rpc_rm_node_in_t,

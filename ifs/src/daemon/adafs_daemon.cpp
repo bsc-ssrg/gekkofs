@@ -81,10 +81,10 @@ bool init_environment() {
     ADAFS_DATA->gid_state(MDATA_USE_GID);
     ADAFS_DATA->link_cnt_state(MDATA_USE_LINK_CNT);
     ADAFS_DATA->blocks_state(MDATA_USE_BLOCKS);
-    // Create metadentry for root directory
-    Metadata root_md = {S_IFDIR | 0777};
     try {
-        create_metadentry("/", root_md);
+        // Create metadentry for root directory
+        Metadata md = {S_IFDIR | 777};
+        create_metadentry("/", md);
     } catch (const std::exception& e ) {
         ADAFS_DATA->spdlogger()->error("{}() Unable to write root metadentry to KV store: {}", __func__, e.what());
         return false;
@@ -257,6 +257,9 @@ void register_server_rpcs(margo_instance_id mid) {
         MARGO_REGISTER(mid, hg_tag::fs_config, ipc_config_in_t, ipc_config_out_t, ipc_srv_fs_config);
     MARGO_REGISTER(mid, hg_tag::minimal, rpc_minimal_in_t, rpc_minimal_out_t, rpc_minimal);
     MARGO_REGISTER(mid, hg_tag::create, rpc_mk_node_in_t, rpc_err_out_t, rpc_srv_mk_node);
+#ifdef HAS_SYMLINKS
+    MARGO_REGISTER(mid, hg_tag::mk_symlink, rpc_mk_symlink_in_t, rpc_err_out_t, rpc_srv_mk_symlink);
+#endif
     MARGO_REGISTER(mid, hg_tag::access, rpc_access_in_t, rpc_err_out_t, rpc_srv_access);
     MARGO_REGISTER(mid, hg_tag::stat, rpc_path_only_in_t, rpc_stat_out_t, rpc_srv_stat);
     MARGO_REGISTER(mid, hg_tag::decr_size, rpc_trunc_in_t, rpc_err_out_t, rpc_srv_decr_size);

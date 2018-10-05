@@ -8,6 +8,9 @@ namespace hg_tag {
     constexpr auto fs_config = "ipc_srv_fs_config";
     constexpr auto minimal = "rpc_minimal";
     constexpr auto create = "rpc_srv_mk_node";
+#ifdef HAS_SYMLINKS
+    constexpr auto mk_symlink = "rpc_srv_mk_symlink";
+#endif
     constexpr auto access = "rpc_srv_access";
     constexpr auto stat = "rpc_srv_stat";
     constexpr auto remove = "rpc_srv_rm_node";

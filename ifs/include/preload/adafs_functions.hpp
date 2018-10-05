@@ -32,11 +32,18 @@ int adafs_open(const std::string& path, mode_t mode, int flags);
 
 int adafs_mk_node(const std::string& path, mode_t mode);
 
+#ifdef HAS_SYMLINKS
+int adafs_mk_symlink(const std::string& path, const std::string& target_path);
+int adafs_readlink(const std::string& path, char *buf, int bufsize);
+#endif
+
 int adafs_rm_node(const std::string& path);
 
 int adafs_access(const std::string& path, int mask);
 
 int adafs_stat(const std::string& path, struct stat* buf);
+
+int adafs_lstat(const std::string& path, struct stat* buf);
 
 int adafs_stat64(const std::string& path, struct stat64* buf);
 

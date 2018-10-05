@@ -15,6 +15,10 @@ DECLARE_MARGO_RPC_HANDLER(ipc_srv_fs_config)
 
 DECLARE_MARGO_RPC_HANDLER(rpc_srv_mk_node)
 
+#ifdef HAS_SYMLINKS
+DECLARE_MARGO_RPC_HANDLER(rpc_srv_mk_symlink)
+#endif
+
 DECLARE_MARGO_RPC_HANDLER(rpc_srv_access)
 
 DECLARE_MARGO_RPC_HANDLER(rpc_srv_stat)
