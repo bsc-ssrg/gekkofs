@@ -143,7 +143,8 @@ int adafs_rm_node(const std::string& path) {
     auto md = adafs_metadata(path);
     if (md == nullptr)
         return -1;
-    return rpc_send_rm_node(path, (md->size() == 0));
+    bool has_data = S_ISREG(md->mode()) && md->size() != 0;
+    return rpc_send_rm_node(path, !has_data);
 }
 
 int adafs_access(const std::string& path, const int mask) {
