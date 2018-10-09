@@ -22,6 +22,8 @@ add_executable(ifs_test_dir dir_test.cpp)
 
 add_executable(ifs_test_truncate truncate.cpp)
 
+add_executable(ifs_test_symlink symlink_test.cpp)
+
 find_package(MPI)
 if(${MPI_FOUND})
     set(SOURCE_FILES_MPI main_MPI.cpp)
