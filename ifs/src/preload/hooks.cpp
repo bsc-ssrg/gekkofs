@@ -399,12 +399,12 @@ int hook_chdir(const char * path) {
     bool internal = CTX->relativize_path(path, rel_path);
     if (internal) {
         //path falls in our namespace
-        struct stat st;
-        if(adafs_stat(rel_path, &st) != 0) {
+        auto md = adafs_metadata(rel_path);
+        if (md == nullptr) {
             CTX->log()->error("{}() path does not exists", __func__);
             return -ENOENT;
         }
-        if(!S_ISDIR(st.st_mode)) {
+        if(!S_ISDIR(md->mode())) {
             CTX->log()->error("{}() path is not a directory", __func__);
             return -ENOTDIR;
         }

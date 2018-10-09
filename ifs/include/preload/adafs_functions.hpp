@@ -2,7 +2,7 @@
 #define IFS_ADAFS_FUNCTIONS_HPP
 
 #include <preload/open_file_map.hpp>
-
+#include <global/metadata.hpp>
 /*
  * See include/linux/statfs.h (not includable)
  *
@@ -25,6 +25,8 @@
 #define ST_NOATIME    0x0400    /* do not update access times */
 #define ST_NODIRATIME    0x0800    /* do not update directory access times */
 #define ST_RELATIME    0x1000    /* update atime relative to mtime/ctime */
+
+std::shared_ptr<Metadata> adafs_metadata(const std::string& path);
 
 int adafs_open(const std::string& path, mode_t mode, int flags);
 
