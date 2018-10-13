@@ -73,9 +73,9 @@ static hg_return_t rpc_srv_mk_symlink(hg_handle_t handle) {
     rpc_err_out_t out{};
 
     auto ret = margo_get_input(handle, &in);
-    if (ret != HG_SUCCESS)
+    if (ret != HG_SUCCESS) {
         ADAFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
-    assert(ret == HG_SUCCESS);
+    }
     ADAFS_DATA->spdlogger()->debug("{}() Got RPC (from local {}) with path {}", __func__,
                                    (margo_get_info(handle)->context_id == ADAFS_DATA->host_id()), in.path);
 
