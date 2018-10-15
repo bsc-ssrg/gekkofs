@@ -16,10 +16,10 @@ margo_forward_timed_wrap(const hg_handle_t& handle, void* in_struct) {
     return margo_forward_timed(handle, in_struct, RPC_TIMEOUT);
 }
 
-int mk_node(const std::string& path, const mode_t mode) {
+int mk_node(const std::string& path, const mode_t mode, fuid_t& fuid) {
     hg_handle_t handle;
     rpc_mk_node_in_t in{};
-    rpc_err_out_t out{};
+    rpc_fuid_out_t out{};
     int err = EUNKNOWN;
     // fill in
     in.path = path.c_str();
@@ -41,6 +41,7 @@ int mk_node(const std::string& path, const mode_t mode) {
         if (ret == HG_SUCCESS) {
             CTX->log()->debug("{}() Got response success: {}", __func__, out.err);
             err = out.err;
+            fuid = out.fuid;
         } else {
             // something is wrong
             errno = EBUSY;

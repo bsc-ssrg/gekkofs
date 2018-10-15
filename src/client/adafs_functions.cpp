@@ -14,6 +14,7 @@ using namespace std;
 
 int adafs_open(const std::string& path, mode_t mode, int flags) {
     init_ld_env_if_needed();
+    fuid_t fuid;
 
     if(flags & O_PATH){
         CTX->log()->error("{}() `O_PATH` flag is not supported", __func__);
@@ -55,7 +56,7 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
         }
 
         // no access check required here. If one is using our FS they have the permissions.
-        if(adafs_mk_node(path, mode | S_IFREG)) {
+        if(adafs_mk_node(path, mode | S_IFREG, fuid)) {
             CTX->log()->error("{}() error creating non-existent file", __func__);
             return -1;
         }
@@ -93,12 +94,13 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
                 return -1;
             }
         }
+        fuid = md->fuid();
     }
 
-    return CTX->file_map()->add(std::make_shared<OpenFile>(path, flags));
+    return CTX->file_map()->add(std::make_shared<OpenFile>(fuid, path, flags));
 }
 
-int adafs_mk_node(const std::string& path, mode_t mode) {
+int adafs_mk_node(const std::string& path, mode_t mode, fuid_t& fuid) {
     init_ld_env_if_needed();
 
     //file type must be set
@@ -134,7 +136,12 @@ int adafs_mk_node(const std::string& path, mode_t mode) {
         errno = ENOTDIR;
         return -1;
     }
-    return rpc_send::mk_node(path, mode);
+    return rpc_send::mk_node(path, mode, fuid);
+}
+
+int adafs_mk_node(const std::string& path, mode_t mode) {
+    fuid_t fuid;
+    return adafs_mk_node(path, mode, fuid);
 }
 
 /**
@@ -476,7 +483,7 @@ int adafs_opendir(const std::string& path) {
         return -1;
     }
 
-    auto open_dir = std::make_shared<OpenDir>(path);
+    auto open_dir = std::make_shared<OpenDir>(md->fuid(), path);
     rpc_send::get_dirents(*open_dir);
     return CTX->file_map()->add(open_dir);
 }
@@ -496,7 +503,7 @@ int adafs_rmdir(const std::string& path) {
         return -1;
     }
 
-    auto open_dir = std::make_shared<OpenDir>(path);
+    auto open_dir = std::make_shared<OpenDir>(md->fuid(), path);
     rpc_send::get_dirents(*open_dir);
     if(open_dir->size() != 0){
         errno = ENOTEMPTY;

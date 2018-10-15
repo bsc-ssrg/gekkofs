@@ -9,6 +9,7 @@ set(DAEMON_SRC
     adafs_ops/metadentry.cpp
     classes/fs_data.cpp
     classes/rpc_data.cpp
+    classes/uids_manager.cpp
     handler/h_metadentry.cpp
     handler/h_data.cpp
     handler/h_preload.cpp
@@ -24,6 +25,7 @@ set(DAEMON_HEADERS
     ../../include/daemon/adafs_ops/metadentry.hpp
     ../../include/daemon/classes/fs_data.hpp
     ../../include/daemon/classes/rpc_data.hpp
+    ../../include/daemon/classes/uids_manager.hpp
     ../../include/daemon/handler/rpc_defs.hpp
     )
 add_executable(adafs_daemon ${DAEMON_SRC} ${DAEMON_HEADERS})

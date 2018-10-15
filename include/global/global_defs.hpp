@@ -1,7 +1,8 @@
 #ifndef IFS_GLOBAL_DEFS_HPP
 #define IFS_GLOBAL_DEFS_HPP
 
-#include <type_traits> //underlying_type
+#include <type_traits> // underlying_type
+#include <cstdint> // fuid_t
 
 // These constexpr set the RPC's identity and which handler the receiver end should use
 namespace hg_tag {
@@ -24,7 +25,8 @@ namespace hg_tag {
 }
 
 // typedefs
-typedef unsigned long rpc_chnk_id_t;
+using rpc_chnk_id_t = unsigned long;
+using fuid_t = uint_fast64_t;
 
 template<typename E>
 constexpr typename std::underlying_type<E>::type to_underlying(E e) {
