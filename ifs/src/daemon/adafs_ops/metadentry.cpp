@@ -10,9 +10,8 @@ using namespace std;
  * @param path
  * @param mode
  */
-void create_metadentry(const std::string& path, mode_t mode) {
+void create_metadentry(const std::string& path, Metadata& md) {
 
-    Metadata md{mode};
     // update metadata object based on what metadata is needed
     if (ADAFS_DATA->atime_state() || ADAFS_DATA->mtime_state() || ADAFS_DATA->ctime_state()) {
         std::time_t time;

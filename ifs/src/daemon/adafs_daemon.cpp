@@ -73,8 +73,9 @@ bool init_environment() {
     ADAFS_DATA->link_cnt_state(MDATA_USE_LINK_CNT);
     ADAFS_DATA->blocks_state(MDATA_USE_BLOCKS);
     // Create metadentry for root directory
+    Metadata root_md(S_IFDIR | 0777);
     try {
-        create_metadentry("/", S_IFDIR | 777);
+        create_metadentry("/", root_md);
     } catch (const std::exception& e ) {
         ADAFS_DATA->spdlogger()->error("{}() Unable to write root metadentry to KV store: {}", __func__, e.what());
         return false;
