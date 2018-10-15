@@ -35,7 +35,7 @@ DEFINE_MARGO_RPC_HANDLER(rpc_minimal)
 
 static hg_return_t rpc_srv_mk_node(hg_handle_t handle) {
     rpc_mk_node_in_t in{};
-    rpc_err_out_t out{};
+    rpc_fuid_out_t out{};
 
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS)
@@ -48,6 +48,7 @@ static hg_return_t rpc_srv_mk_node(hg_handle_t handle) {
         // create metadentry
         create_metadentry(in.path, md);
         out.err = 0;
+        out.fuid = md.fuid();
     } catch (const std::exception& e) {
         ADAFS_DATA->spdlogger()->error("{}() Failed to create metadentry: {}",  __func__, e.what());
         out.err = -1;

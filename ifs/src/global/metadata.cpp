@@ -27,14 +27,22 @@ Metadata::Metadata(const std::string& binary_str) {
     size_t read = 0;
 
     auto ptr = binary_str.data();
-    mode_ = static_cast<unsigned int>(std::stoul(ptr, &read));
+
+    fuid_ = static_cast<fuid_t>(std::stoul(ptr, &read));
     // we read something
     assert(read > 0);
     ptr += read;
 
     // last parsed char is the separator char
     assert(*ptr == MSP);
-    // yet we have some character to parse
+
+    mode_ = static_cast<unsigned int>(std::stoul(++ptr, &read));
+    // we read something
+    assert(read > 0);
+    ptr += read;
+
+    // last parsed char is the separator char
+    assert(*ptr == MSP);
 
     size_ = std::stol(++ptr, &read);
     assert(read > 0);
@@ -91,7 +99,9 @@ std::string Metadata::serialize() const
 {
     std::string s;
     // The order is important. don't change.
-    s += fmt::format_int(mode_).c_str(); // add mandatory mode
+    s += std::to_string(fuid_); // add mandatory fuid
+    s += MSP;
+    s += std::to_string(mode_); // add mandatory mode
     s += MSP;
     s += fmt::format_int(size_).c_str(); // add mandatory size
     if (MDATA_USE_ATIME) {
@@ -145,6 +155,14 @@ void Metadata::update_ACM_time(bool a, bool c, bool m) {
 }
 
 //-------------------------------------------- GETTER/SETTER
+
+fuid_t Metadata::fuid() const {
+    return fuid_;
+}
+
+void Metadata::fuid(fuid_t fuid) {
+    fuid_ = fuid;
+}
 
 time_t Metadata::atime() const {
     return atime_;

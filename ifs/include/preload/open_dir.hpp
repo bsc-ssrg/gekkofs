@@ -26,7 +26,7 @@ class OpenDir: public OpenFile {
 
 
     public:
-        OpenDir(const std::string& path);
+        OpenDir(const fuid_t fuid, const std::string& path);
         void add(const std::string& name, const FileType& type);
         const DirEntry& getdent(unsigned int pos);
         size_t size();

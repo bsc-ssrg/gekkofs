@@ -13,6 +13,10 @@ using namespace std;
 void create_metadentry(const std::string& path, Metadata& md) {
 
     // update metadata object based on what metadata is needed
+    md.fuid(ADAFS_DATA->fuids_manager()->generate_uid());
+#ifndef NDEBUG
+    ADAFS_DATA->spdlogger()->debug("Generated fuid: '{}", md.fuid());
+#endif
     if (ADAFS_DATA->atime_state() || ADAFS_DATA->mtime_state() || ADAFS_DATA->ctime_state()) {
         std::time_t time;
         std::time(&time);
