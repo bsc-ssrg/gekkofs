@@ -15,7 +15,7 @@ inline hg_return_t margo_forward_timed_wrap(hg_handle_t& handle, void* in_struct
 
 void send_minimal_rpc(hg_id_t minimal_id);
 
-int rpc_send_mk_node(const std::string& path, mode_t mode);
+int rpc_send_mk_node(const std::string& path, mode_t mode, fuid_t& fuid);
 
 int rpc_send_access(const std::string& path, int mask);
 

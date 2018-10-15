@@ -2,12 +2,14 @@
 #ifndef LFS_FS_DATA_H
 #define LFS_FS_DATA_H
 
+#include "daemon/classes/uids_manager.hpp"
 #include <daemon/adafs_daemon.hpp>
 
 /* Forward declarations */
 class MetadataDB;
 class ChunkStorage;
 class Distributor;
+class UidsManager;
 
 #include <unordered_map>
 #include <map>
@@ -46,6 +48,8 @@ private:
     std::shared_ptr<ChunkStorage> storage_;
     // Distributor
     std::shared_ptr<Distributor> distributor_;
+    // FUIDs manager
+    std::shared_ptr<UidsManager> fuids_manager_;
 
     // configurable metadata
     bool atime_state_;
@@ -113,6 +117,10 @@ public:
     void distributor(std::shared_ptr<Distributor> d);
 
     std::shared_ptr<Distributor> distributor() const;
+
+    void fuids_manager(std::shared_ptr<UidsManager> fuids_manager);
+
+    std::shared_ptr<UidsManager> fuids_manager() const;
 
     const std::string& hosts_raw() const;
 

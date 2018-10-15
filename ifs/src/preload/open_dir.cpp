@@ -17,8 +17,8 @@ FileType DirEntry::type() {
 }
 
 
-OpenDir::OpenDir(const std::string& path) :
-    OpenFile(path, 0, FileType::directory) {
+OpenDir::OpenDir(const fuid_t fuid, const std::string& path) :
+    OpenFile(fuid, path, 0, FileType::directory) {
 }
 
 
