@@ -1,11 +1,16 @@
 cmake_minimum_required(VERSION 3.6)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_library(gfsctl SHARED)
 
-target_sources(gfsctl
+set(WARNINGS_FLAGS "-Wall -Wextra --pedantic -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -O3")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${WARNINGS_FLAGS} -g -O0")
+
+add_library(gekkofs_api SHARED "")
+
+target_sources(gekkofs_api
     PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/gfsctl.h
+    ${CMAKE_CURRENT_LIST_DIR}/gekkofs.h
     PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/libgfsctl.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/libgekkofs-api.cpp
     )
