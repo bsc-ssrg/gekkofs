@@ -5,12 +5,6 @@
 
 using namespace std;
 
-ino_t generate_inode_no() {
-    std::lock_guard<std::mutex> inode_lock(ADAFS_DATA->inode_mutex);
-    // TODO check that our inode counter is within boundaries of inode numbers in the given node
-    return ADAFS_DATA->raise_inode_count(1);
-}
-
 /**
  * Creates metadata (if required) and dentry at the same time
  * @param path
@@ -35,8 +29,6 @@ void create_metadentry(const std::string& path, mode_t mode) {
         md.uid(getuid());
     if (ADAFS_DATA->gid_state())
         md.gid(getgid());
-    if (ADAFS_DATA->inode_no_state())
-        md.inode_no(generate_inode_no());
 
     ADAFS_DATA->mdb()->put(path, md.serialize());
 }

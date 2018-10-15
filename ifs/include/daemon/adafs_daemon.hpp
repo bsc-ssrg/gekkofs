@@ -19,7 +19,6 @@ extern "C" {
 #include <daemon/classes/fs_data.hpp>
 #include <daemon/classes/rpc_data.hpp>
 
-#define INVALID_INODE static_cast<ino_t>(0)
 #define ADAFS_DATA (static_cast<FsData*>(FsData::getInstance()))
 #define RPC_DATA (static_cast<RPCData*>(RPCData::getInstance()))
 

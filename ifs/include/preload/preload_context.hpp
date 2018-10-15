@@ -19,7 +19,6 @@ struct FsConfig {
     bool ctime_state;
     bool uid_state;
     bool gid_state;
-    bool inode_no_state;
     bool link_cnt_state;
     bool blocks_state;
 

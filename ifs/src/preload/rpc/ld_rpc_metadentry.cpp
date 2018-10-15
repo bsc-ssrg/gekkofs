@@ -310,7 +310,6 @@ int rpc_send_update_metadentry(const string& path, const Metadata& md, const Met
     in.gid = md_flags.gid ? md.gid() : 0;
     in.uid = md_flags.uid ? md.uid() : 0;
     in.blocks = md_flags.blocks ? md.blocks() : 0;
-    in.inode_no = md_flags.inode_no ? md.inode_no() : 0;
     in.atime = md_flags.atime ? md.atime() : 0;
     in.mtime = md_flags.mtime ? md.mtime() : 0;
     in.ctime = md_flags.ctime ? md.ctime() : 0;
@@ -320,7 +319,6 @@ int rpc_send_update_metadentry(const string& path, const Metadata& md, const Met
     in.gid_flag = bool_to_merc_bool(md_flags.gid);
     in.uid_flag = bool_to_merc_bool(md_flags.uid);
     in.block_flag = bool_to_merc_bool(md_flags.blocks);
-    in.inode_no_flag = bool_to_merc_bool(md_flags.inode_no);
     in.atime_flag = bool_to_merc_bool(md_flags.atime);
     in.mtime_flag = bool_to_merc_bool(md_flags.mtime);
     in.ctime_flag = bool_to_merc_bool(md_flags.ctime);

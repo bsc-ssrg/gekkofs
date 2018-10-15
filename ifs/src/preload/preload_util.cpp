@@ -63,9 +63,6 @@ int metadata_to_stat(const std::string& path, const Metadata& md, struct stat& a
     if (CTX->fs_conf()->gid_state) {
         attr.st_gid = md.gid();
     }
-    if (CTX->fs_conf()->inode_no_state) {
-        attr.st_ino = md.inode_no();
-    }
     if (CTX->fs_conf()->link_cnt_state) {
         attr.st_nlink = md.link_count();
     }

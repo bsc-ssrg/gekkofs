@@ -42,7 +42,6 @@ MERCURY_GEN_PROC(rpc_update_metadentry_in_t,
 ((hg_uint32_t) (uid))\
 ((hg_uint32_t) (gid))\
 ((hg_int64_t) (size))\
-((hg_uint64_t) (inode_no))\
 ((hg_int64_t) (blocks))\
 ((hg_int64_t) (atime))\
 ((hg_int64_t) (mtime))\
@@ -52,7 +51,6 @@ MERCURY_GEN_PROC(rpc_update_metadentry_in_t,
 ((hg_bool_t) (uid_flag))\
 ((hg_bool_t) (gid_flag))\
 ((hg_bool_t) (size_flag))\
-((hg_bool_t) (inode_no_flag))\
 ((hg_bool_t) (block_flag))\
 ((hg_bool_t) (atime_flag))\
 ((hg_bool_t) (mtime_flag))\

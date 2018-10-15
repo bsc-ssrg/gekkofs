@@ -22,9 +22,6 @@ private:
     std::unordered_map<std::string, std::string> hashmap_;
     std::hash<std::string> hashf_;
 
-    // inodes
-    ino_t inode_count_;
-
     // Later the blocksize will likely be coupled to the chunks to allow individually big chunk sizes.
     blksize_t blocksize_;
 
@@ -56,16 +53,10 @@ private:
     bool ctime_state_;
     bool uid_state_;
     bool gid_state_;
-    bool inode_no_state_;
     bool link_cnt_state_;
     bool blocks_state_;
 
 public:
-
-    // mutex has a deleted method to assign an existing mutex. As such it cannot use getter or setters
-    std::mutex inode_mutex;
-
-
     static FsData* getInstance() {
         static FsData instance;
         return &instance;
@@ -76,8 +67,6 @@ public:
     void operator=(FsData const&) = delete;
 
     // Utility member functions
-
-    ino_t raise_inode_count(ino_t count);
 
     bool is_local_op(size_t recipient);
 
@@ -90,10 +79,6 @@ public:
     const std::hash<std::string>& hashf() const;
 
     void hashf(const std::hash<std::string>& hashf_);
-
-    ino_t inode_count() const;
-
-    void inode_count(ino_t inode_count);
 
     blksize_t blocksize() const;
 
@@ -168,10 +153,6 @@ public:
     bool gid_state() const;
 
     void gid_state(bool gid_state);
-
-    bool inode_no_state() const;
-
-    void inode_no_state(bool inode_no_state);
 
     bool link_cnt_state() const;
 

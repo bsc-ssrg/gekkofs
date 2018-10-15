@@ -16,7 +16,6 @@ private:
     uid_t uid_;
     gid_t gid_;
     mode_t mode_;
-    unsigned long inode_no_;
     nlink_t link_count_;   // number of names for this inode (hardlinks)
     size_t size_;          // size_ in bytes, might be computed instead of stored
     blkcnt_t blocks_;      // allocated file system blocks_
@@ -45,8 +44,6 @@ public:
     void gid(gid_t gid_);
     mode_t mode() const;
     void mode(mode_t mode_);
-    unsigned long inode_no() const;
-    void inode_no(unsigned long inode_no_);
     nlink_t link_count() const;
     void link_count(nlink_t link_count_);
     size_t size() const;

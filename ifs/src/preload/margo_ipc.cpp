@@ -95,7 +95,6 @@ bool ipc_send_get_fs_config() {
             CTX->fs_conf()->ctime_state = out.ctime_state;
             CTX->fs_conf()->uid_state = out.uid_state;
             CTX->fs_conf()->gid_state = out.gid_state;
-            CTX->fs_conf()->inode_no_state = out.inode_no_state;
             CTX->fs_conf()->link_cnt_state = out.link_cnt_state;
             CTX->fs_conf()->blocks_state = out.blocks_state;
             CTX->fs_conf()->uid = out.uid;

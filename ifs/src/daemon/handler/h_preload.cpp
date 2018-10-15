@@ -23,7 +23,6 @@ static hg_return_t ipc_srv_fs_config(hg_handle_t handle) {
     out.ctime_state = static_cast<hg_bool_t>(ADAFS_DATA->ctime_state());
     out.uid_state = static_cast<hg_bool_t>(ADAFS_DATA->uid_state());
     out.gid_state = static_cast<hg_bool_t>(ADAFS_DATA->gid_state());
-    out.inode_no_state = static_cast<hg_bool_t>(ADAFS_DATA->inode_no_state());
     out.link_cnt_state = static_cast<hg_bool_t>(ADAFS_DATA->link_cnt_state());
     out.blocks_state = static_cast<hg_bool_t>(ADAFS_DATA->blocks_state());
     out.uid = getuid();

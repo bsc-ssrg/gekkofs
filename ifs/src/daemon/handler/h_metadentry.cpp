@@ -220,8 +220,6 @@ static hg_return_t rpc_srv_update_metadentry(hg_handle_t handle) {
     // do update
     try {
         Metadata md = get_metadentry(in.path);
-        if (in.inode_no_flag == HG_TRUE)
-            md.inode_no(in.inode_no);
         if (in.block_flag == HG_TRUE)
             md.blocks(in.blocks);
         if (in.uid_flag == HG_TRUE)

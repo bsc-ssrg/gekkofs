@@ -20,7 +20,6 @@ MERCURY_GEN_PROC(ipc_config_out_t, ((hg_const_string_t) (mountdir))
 ((hg_bool_t) (ctime_state)) \
 ((hg_bool_t) (uid_state)) \
 ((hg_bool_t) (gid_state)) \
-((hg_bool_t) (inode_no_state)) \
 ((hg_bool_t) (link_cnt_state)) \
 ((hg_bool_t) (blocks_state)) \
 ((hg_uint32_t) (uid)) \

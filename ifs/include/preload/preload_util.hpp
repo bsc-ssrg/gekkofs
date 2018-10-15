@@ -19,7 +19,6 @@ struct MetadentryUpdateFlags {
     bool uid = false;
     bool gid = false;
     bool mode = false;
-    bool inode_no = false;
     bool link_count = false;
     bool size = false;
     bool blocks = false;
