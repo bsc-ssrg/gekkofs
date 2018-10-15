@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
 
     fd = open(p.c_str(), O_WRONLY | O_CREAT, 0777);
     if(fd < 0){
-        cerr << "Error opening file (write)" << endl;
+        cerr << "Error opening file for write: " << strerror(errno) << endl;
         return -1;
     }
     auto nw = write(fd, buffIn, strlen(buffIn));

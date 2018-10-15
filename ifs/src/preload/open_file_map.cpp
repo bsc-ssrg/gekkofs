@@ -7,8 +7,9 @@
 
 using namespace std;
 
-OpenFile::OpenFile(const string& path, const int flags, FileType type) :
+OpenFile::OpenFile(const fuid_t fuid, const string& path, const int flags, FileType type) :
     type_(type),
+    fuid_(fuid),
     path_(path)
 {
     // set flags to OpenFile
@@ -39,6 +40,10 @@ OpenFile::~OpenFile() {
 
 string OpenFile::path() const {
     return path_;
+}
+
+fuid_t OpenFile::fuid() const {
+    return fuid_;
 }
 
 void OpenFile::path(const string& path_) {

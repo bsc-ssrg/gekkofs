@@ -30,6 +30,7 @@ std::shared_ptr<Metadata> adafs_metadata(const std::string& path);
 
 int adafs_open(const std::string& path, mode_t mode, int flags);
 
+int adafs_mk_node(const std::string& path, mode_t mode, fuid_t& fuid);
 int adafs_mk_node(const std::string& path, mode_t mode);
 
 int adafs_rm_node(const std::string& path);

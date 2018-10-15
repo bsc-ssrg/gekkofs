@@ -70,6 +70,14 @@ std::shared_ptr<Distributor> FsData::distributor() const {
     return distributor_;
 }
 
+void FsData::fuids_manager(std::shared_ptr<UidsManager> fuids_manager) {
+    fuids_manager_ = fuids_manager;
+}
+
+std::shared_ptr<UidsManager> FsData::fuids_manager() const {
+    return fuids_manager_;
+}
+
 const std::string& FsData::rootdir() const {
     return rootdir_;
 }

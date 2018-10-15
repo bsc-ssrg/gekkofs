@@ -12,7 +12,7 @@ class Metadata;
 namespace rpc_send {
 
 
-int mk_node(const std::string& path, mode_t mode);
+int mk_node(const std::string& path, mode_t mode, fuid_t& fuid);
 
 int access(const std::string& path, int mask);
 
