@@ -9,8 +9,8 @@ OpenDir::DirEntry::DirEntry(const std::string& name, const FileType type):
 }
 
 
-OpenDir::OpenDir(const std::string& path) :
-    OpenFile(path, 0, FileType::directory) {
+OpenDir::OpenDir(const fuid_t fuid, const std::string& path) :
+    OpenFile(fuid, path, 0, FileType::directory) {
     is_dirent_valid = false;
 }
 

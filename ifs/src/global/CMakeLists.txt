@@ -25,6 +25,7 @@ target_sources(metadata
     PUBLIC
     ${INCLUDE_DIR}/global/metadata.hpp
     PRIVATE
+    ${INCLUDE_DIR}/global/global_defs.hpp
     ${CMAKE_CURRENT_LIST_DIR}/metadata.cpp
     )
 target_link_libraries(metadata
