@@ -1,6 +1,7 @@
 #include <vector>
 #include <string>
 #include <sys/stat.h>
+#include <limits.h>
 #include <cassert>
 #include <libsyscall_intercept_hook_point.h>
 
@@ -141,7 +142,7 @@ unsigned int path_match_components(const std::string& path, unsigned int &path_c
                 if (!resolve_last_link && end == path.size()) {
                     continue;
                 }
-                char link_resolved[PATH_MAX_LEN];
+                char * link_resolved = new char[PATH_MAX];
                 if (realpath(resolved.c_str(), link_resolved) == nullptr) {
                     CTX->log()->error("{}() Failed to get realpath for link '{}'. Error: {}", __func__, resolved, strerror(errno));
                     resolved.append(path, end, std::string::npos);
