@@ -64,6 +64,11 @@ find_package(Boost 1.53 REQUIRED
 
 find_package(Threads REQUIRED)
 
+option(LOG_SYSCALLS "Enable logging for syscall interception. Trace log level must be set at rountine" OFF)
+if(LOG_SYSCALLS)
+    add_definitions(-DLOG_SYSCALLS)
+endif()
+
 option(USE_OFI_VERBS "Use libfabric plugin with verbs." OFF)
 if (USE_OFI_VERBS)
     find_package(LibFabric REQUIRED)
