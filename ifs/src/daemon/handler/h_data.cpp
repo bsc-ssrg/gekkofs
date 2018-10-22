@@ -2,6 +2,7 @@
 #include <global/rpc/rpc_types.hpp>
 #include <daemon/handler/rpc_defs.hpp>
 #include <global/rpc/rpc_utils.hpp>
+#include "global/global_defs.hpp"
 #include <global/rpc/distributor.hpp>
 #include <global/chunk_calc_util.hpp>
 #include <daemon/adafs_daemon.hpp>
@@ -11,7 +12,7 @@
 using namespace std;
 
 struct write_chunk_args {
-    const std::string* path;
+    fuid_t fuid;
     const char* buf;
     rpc_chnk_id_t chnk_id;
     size_t size;
@@ -21,7 +22,7 @@ struct write_chunk_args {
 
 /**
  * Used by an argobots threads. Argument args has the following fields:
- * const std::string* path;
+ * const fuid_t fuid;
    const char* buf;
    const rpc_chnk_id_t* chnk_id;
    size_t size;
@@ -34,13 +35,12 @@ struct write_chunk_args {
 void write_file_abt(void* _arg) {
     // Unpack args
     auto* arg = static_cast<struct write_chunk_args*>(_arg);
-    const std::string& path = *(arg->path);
 
     try {
-        ADAFS_DATA->storage()->write_chunk(path, arg->chnk_id,
+        ADAFS_DATA->storage()->write_chunk(arg->fuid, arg->chnk_id,
                 arg->buf, arg->size, arg->off, arg->eventual);
     } catch (const std::exception& e){
-        ADAFS_DATA->spdlogger()->error("{}() Error writing chunk {} of file {}", __func__, arg->chnk_id, path);
+        ADAFS_DATA->spdlogger()->error("{}() Error writing chunk {} of file {}", __func__, arg->chnk_id, arg->fuid);
         auto wrote = 0;
         ABT_eventual_set(arg->eventual, &wrote, sizeof(size_t));
     }
@@ -48,7 +48,7 @@ void write_file_abt(void* _arg) {
 }
 
 struct read_chunk_args {
-    const std::string* path;
+    fuid_t fuid;
     char* buf;
     rpc_chnk_id_t chnk_id;
     size_t size;
@@ -58,7 +58,7 @@ struct read_chunk_args {
 
 /**
  * Used by an argobots threads. Argument args has the following fields:
- * const std::string* path;
+ * const fuid_t fuid;
    char* buf;
    const rpc_chnk_id_t* chnk_id;
    size_t size;
@@ -71,13 +71,12 @@ struct read_chunk_args {
 void read_file_abt(void* _arg) {
     //unpack args
     auto* arg = static_cast<struct read_chunk_args*>(_arg);
-    const std::string& path = *(arg->path);
 
     try {
-        ADAFS_DATA->storage()->read_chunk(path, arg->chnk_id,
+        ADAFS_DATA->storage()->read_chunk(arg->fuid, arg->chnk_id,
                 arg->buf, arg->size, arg->off, arg->eventual);
     } catch (const std::exception& e){
-        ADAFS_DATA->spdlogger()->error("{}() Error reading chunk {} of file {}", __func__, arg->chnk_id, path);
+        ADAFS_DATA->spdlogger()->error("{}() Error reading chunk {} of file {}", __func__, arg->chnk_id, arg->fuid);
         size_t read = 0;
         ABT_eventual_set(arg->eventual, &read, sizeof(size_t));
     }
@@ -126,8 +125,8 @@ static hg_return_t rpc_srv_write_data(hg_handle_t handle) {
     auto hgi = margo_get_info(handle);
     auto mid = margo_hg_info_get_instance(hgi);
     auto bulk_size = margo_bulk_get_size(in.bulk_handle);
-    ADAFS_DATA->spdlogger()->debug("{}() Got write RPC (local {}) with path {} size {} offset {}", __func__,
-                                   (margo_get_info(handle)->context_id == ADAFS_DATA->host_id()), in.path, bulk_size,
+    ADAFS_DATA->spdlogger()->debug("{}() Got write RPC (local {}) with fuid {} size {} offset {}", __func__,
+                                   (margo_get_info(handle)->context_id == ADAFS_DATA->host_id()), in.fuid, bulk_size,
                                    in.offset);
     /*
      * 2. Set up buffers for pull bulk transfers
@@ -148,7 +147,6 @@ static hg_return_t rpc_srv_write_data(hg_handle_t handle) {
         ADAFS_DATA->spdlogger()->error("{}() Failed to access allocated buffer from bulk handle", __func__);
         return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
     }
-    auto path = make_shared<string>(in.path);
     // chnk_ids used by this host
     vector<uint64_t> chnk_ids_host(in.chunk_n);
     // counter to track how many chunks have been assigned
@@ -182,7 +180,7 @@ static hg_return_t rpc_srv_write_data(hg_handle_t handle) {
     // Start to look for a chunk that hashes to this host with the first chunk in the buffer
     for (auto chnk_id_file = in.chunk_start; chnk_id_file < in.chunk_end || chnk_id_curr < in.chunk_n; chnk_id_file++) {
         // Continue if chunk does not hash to this host
-        if (ADAFS_DATA->distributor()->locate_data(in.path, chnk_id_file) != ADAFS_DATA->host_id())
+        if (ADAFS_DATA->distributor()->locate_data(in.fuid, chnk_id_file) != ADAFS_DATA->host_id())
             continue;
         chnk_ids_host[chnk_id_curr] = chnk_id_file; // save this id to host chunk list
         // offset case. Only relevant in the first iteration of the loop and if the chunk hashes to this host
@@ -214,16 +212,16 @@ static hg_return_t rpc_srv_write_data(hg_handle_t handle) {
             if (chnk_id_curr == in.chunk_n - 1)
                 transfer_size = chnk_size_left_host;
             ADAFS_DATA->spdlogger()->trace(
-                    "{}() BULK_TRANSFER hostid {} file {} chnkid {} total_Csize {} Csize_left {} origin offset {} local offset {} transfersize {}",
-                    __func__, ADAFS_DATA->host_id(), in.path, chnk_id_file, in.total_chunk_size, chnk_size_left_host,
+                    "{}() BULK_TRANSFER hostid {} fuid {} chnkid {} total_Csize {} Csize_left {} origin offset {} local offset {} transfersize {}",
+                    __func__, ADAFS_DATA->host_id(), in.fuid, chnk_id_file, in.total_chunk_size, chnk_size_left_host,
                     origin_offset, local_offset, transfer_size);
             // RDMA the data to here
             ret = margo_bulk_transfer(mid, HG_BULK_PULL, hgi->addr, in.bulk_handle, origin_offset,
                                       bulk_handle, local_offset, transfer_size);
             if (ret != HG_SUCCESS) {
                 ADAFS_DATA->spdlogger()->error(
-                        "{}() Failed to pull data from client. file {} chunk {} (startchunk {}; endchunk {})", __func__,
-                        *path, chnk_id_file, in.chunk_start, (in.chunk_end - 1));
+                        "{}() Failed to pull data from client. fuid {} chunk {} (startchunk {}; endchunk {})", __func__,
+                        in.fuid, chnk_id_file, in.chunk_start, (in.chunk_end - 1));
                 cancel_abt_io(&abt_tasks, &task_eventuals, chnk_id_curr);
                 return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
             }
@@ -236,7 +234,7 @@ static hg_return_t rpc_srv_write_data(hg_handle_t handle) {
         // Starting tasklets for parallel I/O
         ABT_eventual_create(sizeof(size_t), &task_eventuals[chnk_id_curr]); // written file return value
         auto task_arg = make_unique<struct write_chunk_args>();
-        task_arg->path = path.get();
+        task_arg->fuid = in.fuid;
         task_arg->buf = bulk_buf_ptrs[chnk_id_curr];
         task_arg->chnk_id = chnk_ids_host[chnk_id_curr];
         task_arg->size = chnk_sizes[chnk_id_curr];
@@ -319,8 +317,8 @@ static hg_return_t rpc_srv_read_data(hg_handle_t handle) {
     auto hgi = margo_get_info(handle);
     auto mid = margo_hg_info_get_instance(hgi);
     auto bulk_size = margo_bulk_get_size(in.bulk_handle);
-    ADAFS_DATA->spdlogger()->debug("{}() Got read RPC (local {}) with path {} size {} offset {}", __func__,
-                                   (margo_get_info(handle)->context_id == ADAFS_DATA->host_id()), in.path, bulk_size,
+    ADAFS_DATA->spdlogger()->debug("{}() Got read RPC (local {}) with fuid {} size {} offset {}", __func__,
+                                   (margo_get_info(handle)->context_id == ADAFS_DATA->host_id()), in.fuid, bulk_size,
                                    in.offset);
 
     /*
@@ -342,7 +340,6 @@ static hg_return_t rpc_srv_read_data(hg_handle_t handle) {
         ADAFS_DATA->spdlogger()->error("{}() Failed to access allocated buffer from bulk handle", __func__);
         return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
     }
-    auto path = make_shared<string>(in.path);
     // chnk_ids used by this host
     vector<uint64_t> chnk_ids_host(in.chunk_n);
     // counter to track how many chunks have been assigned
@@ -368,7 +365,7 @@ static hg_return_t rpc_srv_read_data(hg_handle_t handle) {
     // Start to look for a chunk that hashes to this host with the first chunk in the buffer
     for (auto chnk_id_file = in.chunk_start; chnk_id_file < in.chunk_end || chnk_id_curr < in.chunk_n; chnk_id_file++) {
         // Continue if chunk does not hash to this host
-        if (ADAFS_DATA->distributor()->locate_data(in.path, chnk_id_file) != ADAFS_DATA->host_id())
+        if (ADAFS_DATA->distributor()->locate_data(in.fuid, chnk_id_file) != ADAFS_DATA->host_id())
             continue;
         chnk_ids_host[chnk_id_curr] = chnk_id_file; // save this id to host chunk list
         // Only relevant in the first iteration of the loop and if the chunk hashes to this host
@@ -405,7 +402,7 @@ static hg_return_t rpc_srv_read_data(hg_handle_t handle) {
         // Starting tasklets for parallel I/O
         ABT_eventual_create(sizeof(size_t), &task_eventuals[chnk_id_curr]); // written file return value
         auto task_arg = make_unique<read_chunk_args>();
-        task_arg->path = path.get();
+        task_arg->fuid = in.fuid;
         task_arg->buf = bulk_buf_ptrs[chnk_id_curr];
         task_arg->chnk_id = chnk_ids_host[chnk_id_curr];
         task_arg->size = chnk_sizes[chnk_id_curr];
@@ -446,8 +443,8 @@ static hg_return_t rpc_srv_read_data(hg_handle_t handle) {
                 bulk_handle, local_offsets[chnk_id_curr], *task_read_size);
         if (ret != HG_SUCCESS) {
             ADAFS_DATA->spdlogger()->error(
-                    "{}() Failed push chnkid {} on path {} to client. origin offset {} local offset {} chunk size {}",
-                    __func__, chnk_id_curr, in.path, origin_offsets[chnk_id_curr], local_offsets[chnk_id_curr],
+                    "{}() Failed push chnkid {} on fuid {} to client. origin offset {} local offset {} chunk size {}",
+                    __func__, chnk_id_curr, in.fuid, origin_offsets[chnk_id_curr], local_offsets[chnk_id_curr],
                     chnk_sizes[chnk_id_curr]);
             cancel_abt_io(&abt_tasks, &task_eventuals, in.chunk_n);
             return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
@@ -479,18 +476,18 @@ static hg_return_t rpc_srv_trunc_data(hg_handle_t handle) {
         ADAFS_DATA->spdlogger()->error("{}() Could not get RPC input data with err {}", __func__, ret);
         throw runtime_error("Failed to get RPC input data");
     }
-    ADAFS_DATA->spdlogger()->debug("{}() path: '{}', length: {}", __func__, in.path, in.length);
+    ADAFS_DATA->spdlogger()->debug("{}() fuid: '{}', length: {}", __func__, in.fuid, in.length);
 
     unsigned int chunk_start = chnk_id_for_offset(in.length, CHUNKSIZE);
 
     // If we trunc in the the middle of a chunk, do not delete that chunk
     auto left_pad = chnk_lpad(in.length, CHUNKSIZE);
     if(left_pad != 0) {
-        ADAFS_DATA->storage()->truncate_chunk(in.path, chunk_start, left_pad);
+        ADAFS_DATA->storage()->truncate_chunk(in.fuid, chunk_start, left_pad);
         ++chunk_start;
     }
 
-    ADAFS_DATA->storage()->trim_chunk_space(in.path, chunk_start);
+    ADAFS_DATA->storage()->trim_chunk_space(in.fuid, chunk_start);
 
     ADAFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
     auto hret = margo_respond(handle, &out);
