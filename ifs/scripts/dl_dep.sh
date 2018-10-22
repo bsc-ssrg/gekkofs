@@ -185,7 +185,7 @@ fi
 
 # get BMI
 if [ "${NA_LAYER}" == "bmi" ] || [ "${NA_LAYER}" == "all" ]; then
-    clonedeps "bmi" "git://git.mcs.anl.gov/bmi" "2abbe991edc45b713e64c5fed78a20fdaddae59b" &
+    clonedeps "bmi" "http://git.mcs.anl.gov/bmi.git" "2abbe991edc45b713e64c5fed78a20fdaddae59b" &
 fi
 # get CCI
 if [ "${NA_LAYER}" == "cci" ] || [ "${NA_LAYER}" == "all" ]; then
