@@ -16,7 +16,7 @@ int mk_node(const std::string& path, mode_t mode, fuid_t& fuid);
 
 int stat(const std::string& path, std::string& attr);
 
-int rm_node(const std::string& path, const bool remove_metadentry_only);
+int rm_node(const std::string& path, const fuid_t fuid, const bool remove_metadentry_only);
 
 int decr_size(const std::string& path, size_t length);
 

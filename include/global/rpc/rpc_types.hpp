@@ -28,11 +28,14 @@ MERCURY_GEN_PROC(rpc_path_only_in_t, ((hg_const_string_t) (path)))
 MERCURY_GEN_PROC(rpc_stat_out_t, ((hg_int32_t) (err))
         ((hg_const_string_t) (db_val)))
 
-MERCURY_GEN_PROC(rpc_rm_node_in_t, ((hg_const_string_t) (path)))
+MERCURY_GEN_PROC(rpc_rm_node_in_t,
+        ((hg_uint64_t) (fuid))\
+        ((hg_const_string_t) (path)))
 
 MERCURY_GEN_PROC(rpc_trunc_in_t,
-                 ((hg_const_string_t) (path)) \
-                 ((hg_uint64_t)       (length)))
+        ((hg_uint64_t) (fuid))\
+        ((hg_const_string_t) (path)) \
+        ((hg_uint64_t)       (length)))
 
 MERCURY_GEN_PROC(rpc_update_metadentry_in_t,
                  ((hg_const_string_t) (path))\
@@ -73,26 +76,26 @@ MERCURY_GEN_PROC(rpc_mk_symlink_in_t,
 
 // data
 MERCURY_GEN_PROC(rpc_read_data_in_t,
-                 ((hg_const_string_t) (path))\
-((int64_t) (offset))\
-((hg_uint64_t) (chunk_n))\
-((hg_uint64_t) (chunk_start))\
-((hg_uint64_t) (chunk_end))\
-((hg_uint64_t) (total_chunk_size))\
-((hg_bulk_t) (bulk_handle)))
+        ((hg_uint64_t) (fuid))\
+        ((int64_t) (offset))\
+        ((hg_uint64_t) (chunk_n))\
+        ((hg_uint64_t) (chunk_start))\
+        ((hg_uint64_t) (chunk_end))\
+        ((hg_uint64_t) (total_chunk_size))\
+        ((hg_bulk_t) (bulk_handle)))
 
 MERCURY_GEN_PROC(rpc_data_out_t,
                  ((int32_t) (res))\
 ((hg_size_t) (io_size)))
 
 MERCURY_GEN_PROC(rpc_write_data_in_t,
-                 ((hg_const_string_t) (path))\
-((int64_t) (offset))\
-((hg_uint64_t) (chunk_n))\
-((hg_uint64_t) (chunk_start))\
-((hg_uint64_t) (chunk_end))\
-((hg_uint64_t) (total_chunk_size))\
-((hg_bulk_t) (bulk_handle)))
+        ((hg_uint64_t) (fuid))\
+        ((int64_t) (offset))\
+        ((hg_uint64_t) (chunk_n))\
+        ((hg_uint64_t) (chunk_start))\
+        ((hg_uint64_t) (chunk_end))\
+        ((hg_uint64_t) (total_chunk_size))\
+        ((hg_bulk_t) (bulk_handle)))
 
 MERCURY_GEN_PROC(rpc_get_dirents_in_t,
     ((hg_const_string_t) (path))

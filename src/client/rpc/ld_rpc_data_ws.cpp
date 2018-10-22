@@ -19,7 +19,7 @@ using namespace std;
 /**
  * Sends an RPC request to a specific node to pull all chunks that belong to him
  */
-ssize_t write(const string& path, const void* buf, const bool append_flag, const off64_t in_offset,
+ssize_t write(const fuid_t fuid, const void* buf, const bool append_flag, const off64_t in_offset,
                        const size_t write_size, const int64_t updated_metadentry_size) {
     assert(write_size > 0);
     // Calculate chunkid boundaries and numbers so that daemons know in which interval to look for chunks
@@ -38,7 +38,7 @@ ssize_t write(const string& path, const void* buf, const bool append_flag, const
     uint64_t chnk_start_target = 0;
     uint64_t chnk_end_target = 0;
     for (uint64_t chnk_id = chnk_start; chnk_id <= chnk_end; chnk_id++) {
-        auto target = CTX->distributor()->locate_data(path, chnk_id);
+        auto target = CTX->distributor()->locate_data(fuid, chnk_id);
         if (target_chnks.count(target) == 0) {
             target_chnks.insert(make_pair(target, vector<uint64_t>{chnk_id}));
             targets.push_back(target);
@@ -75,7 +75,7 @@ ssize_t write(const string& path, const void* buf, const bool append_flag, const
         if (target == chnk_end_target) // receiver of last chunk must subtract
             total_chunk_size -= chnk_rpad(offset + write_size, CHUNKSIZE);
         // Fill RPC input
-        rpc_in[i].path = path.c_str();
+        rpc_in[i].fuid = fuid;
         rpc_in[i].offset = chnk_lpad(offset, CHUNKSIZE);// first offset in targets is the chunk with a potential offset
         rpc_in[i].chunk_n = target_chnks[target].size(); // number of chunks handled by that destination
         rpc_in[i].chunk_start = chnk_start; // chunk start id of this write
@@ -86,7 +86,7 @@ ssize_t write(const string& path, const void* buf, const bool append_flag, const
         // Send RPC
         ret = margo_iforward(rpc_handles[i], &rpc_in[i], &rpc_waiters[i]);
         if (ret != HG_SUCCESS) {
-            CTX->log()->error("{}() Unable to send non-blocking rpc for path {} and recipient {}", __func__, path,
+            CTX->log()->error("{}() Unable to send non-blocking rpc for fuid {} and recipient {}", __func__, fuid,
                              target);
             errno = EBUSY;
             for (uint64_t j = 0; j < i + 1; j++) {
@@ -106,7 +106,7 @@ ssize_t write(const string& path, const void* buf, const bool append_flag, const
         // XXX We might need a timeout here to not wait forever for an output that never comes?
         ret = margo_wait(rpc_waiters[i]);
         if (ret != HG_SUCCESS) {
-            CTX->log()->error("{}() Unable to wait for margo_request handle for path {} recipient {}", __func__, path,
+            CTX->log()->error("{}() Unable to wait for margo_request handle for fuid {} recipient {}", __func__, fuid,
                              targets[i]);
             errno = EBUSY;
             err = -1;
@@ -115,7 +115,7 @@ ssize_t write(const string& path, const void* buf, const bool append_flag, const
         rpc_data_out_t out{};
         ret = margo_get_output(rpc_handles[i], &out);
         if (ret != HG_SUCCESS) {
-            CTX->log()->error("{}() Failed to get rpc output for path {} recipient {}", __func__, path, targets[i]);
+            CTX->log()->error("{}() Failed to get rpc output for fuid {} recipient {}", __func__, fuid, targets[i]);
             err = -1;
         }
         CTX->log()->debug("{}() Got response {}", __func__, out.res);
@@ -133,7 +133,7 @@ ssize_t write(const string& path, const void* buf, const bool append_flag, const
 /**
  * Sends an RPC request to a specific node to push all chunks that belong to him
  */
-ssize_t read(const string& path, void* buf, const off64_t offset, const size_t read_size) {
+ssize_t read(const fuid_t fuid, void* buf, const off64_t offset, const size_t read_size) {
     // Calculate chunkid boundaries and numbers so that daemons know in which interval to look for chunks
     auto chnk_start = chnk_id_for_offset(offset, CHUNKSIZE); // first chunk number
     auto chnk_end = chnk_id_for_offset((offset + read_size - 1), CHUNKSIZE);
@@ -146,7 +146,7 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
     uint64_t chnk_start_target = 0;
     uint64_t chnk_end_target = 0;
     for (uint64_t chnk_id = chnk_start; chnk_id <= chnk_end; chnk_id++) {
-        auto target = CTX->distributor()->locate_data(path, chnk_id);
+        auto target = CTX->distributor()->locate_data(fuid, chnk_id);
         if (target_chnks.count(target) == 0) {
             target_chnks.insert(make_pair(target, vector<uint64_t>{chnk_id}));
             targets.push_back(target);
@@ -183,7 +183,7 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
             total_chunk_size -= chnk_rpad(offset + read_size, CHUNKSIZE);
 
         // Fill RPC input
-        rpc_in[i].path = path.c_str();
+        rpc_in[i].fuid = fuid;
         rpc_in[i].offset = chnk_lpad(offset, CHUNKSIZE);// first offset in targets is the chunk with a potential offset
         rpc_in[i].chunk_n = target_chnks[target].size(); // number of chunks handled by that destination
         rpc_in[i].chunk_start = chnk_start; // chunk start id of this write
@@ -194,7 +194,7 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
         // Send RPC
         ret = margo_iforward(rpc_handles[i], &rpc_in[i], &rpc_waiters[i]);
         if (ret != HG_SUCCESS) {
-            CTX->log()->error("{}() Unable to send non-blocking rpc for path {} and recipient {}", __func__, path,
+            CTX->log()->error("{}() Unable to send non-blocking rpc for fuid {} and recipient {}", __func__, fuid,
                              target);
             errno = EBUSY;
             for (uint64_t j = 0; j < i + 1; j++) {
@@ -214,7 +214,7 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
         // XXX We might need a timeout here to not wait forever for an output that never comes?
         ret = margo_wait(rpc_waiters[i]);
         if (ret != HG_SUCCESS) {
-            CTX->log()->error("{}() Unable to wait for margo_request handle for path {} recipient {}", __func__, path,
+            CTX->log()->error("{}() Unable to wait for margo_request handle for fuid {} recipient {}", __func__, fuid,
                              targets[i]);
             errno = EBUSY;
             err = -1;
@@ -223,7 +223,7 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
         rpc_data_out_t out{};
         ret = margo_get_output(rpc_handles[i], &out);
         if (ret != HG_SUCCESS) {
-            CTX->log()->error("{}() Failed to get rpc output for path {} recipient {}", __func__, path, targets[i]);
+            CTX->log()->error("{}() Failed to get rpc output for fuid {} recipient {}", __func__, fuid, targets[i]);
             err = -1;
         }
         CTX->log()->debug("{}() Got response {}", __func__, out.res);
@@ -238,11 +238,11 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
     return (err < 0) ? err : out_size;
 }
 
-int trunc_data(const std::string& path, size_t current_size, size_t new_size) {
+int trunc_data(const fuid_t fuid, size_t current_size, size_t new_size) {
     assert(current_size > new_size);
     hg_return_t ret;
     rpc_trunc_in_t in;
-    in.path = path.c_str();
+    in.fuid = fuid;
     in.length = new_size;
 
     bool error = false;
@@ -252,7 +252,7 @@ int trunc_data(const std::string& path, size_t current_size, size_t new_size) {
     const unsigned int chunk_end = chnk_id_for_offset(current_size - new_size - 1, CHUNKSIZE);
     std::unordered_set<unsigned int> hosts;
     for(unsigned int chunk_id = chunk_start; chunk_id <= chunk_end; ++chunk_id) {
-        hosts.insert(CTX->distributor()->locate_data(path, chunk_id));
+        hosts.insert(CTX->distributor()->locate_data(fuid, chunk_id));
     }
 
     std::vector<hg_handle_t> rpc_handles(hosts.size());

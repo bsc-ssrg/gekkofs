@@ -52,7 +52,6 @@ Metadata get_metadentry(const std::string& path) {
  */
 void remove_node(const string& path) {
     ADAFS_DATA->mdb()->remove(path); // remove metadentry
-    ADAFS_DATA->storage()->destroy_chunk_space(path); // destroys all chunks for the path on this node
 }
 
 /**

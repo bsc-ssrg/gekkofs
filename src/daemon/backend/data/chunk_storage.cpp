@@ -27,19 +27,16 @@ ChunkStorage::ChunkStorage(const std::string& path, const size_t chunksize) :
     log->debug("Chunk storage initialized with path: '{}'", root_path);
 }
 
-std::string ChunkStorage::get_chunks_dir(const std::string& file_path) {
-    assert(is_absolute_path(file_path));
-    std::string chunk_dir = file_path.substr(1);
-    std::replace(chunk_dir.begin(), chunk_dir.end(), '/', ':');
-    return chunk_dir;
+std::string ChunkStorage::get_chunks_dir(const fuid_t fuid) {
+    return fmt::to_string(fuid);
 }
 
-std::string ChunkStorage::get_chunk_path(const std::string& file_path, unsigned int chunk_id) {
-    return get_chunks_dir(file_path) + '/' + std::to_string(chunk_id);
+std::string ChunkStorage::get_chunk_path(const fuid_t fuid, unsigned int chunk_id) {
+    return fmt::format("{}/{}", fuid, chunk_id);
 }
 
-void ChunkStorage::destroy_chunk_space(const std::string& file_path) const {
-    auto chunk_dir = absolute(get_chunks_dir(file_path));
+void ChunkStorage::destroy_chunk_space(const fuid_t fuid) const {
+    auto chunk_dir = absolute(get_chunks_dir(fuid));
     try {
         bfs::remove_all(chunk_dir);
     } catch (const bfs::filesystem_error& e){
@@ -47,8 +44,8 @@ void ChunkStorage::destroy_chunk_space(const std::string& file_path) const {
     }
 }
 
-void ChunkStorage::init_chunk_space(const std::string& file_path) const {
-    auto chunk_dir = absolute(get_chunks_dir(file_path));
+void ChunkStorage::init_chunk_space(const fuid_t fuid) const {
+    auto chunk_dir = absolute(get_chunks_dir(fuid));
     auto err = mkdir(chunk_dir.c_str(), 0750);
     if(err == -1 && errno != EEXIST){
         log->error("Failed to create chunk dir. Path: {}, Error: {}", chunk_dir, std::strerror(errno));
@@ -60,10 +57,10 @@ void ChunkStorage::init_chunk_space(const std::string& file_path) const {
  *
  * This is pretty slow method because it cycle over all the chunks sapce for this file.
  */
-void ChunkStorage::trim_chunk_space(const std::string& file_path,
+void ChunkStorage::trim_chunk_space(const fuid_t fuid,
         unsigned int chunk_start, unsigned int chunk_end) {
 
-    auto chunk_dir = absolute(get_chunks_dir(file_path));
+    auto chunk_dir = absolute(get_chunks_dir(fuid));
     const bfs::directory_iterator end;
 
     for (bfs::directory_iterator chunk_file(chunk_dir); chunk_file != end; ++chunk_file) {
@@ -79,8 +76,8 @@ void ChunkStorage::trim_chunk_space(const std::string& file_path,
     }
 }
 
-void ChunkStorage::delete_chunk(const std::string& file_path, unsigned int chunk_id) {
-    auto chunk_path = absolute(get_chunk_path(file_path, chunk_id));
+void ChunkStorage::delete_chunk(const fuid_t fuid, unsigned int chunk_id) {
+    auto chunk_path = absolute(get_chunk_path(fuid, chunk_id));
     int ret = unlink(chunk_path.c_str());
     if(ret == -1) {
         log->error("Failed to remove chunk file. File: {}, Error: {}", chunk_path, std::strerror(errno));
@@ -88,8 +85,8 @@ void ChunkStorage::delete_chunk(const std::string& file_path, unsigned int chunk
     }
 }
 
-void ChunkStorage::truncate_chunk(const std::string& file_path, unsigned int chunk_id, off_t length) {
-    auto chunk_path = absolute(get_chunk_path(file_path, chunk_id));
+void ChunkStorage::truncate_chunk(const fuid_t fuid, unsigned int chunk_id, off_t length) {
+    auto chunk_path = absolute(get_chunk_path(fuid, chunk_id));
     assert(length > 0 && (unsigned int)length <= chunksize);
     int ret = truncate(chunk_path.c_str(), length);
     if(ret == -1) {
@@ -98,14 +95,14 @@ void ChunkStorage::truncate_chunk(const std::string& file_path, unsigned int chu
     }
 }
 
-void ChunkStorage::write_chunk(const std::string& file_path, unsigned int chunk_id,
+void ChunkStorage::write_chunk(const fuid_t fuid, unsigned int chunk_id,
         const char * buff, size_t size, off64_t offset, ABT_eventual& eventual) const {
 
     assert((offset + size) <= chunksize);
 
-    init_chunk_space(file_path);
+    init_chunk_space(fuid);
 
-    auto chunk_path = absolute(get_chunk_path(file_path, chunk_id));
+    auto chunk_path = absolute(get_chunk_path(fuid, chunk_id));
     int fd = open(chunk_path.c_str(), O_WRONLY | O_CREAT, 0640);
     if(fd < 0) {
         log->error("Failed to open chunk file for write. File: {}, Error: {}", chunk_path, std::strerror(errno));
@@ -129,10 +126,10 @@ void ChunkStorage::write_chunk(const std::string& file_path, unsigned int chunk_
     }
 }
 
-void ChunkStorage::read_chunk(const std::string& file_path, unsigned int chunk_id,
+void ChunkStorage::read_chunk(const fuid_t fuid, unsigned int chunk_id,
         char * buff, size_t size, off64_t offset, ABT_eventual& eventual) const {
     assert((offset + size) <= chunksize);
-    auto chunk_path = absolute(get_chunk_path(file_path, chunk_id));
+    auto chunk_path = absolute(get_chunk_path(fuid, chunk_id));
     int fd = open(chunk_path.c_str(), O_RDONLY);
     if(fd < 0) {
         log->error("Failed to open chunk file for read. File: {}, Error: {}", chunk_path, std::strerror(errno));
