@@ -3,6 +3,7 @@ add_library(storage STATIC)
 target_sources(storage
     PUBLIC
     ${INCLUDE_DIR}/daemon/backend/data/chunk_storage.hpp
+    ${INCLUDE_DIR}/global/global_defs.hpp
     PRIVATE
     ${INCLUDE_DIR}/global/path_util.hpp
     ${INCLUDE_DIR}/extern/spdlog/spdlog.h
