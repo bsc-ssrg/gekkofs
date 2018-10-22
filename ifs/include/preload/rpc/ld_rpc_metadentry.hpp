@@ -21,7 +21,7 @@ int rpc_send_access(const std::string& path, int mask);
 
 int rpc_send_stat(const std::string& path, std::string& attr);
 
-int rpc_send_rm_node(const std::string& path, const bool remove_metadentry_only);
+int rpc_send_rm_node(const std::string& path, const fuid_t fuid, const bool remove_metadentry_only);
 
 int rpc_send_decr_size(const std::string& path, size_t length);
 

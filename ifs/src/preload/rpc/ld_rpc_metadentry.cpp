@@ -230,7 +230,7 @@ int rpc_send_decr_size(const std::string& path, size_t length) {
     return err;
 }
 
-int rpc_send_rm_node(const std::string& path, const bool remove_metadentry_only) {
+int rpc_send_rm_node(const std::string& path, const fuid_t fuid, const bool remove_metadentry_only) {
     hg_return_t ret;
     int err = 0; // assume we succeed
     // if metadentry should only removed only, send only 1 rpc to remove the metadata
@@ -245,6 +245,7 @@ int rpc_send_rm_node(const std::string& path, const bool remove_metadentry_only)
     for (size_t i = 0; i < rpc_target_size; i++) {
         // fill in
         rpc_in[i].path = path.c_str();
+        rpc_in[i].fuid = fuid;
         // create handle
         // if only the metadentry needs to removed send one rpc to metadentry's responsible node
         if (remove_metadentry_only)

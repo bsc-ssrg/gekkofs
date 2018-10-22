@@ -104,7 +104,7 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
         assert(S_ISREG(md->mode()));
 
         if( (flags & O_TRUNC) && ((flags & O_RDWR) || (flags & O_WRONLY)) ) {
-            if(adafs_truncate(path, md->size(), 0)) {
+            if(adafs_truncate(path, md->fuid(), md->size(), 0)) {
                 CTX->log()->error("{}() error truncating file", __func__);
                 return -1;
             }
@@ -152,7 +152,7 @@ int adafs_rm_node(const std::string& path) {
     if (md == nullptr)
         return -1;
     bool has_data = S_ISREG(md->mode()) && md->size() != 0;
-    return rpc_send_rm_node(path, !has_data);
+    return rpc_send_rm_node(path, md->fuid(), !has_data);
 }
 
 int adafs_access(const std::string& path, const int mask) {
@@ -245,7 +245,7 @@ off64_t adafs_lseek(shared_ptr<OpenFile> adafs_fd, off64_t offset, int whence) {
     return adafs_fd->pos();
 }
 
-int adafs_truncate(const std::string& path, off_t old_size, off_t new_size) {
+int adafs_truncate(const std::string& path, const fuid_t fuid, off_t old_size, off_t new_size) {
     assert(new_size >= 0);
     assert(new_size <= old_size);
 
@@ -258,7 +258,7 @@ int adafs_truncate(const std::string& path, off_t old_size, off_t new_size) {
         return -1;
     }
 
-    if(rpc_send_trunc_data(path, old_size, new_size)){
+    if(rpc_send_trunc_data(fuid, old_size, new_size)){
         CTX->log()->debug("{}() failed to truncate data", __func__);
         return -1;
     }
@@ -292,7 +292,7 @@ int adafs_truncate(const std::string& path, off_t length) {
         errno = EINVAL;
         return -1;
     }
-    return adafs_truncate(path, size, length);
+    return adafs_truncate(path, md->fuid(), size, length);
 }
 
 int adafs_dup(const int oldfd) {
@@ -322,7 +322,7 @@ ssize_t adafs_pwrite_ws(int fd, const char * buf, size_t count, off64_t offset) 
         CTX->log()->error("{}() update_metadentry_size failed with ret {}", __func__, ret);
         return 0; // ERR
     }
-    ret = rpc_send_write(*path, buf, append_flag, offset, count, updated_size);
+    ret = rpc_send_write(adafs_fd->fuid(), buf, append_flag, offset, count, updated_size);
     if (ret < 0) {
         CTX->log()->warn("{}() rpc_send_write failed with ret {}", __func__, ret);
     }
@@ -412,7 +412,7 @@ ssize_t adafs_pread_ws(int fd, void* buf, size_t count, off64_t offset) {
 #if defined(ZERO_BUFFER_BEFORE_READ)
     memset(buf, 0, sizeof(char)*count);
 #endif
-    auto ret = rpc_send_read(*path, buf, offset, count);
+    auto ret = rpc_send_read(adafs_fd->fuid(), buf, offset, count);
     if (ret < 0) {
         CTX->log()->warn("{}() rpc_send_read failed with ret {}", __func__, ret);
     }
@@ -451,7 +451,7 @@ int adafs_rmdir(const std::string& path) {
         errno = ENOTEMPTY;
         return -1;
     }
-    return rpc_send_rm_node(path, true);
+    return rpc_send_rm_node(path, md->fuid(), true);
 }
 
 
