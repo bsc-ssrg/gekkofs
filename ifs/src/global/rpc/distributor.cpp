@@ -1,4 +1,5 @@
-#include <global/rpc/distributor.hpp>
+#include "global/rpc/distributor.hpp"
+
 
 SimpleHashDistributor::
 SimpleHashDistributor(Host localhost, unsigned int hosts_size) :
@@ -15,8 +16,11 @@ localhost() const {
 }
 
 Host SimpleHashDistributor::
-locate_data(const std::string& path, const ChunkID& chnk_id) const {
-    return str_hash(path + std::to_string(chnk_id)) % hosts_size_;
+locate_data(const fuid_t fuid, const ChunkID chnk_id) const {
+    /* We could have also used boost::hash_combine.
+     * See https://en.cppreference.com/w/cpp/utility/hash for more details.
+     */
+    return (ul_hash(fuid) ^ (ul_hash(chnk_id) << 1)) % hosts_size_;
 }
 
 Host SimpleHashDistributor::
@@ -40,7 +44,7 @@ localhost() const {
 }
 
 Host LocalOnlyDistributor::
-locate_data(const std::string& path, const ChunkID& chnk_id) const {
+locate_data(const fuid_t fuid, const ChunkID chnk_id) const {
     return localhost_;
 }
 
