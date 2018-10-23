@@ -453,6 +453,10 @@ int adafs_opendir(const std::string& path) {
 
 int adafs_rmdir(const std::string& path) {
     auto md = adafs_metadata(path);
+    if (md == nullptr) {
+        errno = ENOENT;
+        return -1;
+    }
 
     if (!S_ISDIR(md->mode())) {
         CTX->log()->debug("{}() path is not a directory", __func__);
