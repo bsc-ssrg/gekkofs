@@ -25,6 +25,8 @@ add_executable(ifs_test_truncate truncate.cpp)
 
 add_executable(ifs_test_path_resolution path_resolution.cpp)
 
+add_executable(ifs_test_rename rename_test.cpp)
+
 find_package(MPI)
 if(${MPI_FOUND})
     set(SOURCE_FILES_MPI main_MPI.cpp)
