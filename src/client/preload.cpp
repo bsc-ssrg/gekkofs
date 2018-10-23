@@ -18,6 +18,7 @@ static pthread_once_t init_env_thread = PTHREAD_ONCE_INIT;
 // RPC IDs
 hg_id_t rpc_config_id;
 hg_id_t rpc_mk_node_id;
+hg_id_t rpc_forward_node_id;
 hg_id_t rpc_stat_id;
 hg_id_t rpc_rm_node_id;
 hg_id_t rpc_decr_size_id;
@@ -44,6 +45,7 @@ void register_client_rpcs(margo_instance_id mid) {
     rpc_config_id = MARGO_REGISTER(mid, hg_tag::fs_config, rpc_config_in_t, rpc_config_out_t,
                                    NULL);
     rpc_mk_node_id = MARGO_REGISTER(mid, hg_tag::create, rpc_mk_node_in_t, rpc_err_out_t, NULL);
+    rpc_forward_node_id = MARGO_REGISTER(mid, hg_tag::forward, rpc_forward_node_in_t, rpc_err_out_t, NULL);
     rpc_stat_id = MARGO_REGISTER(mid, hg_tag::stat, rpc_path_only_in_t, rpc_stat_out_t, NULL);
     rpc_rm_node_id = MARGO_REGISTER(mid, hg_tag::remove, rpc_rm_node_in_t,
                                     rpc_err_out_t, NULL);

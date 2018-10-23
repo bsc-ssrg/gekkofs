@@ -119,6 +119,10 @@ extern void* libc_readlinkat;
 
 extern void* libc_realpath;
 
+extern void* libc_rename;
+extern void* libc___renameat;
+extern void* libc_renameat2;
+
 void init_passthrough_if_needed();
 
 #endif //IFS_PASSTHROUGH_HPP
