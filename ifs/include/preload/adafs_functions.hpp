@@ -33,6 +33,8 @@ int adafs_open(const std::string& path, mode_t mode, int flags);
 int adafs_mk_node(const std::string& path, mode_t mode, fuid_t& fuid);
 int adafs_mk_node(const std::string& path, mode_t mode);
 
+int adafs_rename(const std::string& oldpath, const std::string& newpath);
+
 int adafs_rm_node(const std::string& path);
 
 int adafs_access(const std::string& path, int mask);
