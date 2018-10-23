@@ -216,6 +216,7 @@ void register_server_rpcs(margo_instance_id mid) {
     MARGO_REGISTER(mid, hg_tag::fs_config, ipc_config_in_t, ipc_config_out_t, ipc_srv_fs_config);
     MARGO_REGISTER(mid, hg_tag::minimal, rpc_minimal_in_t, rpc_minimal_out_t, rpc_minimal);
     MARGO_REGISTER(mid, hg_tag::create, rpc_mk_node_in_t, rpc_fuid_out_t, rpc_srv_mk_node);
+    MARGO_REGISTER(mid, hg_tag::insert, rpc_insert_node_in_t, rpc_err_out_t, rpc_srv_insert_node);
     MARGO_REGISTER(mid, hg_tag::access, rpc_access_in_t, rpc_err_out_t, rpc_srv_access);
     MARGO_REGISTER(mid, hg_tag::stat, rpc_path_only_in_t, rpc_stat_out_t, rpc_srv_stat);
     MARGO_REGISTER(mid, hg_tag::decr_size, rpc_trunc_in_t, rpc_err_out_t, rpc_srv_decr_size);

@@ -592,8 +592,7 @@ int hook_renameat(int olddfd, const char * oldname,
             return -ENOTDIR;
 
         case RelativizeStatus::internal:
-            CTX->log()->warn("{}() not supported", __func__);
-            return -ENOTSUP;
+            break;
 
         default:
             CTX->log()->error("{}() relativize status unknown", __func__);
@@ -616,15 +615,31 @@ int hook_renameat(int olddfd, const char * oldname,
             return -ENOTDIR;
 
         case RelativizeStatus::internal:
-            CTX->log()->warn("{}() not supported", __func__);
-            return -ENOTSUP;
+            if (oldpath_status != RelativizeStatus::internal) {
+                CTX->log()->warn("{}() cross filesystem rename not supported", __func__);
+                return -ENOTSUP;
+            } else {
+                if (flags != 0) {
+                    CTX->log()->warn("{}() not supported flags", __func__);
+                    return -ENOTSUP;
+                }
+                return with_errno(adafs_rename(oldpath_resolved, newpath_resolved));
+            }
 
         default:
             CTX->log()->error("{}() relativize status unknown", __func__);
             return -EINVAL;
     }
 
-   return syscall_no_intercept(SYS_renameat2, olddfd, oldpath_pass, newdfd, newpath_pass, flags);
+    assert(newpath_status == RelativizeStatus::external);
+
+    /* newpath is internal but oldpath is external */
+    if (oldpath_status == RelativizeStatus::internal) {
+        CTX->log()->warn("{}() cross filesystem rename not supported", __func__);
+        return -ENOTSUP;
+    }
+
+    return syscall_no_intercept(SYS_renameat2, olddfd, oldpath_pass, newdfd, newpath_pass, flags);
 }
 
 int hook_statfs(const char * path, struct statfs * buf) {

@@ -31,6 +31,7 @@ extern margo_instance_id ld_margo_rpc_id;
 extern hg_id_t rpc_config_id;
 extern hg_id_t rpc_minimal_id;
 extern hg_id_t rpc_mk_node_id;
+extern hg_id_t rpc_insert_node_id;
 extern hg_id_t rpc_stat_id;
 extern hg_id_t rpc_access_id;
 extern hg_id_t rpc_rm_node_id;

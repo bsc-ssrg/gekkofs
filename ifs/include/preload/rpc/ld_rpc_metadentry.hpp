@@ -17,6 +17,8 @@ void send_minimal_rpc(hg_id_t minimal_id);
 
 int rpc_send_mk_node(const std::string& path, mode_t mode, fuid_t& fuid);
 
+int rpc_send_insert_node(const std::string& path, const Metadata& md);
+
 int rpc_send_access(const std::string& path, int mask);
 
 int rpc_send_stat(const std::string& path, std::string& attr);
