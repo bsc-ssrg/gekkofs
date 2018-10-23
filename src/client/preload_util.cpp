@@ -25,7 +25,7 @@ int metadata_to_stat(const std::string& path, const Metadata& md, struct stat& a
 
     /* Populate default values */
     attr.st_dev = makedev(0, 0);
-    attr.st_ino = std::hash<std::string>{}(path);
+    attr.st_ino = md.fuid();
     attr.st_nlink = 1;
     attr.st_uid = CTX->fs_conf()->uid;
     attr.st_gid = CTX->fs_conf()->gid;
