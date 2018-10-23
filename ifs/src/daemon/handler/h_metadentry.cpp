@@ -43,6 +43,46 @@ static hg_return_t rpc_srv_mk_node(hg_handle_t handle) {
 
 DEFINE_MARGO_RPC_HANDLER(rpc_srv_mk_node)
 
+
+static hg_return_t rpc_srv_forward_node(hg_handle_t handle) {
+    rpc_forward_node_in_t in{};
+    rpc_err_out_t out{};
+
+    auto ret = margo_get_input(handle, &in);
+    if (ret != HG_SUCCESS) {
+        ADAFS_DATA->spdlogger()->error(
+                "{}() Failed to retrieve input from handle", __func__);
+    }
+    ADAFS_DATA->spdlogger()->debug(
+            "{}() Got RPC (from local {}) with path: {}, metadata: '{}'", __func__,
+            (margo_get_info(handle)->context_id == ADAFS_DATA->host_id()),
+            in.path, in.serialized_metadata);
+
+    try {
+        // create metadentry
+        insert_metadentry_str(in.path, in.serialized_metadata);
+        out.err = 0;
+    } catch (const std::exception& e) {
+        ADAFS_DATA->spdlogger()->error(
+                "{}() Failed to create metadentry: {}", __func__, e.what());
+        out.err = -1;
+    }
+    ADAFS_DATA->spdlogger()->debug(
+            "{}() Sending output err {}", __func__, out.err);
+    auto hret = margo_respond(handle, &out);
+    if (hret != HG_SUCCESS) {
+        ADAFS_DATA->spdlogger()->error("{}() Failed to respond");
+    }
+
+    // Destroy handle when finished
+    margo_free_input(handle, &in);
+    margo_destroy(handle);
+    return HG_SUCCESS;
+}
+
+DEFINE_MARGO_RPC_HANDLER(rpc_srv_forward_node)
+
+
 static hg_return_t rpc_srv_access(hg_handle_t handle) {
     rpc_access_in_t in{};
     rpc_err_out_t out{};

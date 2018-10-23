@@ -36,6 +36,14 @@ void create_metadentry(const std::string& path, Metadata& md) {
     ADAFS_DATA->mdb()->put(path, md.serialize());
 }
 
+void insert_metadentry_str(const std::string& path, const std::string& serialized_metadata) {
+#ifndef NDEBUG
+    Metadata md(serialized_metadata);
+    assert(md.fuid() != FUID_NULL);
+#endif
+    ADAFS_DATA->mdb()->put(path, serialized_metadata);
+}
+
 std::string get_metadentry_str(const std::string& path) {
         return ADAFS_DATA->mdb()->get(path);
 }
