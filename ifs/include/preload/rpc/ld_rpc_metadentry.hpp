@@ -14,6 +14,8 @@ namespace rpc_send {
 
 int mk_node(const std::string& path, mode_t mode, fuid_t& fuid);
 
+int insert_node(const std::string& path, const Metadata& md);
+
 int access(const std::string& path, int mask);
 
 int stat(const std::string& path, std::string& attr);

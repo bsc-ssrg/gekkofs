@@ -447,6 +447,38 @@ ssize_t adafs_pread_ws(int fd, void* buf, size_t count, off64_t offset) {
     return adafs_pread(adafs_fd, reinterpret_cast<char*>(buf), count, offset);
 }
 
+int adafs_rename(const std::string& oldpath, const std::string& newpath) {
+    auto oldmd = adafs_metadata(oldpath);
+    if (oldmd == nullptr) {
+        CTX->log()->warn("{}() Old path does not exists", __func__);
+        errno = ENOENT;
+        return -1;
+    }
+    if (S_ISDIR(oldmd->mode())) {
+        CTX->log()->warn("{}() Moving directory is not supported", __func__);
+        errno = ENOTSUP;
+        return -1;
+    }
+
+    auto newmd = adafs_metadata(newpath);
+    if (newmd != nullptr) {
+        CTX->log()->warn("{}() New path already exists", __func__);
+        errno = EEXIST;
+        return -1;
+    }
+
+    /* TODO if the oldpath and newpath are
+     * manged by the same metadata node use just one rpc
+     * something like "move_node"
+     */
+    // Remove old entry
+    if (rpc_send_rm_node(oldpath, oldmd->fuid(), true) != 0) {
+        CTX->log()->warn("{}() Failed to remove old entry", __func__);
+        return -1;
+    }
+    return rpc_send_insert_node(newpath, *oldmd);
+}
+
 int adafs_opendir(const std::string& path) {
     init_ld_env_if_needed();
 
