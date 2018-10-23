@@ -10,6 +10,8 @@ int create_node(const std::string& path, const uid_t uid, const gid_t gid, mode_
 
 void create_metadentry(const std::string& path, Metadata& md);
 
+void insert_metadentry_str(const std::string& path, const std::string& serialized_metadata);
+
 std::string get_metadentry_str(const std::string& path);
 
 Metadata get_metadentry(const std::string& path);

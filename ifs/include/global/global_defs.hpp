@@ -9,6 +9,7 @@ namespace hg_tag {
     constexpr auto fs_config = "ipc_srv_fs_config";
     constexpr auto minimal = "rpc_minimal";
     constexpr auto create = "rpc_srv_mk_node";
+    constexpr auto insert = "rpc_srv_insert_node";
     constexpr auto access = "rpc_srv_access";
     constexpr auto stat = "rpc_srv_stat";
     constexpr auto remove = "rpc_srv_rm_node";
@@ -26,6 +27,7 @@ namespace hg_tag {
 // typedefs
 typedef unsigned long rpc_chnk_id_t;
 typedef uint_fast64_t fuid_t;
+constexpr fuid_t FUID_NULL = 0;
 
 template<typename E>
 constexpr typename std::underlying_type<E>::type to_underlying(E e) {
