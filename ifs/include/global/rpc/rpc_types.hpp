@@ -37,7 +37,9 @@ MERCURY_GEN_PROC(rpc_stat_out_t, ((hg_int32_t) (err))
 
 MERCURY_GEN_PROC(rpc_rm_node_in_t,
         ((hg_uint64_t) (fuid))\
-        ((hg_const_string_t) (path)))
+        ((hg_const_string_t) (path))\
+        ((hg_bool_t) (remove_md_only))
+)
 
 MERCURY_GEN_PROC(rpc_trunc_in_t,
         ((hg_uint64_t) (fuid))\

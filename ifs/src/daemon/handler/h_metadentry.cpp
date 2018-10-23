@@ -180,9 +180,10 @@ static hg_return_t rpc_srv_rm_node(hg_handle_t handle) {
         // Remove metadentry if exists on the node
         // and remove all chunks for that file
         remove_node(in.path);
-        // destroys all chunks for the path on this node
-        ADAFS_DATA->storage()->destroy_chunk_space(in.fuid);
-        out.err = 0;
+        if (!in.remove_md_only) {
+            // destroys all chunks for the path on this node
+            ADAFS_DATA->storage()->destroy_chunk_space(in.fuid);
+        }out.err = 0;
     } catch (const NotFoundException& e) {
         /* The metadentry was not found on this node,
          * this is not an error. At least one node involved in this
