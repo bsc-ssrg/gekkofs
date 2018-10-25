@@ -30,7 +30,7 @@ private:
 
 public:
     Metadata();
-    Metadata(mode_t mode);
+    explicit Metadata(mode_t mode);
 #ifdef HAS_SYMLINKS
     Metadata(mode_t mode, const std::string& target_path);
 #endif
