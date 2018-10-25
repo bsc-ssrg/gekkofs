@@ -208,7 +208,9 @@ int hook_symlinkat(const char * oldname, int newdfd, const char * newname) {
 
 #ifndef HAS_SYMLINKS
     if (oldname_is_internal) {
-        CTX->log()->warn("{}() attempt to create link to GekkoFS namespace: operation not supported. Could be enable through compile-time options", __func__);
+        CTX->log()->warn("{}() attempt to create link to GekkoFS namespace: operation not supported."
+                "Enable through compile flags `-DHAS_SYMLINKS` or"
+                "with the cmake option `SYMLINK_SUPPORT`.", __func__);
         return -ENOTSUP;
     }
 #endif
@@ -221,7 +223,9 @@ int hook_symlinkat(const char * oldname, int newdfd, const char * newname) {
 
         case RelativizeStatus::external:
             if(oldname_is_internal) {
-                CTX->log()->warn("{}() attempt to create link from outside to GekkoFS: operation not supported", __func__);
+                CTX->log()->warn("{}() attempt to create link from outside to GekkoFS namespace: operation not supported."
+                        "Enable through compile flags `-DHAS_SYMLINKS` or"
+                        "with the cmake option `SYMLINK_SUPPORT`.", __func__);
                 return -ENOTSUP;
             }
             return syscall_no_intercept(SYS_symlinkat, oldname, newdfd, newname_resolved.c_str());
@@ -237,7 +241,9 @@ int hook_symlinkat(const char * oldname, int newdfd, const char * newname) {
             }
             return with_errno(adafs_mk_symlink(newname_resolved, oldname_resolved));
 #else
-            CTX->log()->warn("{}() attempt to create link from GekkoFS namespace: operation not supported. Could be enable through compile-time options", __func__);
+            CTX->log()->warn("{}() attempt to create link from GekkoFS namespace: operation not supported."
+                "Enable through compile flags `-DHAS_SYMLINKS` or"
+                "with the cmake option `SYMLINK_SUPPORT`.", __func__);
             return -ENOTSUP;
 #endif
 
