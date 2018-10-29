@@ -76,7 +76,7 @@ int hook_lstat(const char* path, struct stat* buf) {
     LOG_HOOK_TRACE("{}() called with path '{}'", __func__, path);
     std::string rel_path;
     if (CTX->relativize_path(path, rel_path, false)) {
-        return with_errno(adafs_stat(rel_path, buf));
+        return with_errno(adafs_lstat(rel_path, buf));
     }
     return syscall_no_intercept(SYS_lstat, rel_path.c_str(), buf);
 }
@@ -111,6 +111,9 @@ int hook_fstatat(int dirfd, const char * cpath, struct stat * buf, int flags) {
             return -ENOTDIR;
 
         case RelativizeStatus::internal:
+            if (flags & AT_SYMLINK_NOFOLLOW) {
+                return with_errno(adafs_lstat(resolved, buf));
+            }
             return with_errno(adafs_stat(resolved, buf));
 
         default:
@@ -213,26 +216,48 @@ int hook_symlinkat(const char * oldname, int newdfd, const char * newname) {
                       __func__, oldname, newdfd, newname);
 
     std::string oldname_resolved;
-    if (CTX->relativize_path(oldname, oldname_resolved)) {
-        CTX->log()->warn("{}() operation not supported", __func__);
+    auto oldname_is_internal = CTX->relativize_path(oldname, oldname_resolved);
+
+#ifndef HAS_SYMLINKS
+    if (oldname_is_internal) {
+        CTX->log()->warn("{}() attempt to create link to GekkoFS namespace: operation not supported."
+                "Enable through compile flags `-DHAS_SYMLINKS` or"
+                "with the cmake option `SYMLINK_SUPPORT`.", __func__);
         return -ENOTSUP;
     }
+#endif
 
     std::string newname_resolved;
-    auto rstatus = CTX->relativize_fd_path(newdfd, newname, newname_resolved, false);
-    switch(rstatus) {
+    auto new_status = CTX->relativize_fd_path(newdfd, newname, newname_resolved, false);
+    switch(new_status) {
         case RelativizeStatus::fd_unknown:
             return syscall_no_intercept(SYS_symlinkat, oldname, newdfd, newname);
 
         case RelativizeStatus::external:
+            if(oldname_is_internal) {
+                CTX->log()->warn("{}() attempt to create link from outside to GekkoFS namespace: operation not supported."
+                        "Enable through compile flags `-DHAS_SYMLINKS` or"
+                        "with the cmake option `SYMLINK_SUPPORT`.", __func__);
+                return -ENOTSUP;
+            }
             return syscall_no_intercept(SYS_symlinkat, oldname, newdfd, newname_resolved.c_str());
 
         case RelativizeStatus::fd_not_a_dir:
             return -ENOTDIR;
 
         case RelativizeStatus::internal:
-            CTX->log()->warn("{}() operation not supported", __func__);
+#ifdef HAS_SYMLINKS
+            if(!oldname_is_internal) {
+                CTX->log()->warn("{}() attempt to create link from inside GekkoFS to outside: operation not supported", __func__);
+                return -ENOTSUP;
+            }
+            return with_errno(adafs_mk_symlink(newname_resolved, oldname_resolved));
+#else
+            CTX->log()->warn("{}() attempt to create link from GekkoFS namespace: operation not supported."
+                "Enable through compile flags `-DHAS_SYMLINKS` or"
+                "with the cmake option `SYMLINK_SUPPORT`.", __func__);
             return -ENOTSUP;
+#endif
 
         default:
             CTX->log()->error("{}() relativize status unknown", __func__);
@@ -499,9 +524,12 @@ int hook_readlinkat(int dirfd, const char * cpath, char * buf, int bufsiz) {
             return -ENOTDIR;
 
         case RelativizeStatus::internal:
-            CTX->log()->warn("{}() not supported", __func__);
-            return -ENOTSUP;
-
+#ifdef HAS_SYMLINKS
+            return with_errno(adafs_readlink(resolved, buf, bufsiz));
+#else
+            CTX->log()->warn("{}() symlink not supported", __func__);
+            return -EINVAL;
+#endif
         default:
             CTX->log()->error("{}() relativize status unknown: {}", __func__);
             return -EINVAL;

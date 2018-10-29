@@ -83,6 +83,13 @@ MERCURY_GEN_PROC(rpc_update_metadentry_size_out_t, ((hg_int32_t) (err))
 MERCURY_GEN_PROC(rpc_get_metadentry_size_out_t, ((hg_int32_t) (err))
         ((hg_int64_t) (ret_size)))
 
+#ifdef HAS_SYMLINKS
+MERCURY_GEN_PROC(rpc_mk_symlink_in_t,
+    ((hg_const_string_t) (path))\
+    ((hg_const_string_t) (target_path))
+)
+#endif
+
 // data
 MERCURY_GEN_PROC(rpc_read_data_in_t,
         ((hg_uint64_t) (fuid))\

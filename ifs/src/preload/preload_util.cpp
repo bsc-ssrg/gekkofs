@@ -47,6 +47,12 @@ int metadata_to_stat(const std::string& path, const Metadata& md, struct stat& a
     memset(&attr.st_ctim, 0, sizeof(timespec));
 
     attr.st_mode = md.mode();
+
+#ifdef HAS_SYMLINKS
+    if (md.is_link())
+        attr.st_size = md.target_path().size() + CTX->mountdir().size();
+    else
+#endif
     attr.st_size = md.size();
 
     if (CTX->fs_conf()->atime_state) {
