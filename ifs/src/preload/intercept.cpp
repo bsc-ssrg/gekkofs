@@ -15,7 +15,7 @@
 #define HOOKED 0
 
 
-static inline void hook(long syscall_number,
+static inline int hook(long syscall_number,
          long arg0, long arg1, long arg2,
          long arg3, long arg4, long arg5,
          long *result)
@@ -284,13 +284,22 @@ static inline void hook(long syscall_number,
         break;
 
     default:
-        // Syscall have been already filtered in the wrapper
-        // At this point there shuldn't be any unexpected syscalls
-        // If you reach this point you miss some syscall litesed in the wrapper func
-        assert(false);
-        break;
+        /*
+         * Ignore any other syscalls
+         * i.e.: pass them on to the kernel
+         * as would normally happen.
+         */
+
+        #ifndef NDEBUG
+        CTX->log()->trace("Syscall [{}, {}]  Passthrough", syscall_names[syscall_number], syscall_number);
+        #endif
+        return NOT_HOOKED;
     }
 
+    #ifndef NDEBUG
+    CTX->log()->trace("Syscall [{}, {}]  Intercepted", syscall_names[syscall_number], syscall_number);
+    #endif
+    return HOOKED;
 }
 
 
@@ -302,83 +311,23 @@ hook_guard_wrapper(long syscall_number,
                    long arg3, long arg4, long arg5,
                    long *syscall_return_value)
 {
-    switch (syscall_number) {
+    assert(CTX->initialized());
 
-    case SYS_open:
-    case SYS_creat:
-    case SYS_openat:
-    case SYS_close:
-    case SYS_stat:
-    case SYS_lstat:
-    case SYS_fstat:
-    case SYS_newfstatat:
-    case SYS_read:
-    case SYS_pread64:
-    case SYS_pwrite64:
-    case SYS_write:
-    case SYS_writev:
-    case SYS_pwritev:
-    case SYS_unlink:
-    case SYS_unlinkat:
-    case SYS_rmdir:
-    case SYS_symlink:
-    case SYS_symlinkat:
-    case SYS_access:
-    case SYS_faccessat:
-    case SYS_lseek:
-    case SYS_truncate:
-    case SYS_ftruncate:
-    case SYS_dup:
-    case SYS_dup2:
-    case SYS_dup3:
-    case SYS_getdents:
-    case SYS_mkdirat:
-    case SYS_mkdir:
-    case SYS_chmod:
-    case SYS_fchmod:
-    case SYS_fchmodat:
-    case SYS_chdir:
-    case SYS_fchdir:
-    case SYS_getcwd:
-    case SYS_readlink:
-    case SYS_readlinkat:
-    case SYS_fcntl:
-    case SYS_rename:
-    case SYS_renameat:
-    case SYS_renameat2:
-    case SYS_fstatfs:
-    case SYS_statfs:
-    {
-        assert(CTX->initialized());
-
-        if (guard_flag) {
-            return NOT_HOOKED;
-        }
-
-#ifdef LOG_SYSCALL
-        CTX->log()->trace("Syscall [{}, {}]  Intercepted", syscall_names[syscall_number], syscall_number);
-#endif
-
-        guard_flag = true;
-        int oerrno = errno;
-        hook(syscall_number,
-                arg0, arg1, arg2, arg3, arg4, arg5,
-                syscall_return_value);
-        errno = oerrno;
-        guard_flag = false;
-
-        return HOOKED;
-    } break;
-
-    default:
-    {
-        #ifdef LOG_SYSCALL
-        CTX->log()->trace("Syscall [{}, {}]  Passthrough", syscall_names[syscall_number], syscall_number);
-        #endif
+    if (guard_flag) {
         return NOT_HOOKED;
-    } break;
+    }
 
-    } // end switch case
+    int is_hooked;
+
+    guard_flag = true;
+    int oerrno = errno;
+    is_hooked = hook(syscall_number,
+                     arg0, arg1, arg2, arg3, arg4, arg5,
+                     syscall_return_value);
+    errno = oerrno;
+    guard_flag = false;
+
+    return is_hooked;
 }
 
 
