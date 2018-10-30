@@ -41,6 +41,43 @@ int hook_openat(int dirfd, const char *cpath, int flags, mode_t mode) {
     }
 }
 
+int hook_mknodat(int dirfd, const char *cpath, mode_t mode, dev_t dev) {
+    std::string type;
+    switch (mode & S_IFMT) {
+        case S_IFBLK:  type = "block device";            break;
+        case S_IFCHR:  type = "character device";        break;
+        case S_IFDIR:  type = "directory";               break;
+        case S_IFIFO:  type = "FIFO/pipe";               break;
+        case S_IFLNK:  type = "symlink";                 break;
+        case S_IFREG:  type = "regular file";            break;
+        case S_IFSOCK: type = "socket";                  break;
+        default:       type = "unknown";                 break;
+    }
+    CTX->log()->trace("{}() called with fd: {}, path: {}, type: {}",
+            __func__, dirfd, cpath, type);
+
+    std::string resolved;
+    auto rstatus = CTX->relativize_fd_path(dirfd, cpath, resolved);
+    switch(rstatus) {
+        case RelativizeStatus::fd_unknown:
+            return syscall_no_intercept(SYS_mknodat, dirfd, cpath, mode, dev);
+
+        case RelativizeStatus::external:
+            return syscall_no_intercept(SYS_mknodat, dirfd, resolved.c_str(), mode, dev);
+
+        case RelativizeStatus::fd_not_a_dir:
+            return -ENOTDIR;
+
+        case RelativizeStatus::internal:
+            CTX->log()->warn("{}() not supported", __func__);
+            return -ENOTSUP;
+
+        default:
+            CTX->log()->error("{}() relativize status unknown: {}", __func__);
+            return -EINVAL;
+    }
+}
+
 int hook_close(int fd) {
     CTX->log()->trace("{}() called with fd {}", __func__, fd);
     if(CTX->file_map()->exist(fd)) {

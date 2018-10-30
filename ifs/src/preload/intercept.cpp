@@ -23,6 +23,20 @@ static inline int hook(long syscall_number,
 
     switch (syscall_number) {
 
+    case SYS_mknod:
+        *result = hook_mknodat(AT_FDCWD,
+                              reinterpret_cast<const char*>(arg0),
+                              static_cast<mode_t>(arg1),
+                              static_cast<dev_t>(arg2));
+        break;
+
+    case SYS_mknodat:
+        *result = hook_mknodat(static_cast<int>(arg0),
+                               reinterpret_cast<const char*>(arg1),
+                              static_cast<mode_t>(arg2),
+                              static_cast<dev_t>(arg3));
+        break;
+
     case SYS_open:
         *result = hook_openat(AT_FDCWD,
                               reinterpret_cast<char*>(arg0),

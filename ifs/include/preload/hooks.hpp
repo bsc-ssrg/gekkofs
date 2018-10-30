@@ -5,6 +5,7 @@
 
 
 int hook_openat(int dirfd, const char *cpath, int flags, mode_t mode);
+int hook_mknodat(int dirfd, const char *cpath, mode_t mode, dev_t dev);
 int hook_close(int fd);
 int hook_stat(const char* path, struct stat* buf);
 int hook_lstat(const char* path, struct stat* buf);
