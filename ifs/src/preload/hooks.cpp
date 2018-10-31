@@ -290,6 +290,63 @@ int hook_symlinkat(const char * oldname, int newdfd, const char * newname) {
     }
 }
 
+int hook_linkat(int olddfd, const char * oldname,
+                int newdfd, const char * newname,
+                unsigned int flags) {
+
+    CTX->log()->trace("{}() called with olddfd {}, oldname: '{}', newfd {}, newname '{}', flags {}",
+                      __func__, olddfd, oldname, newdfd, newname, flags);
+
+    const char * oldpath_pass;
+    std::string oldpath_resolved;
+    auto oldpath_status = CTX->relativize_fd_path(olddfd, oldname, oldpath_resolved);
+    switch(oldpath_status) {
+        case RelativizeStatus::fd_unknown:
+            oldpath_pass = oldname;
+            break;
+
+        case RelativizeStatus::external:
+            oldpath_pass = oldpath_resolved.c_str();
+            break;
+
+        case RelativizeStatus::fd_not_a_dir:
+            return -ENOTDIR;
+
+        case RelativizeStatus::internal:
+            CTX->log()->warn("{}() not supported", __func__);
+            return -ENOTSUP;
+
+        default:
+            CTX->log()->error("{}() relativize status unknown", __func__);
+            return -EINVAL;
+    }
+
+    const char * newpath_pass;
+    std::string newpath_resolved;
+    auto newpath_status = CTX->relativize_fd_path(newdfd, newname, newpath_resolved);
+    switch(newpath_status) {
+        case RelativizeStatus::fd_unknown:
+            newpath_pass = newname;
+            break;
+
+        case RelativizeStatus::external:
+            newpath_pass = newpath_resolved.c_str();
+            break;
+
+        case RelativizeStatus::fd_not_a_dir:
+            return -ENOTDIR;
+
+        case RelativizeStatus::internal:
+            CTX->log()->warn("{}() not supported", __func__);
+            return -ENOTSUP;
+
+        default:
+            CTX->log()->error("{}() relativize status unknown", __func__);
+            return -EINVAL;
+    }
+
+    return syscall_no_intercept(SYS_linkat, olddfd, oldpath_pass, newdfd, newpath_pass, flags);
+}
 
 int hook_access(const char* path, int mask) {
     CTX->log()->trace("{}() called path '{}', mask {}", __func__, path, mask);

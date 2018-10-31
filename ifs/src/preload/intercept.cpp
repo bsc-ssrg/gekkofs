@@ -123,6 +123,21 @@ static inline int hook(long syscall_number,
                                static_cast<unsigned long>(arg4));
         break;
 
+    case SYS_link:
+        *result = hook_renameat(AT_FDCWD,
+                                reinterpret_cast<const char *>(arg0),
+                                AT_FDCWD,
+                                reinterpret_cast<const char *>(arg1),
+                                0);
+        break;
+
+    case SYS_linkat:
+        *result = hook_renameat(static_cast<int>(arg0),
+                                reinterpret_cast<const char *>(arg1),
+                                static_cast<int>(arg2),
+                                reinterpret_cast<const char *>(arg3),
+                                static_cast<unsigned int>(arg4));
+        break;
     case SYS_unlink:
         *result = hook_unlinkat(AT_FDCWD,
                                 reinterpret_cast<const char *>(arg0),
