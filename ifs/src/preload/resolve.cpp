@@ -82,10 +82,10 @@ bool resolve_path (const std::string& path, std::string& resolved, bool resolve_
                 resolved.erase(last_slash_pos);
             }
             if (resolved_components > 0) {
+                if (matched_components == resolved_components) {
+                    --matched_components;
+                }
                 --resolved_components;
-            }
-            if (matched_components > 0) {
-                --matched_components;
             }
             continue;
         }
