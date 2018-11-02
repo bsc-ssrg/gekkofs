@@ -541,10 +541,8 @@ int getdents(unsigned int fd,
              struct linux_dirent *dirp,
              unsigned int count) {
     CTX->log()->trace("{}() called on fd: {}, count {}", __func__, fd, count);
-    auto open_file = CTX->file_map()->get(fd);
-    assert(open_file != nullptr);
-    auto open_dir = static_pointer_cast<OpenDir>(open_file);
-    if(!open_dir){
+    auto open_dir = CTX->file_map()->get_dir(fd);
+    if(open_dir == nullptr){
         //Cast did not succeeded: open_file is a regular file
         errno = EBADF;
         return -1;
