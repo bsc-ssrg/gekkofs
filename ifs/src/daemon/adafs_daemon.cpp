@@ -164,7 +164,7 @@ bool init_rpc_server() {
     ADAFS_DATA->spdlogger()->debug("{}() Initializing Margo RPC server...", __func__);
     // IMPORTANT: this struct needs to be zeroed before use
     struct hg_init_info hg_options = {};
-    hg_options.auto_sm = HG_TRUE;
+    hg_options.auto_sm = HG_FALSE;
     hg_options.stats = HG_FALSE;
     hg_options.na_class = nullptr;
     // Start Margo (this will also initialize Argobots and Mercury internally)
