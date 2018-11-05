@@ -121,3 +121,13 @@ test rename:
     paths:
      - "${LOG_PATH}"
 
+test symlink:
+  stage: test
+  script:
+    - mkdir -p "${LOG_PATH}"
+    - ${BUILD_PATH}/bin/adafs_daemon --mount /tmp/mountdir --root /tmp/adafs_root &
+    - sleep 4
+    - LD_PRELOAD=${BUILD_PATH}/lib/libadafs_preload_client.so ${TESTS_BUILD_PATH}/ifs_test_symlink
+  artifacts:
+    paths:
+     - "${LOG_PATH}"
