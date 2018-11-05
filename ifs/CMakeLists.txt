@@ -67,7 +67,7 @@ add_definitions(-DRPC_PROTOCOL="${RPC_PROTOCOL}")
 
 option(SYMLINK_SUPPORT "Compile with support for symlinks" ON)
 if(SYMLINK_SUPPORT)
-    add_compile_definitions(HAS_SYMLINKS)
+    add_definitions(-DHAS_SYMLINKS)
 endif()
 
 # Imported target
