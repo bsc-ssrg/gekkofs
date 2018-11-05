@@ -613,7 +613,7 @@ int rpc_send_mk_symlink(const std::string& path, const std::string& target_path)
     in.target_path = target_path.c_str();
     // Create handle
     CTX->log()->debug("{}() Creating Mercury handle ...", __func__);
-    auto ret = margo_create_wrap(ipc_mk_symlink_id, rpc_mk_symlink_id, path, handle, false);
+    auto ret = margo_create_wrap(rpc_mk_symlink_id, path, handle);
     if (ret != HG_SUCCESS) {
         errno = EBUSY;
         return -1;

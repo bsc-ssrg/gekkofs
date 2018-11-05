@@ -479,7 +479,7 @@ static hg_return_t rpc_srv_mk_symlink(hg_handle_t handle) {
                                    (margo_get_info(handle)->context_id == ADAFS_DATA->host_id()), in.path);
 
     try {
-        Metadata md = {LINK_MODE, in.target_path};
+        Metadata md(LINK_MODE, in.target_path);
         // create metadentry
         create_metadentry(in.path, md);
         out.err = 0;
