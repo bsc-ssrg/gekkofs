@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 
 
     /* Create target */
-    fd = open(source_int.c_str(), O_WRONLY | O_CREAT, 0770);
+    fd = open(source_int.c_str(), O_WRONLY | O_CREAT, S_IRWXU | S_IRWXG);
     if(fd < 0){
         std::cerr << "ERROR: opening target for write" << strerror(errno) << std::endl;
         return -1;
