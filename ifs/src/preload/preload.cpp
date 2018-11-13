@@ -9,114 +9,20 @@
 #include <preload/rpc/ld_rpc_management.hpp>
 #include <preload/passthrough.hpp>
 #include <preload/preload_util.hpp>
+#include "preload/rpc/engine.hpp"
 
 #include <fstream>
 
 // thread to initialize the whole margo shazaam only once per process
 static pthread_once_t init_env_thread = PTHREAD_ONCE_INIT;
 
-// RPC IDs
-hg_id_t rpc_config_id;
-hg_id_t rpc_mk_node_id;
-hg_id_t rpc_forward_node_id;
-hg_id_t rpc_access_id;
-hg_id_t rpc_stat_id;
-hg_id_t rpc_rm_node_id;
-hg_id_t rpc_decr_size_id;
-hg_id_t rpc_update_metadentry_id;
-hg_id_t rpc_get_metadentry_size_id;
-hg_id_t rpc_update_metadentry_size_id;
-hg_id_t rpc_write_data_id;
-hg_id_t rpc_read_data_id;
-hg_id_t rpc_trunc_data_id;
-hg_id_t rpc_get_dirents_id;
-// Margo instances
-margo_instance_id ld_margo_rpc_id;
-
-
-/**
- * Registers a margo instance with all used RPC
- * Note that the rpc tags are redundant for rpc
- * @param mid
- * @param mode
- */
-void register_client_rpcs(margo_instance_id mid) {
-    rpc_config_id = MARGO_REGISTER(mid, hg_tag::fs_config, rpc_config_in_t, rpc_config_out_t,
-                                   NULL);
-    rpc_mk_node_id = MARGO_REGISTER(mid, hg_tag::create, rpc_mk_node_in_t, rpc_err_out_t, NULL);
-    rpc_forward_node_id = MARGO_REGISTER(mid, hg_tag::forward, rpc_forward_node_in_t, rpc_err_out_t, NULL);
-    rpc_access_id = MARGO_REGISTER(mid, hg_tag::access, rpc_access_in_t, rpc_err_out_t, NULL);
-    rpc_stat_id = MARGO_REGISTER(mid, hg_tag::stat, rpc_path_only_in_t, rpc_stat_out_t, NULL);
-    rpc_rm_node_id = MARGO_REGISTER(mid, hg_tag::remove, rpc_rm_node_in_t,
-                                    rpc_err_out_t, NULL);
-
-    rpc_decr_size_id = MARGO_REGISTER(mid,
-        hg_tag::decr_size,
-        rpc_decr_size_in_t,
-        rpc_err_out_t,
-        NULL);
-
-    rpc_update_metadentry_id = MARGO_REGISTER(mid, hg_tag::update_metadentry, rpc_update_metadentry_in_t,
-                                              rpc_err_out_t, NULL);
-    rpc_get_metadentry_size_id = MARGO_REGISTER(mid, hg_tag::get_metadentry_size, rpc_path_only_in_t,
-                                                rpc_get_metadentry_size_out_t, NULL);
-    rpc_update_metadentry_size_id = MARGO_REGISTER(mid, hg_tag::update_metadentry_size,
-                                                   rpc_update_metadentry_size_in_t,
-                                                   rpc_update_metadentry_size_out_t,
-                                                   NULL);
-    rpc_write_data_id = MARGO_REGISTER(mid, hg_tag::write_data, rpc_write_data_in_t, rpc_data_out_t,
-                                       NULL);
-    rpc_read_data_id = MARGO_REGISTER(mid, hg_tag::read_data, rpc_read_data_in_t, rpc_data_out_t,
-                                      NULL);
-
-    rpc_trunc_data_id = MARGO_REGISTER(mid,
-         hg_tag::trunc_data,
-         rpc_trunc_in_t,
-         rpc_err_out_t,
-         NULL);
-
-    rpc_get_dirents_id = MARGO_REGISTER(mid, hg_tag::get_dirents, rpc_get_dirents_in_t, rpc_get_dirents_out_t,
-                                      NULL);
-}
-
-/**
- * Initializes the Margo client for a given na_plugin
- * @param mode
- * @param na_plugin
- * @return
- */
-bool init_margo_client(const std::string& na_plugin) {
-    // IMPORTANT: this struct needs to be zeroed before use
-    struct hg_init_info hg_options = {};
-    hg_options.auto_sm = HG_TRUE;
-    hg_options.stats = HG_FALSE;
-    hg_options.na_class = nullptr;
-
-    ld_margo_rpc_id = margo_init_opt(na_plugin.c_str(),
-                                     MARGO_CLIENT_MODE,
-                                     &hg_options,
-                                     HG_FALSE,
-                                     1);
-    if (ld_margo_rpc_id == MARGO_INSTANCE_NULL) {
-        CTX->log()->error("{}() margo_init_pool failed to initialize the Margo client", __func__);
-        return false;
-    }
-    register_client_rpcs(ld_margo_rpc_id);
-#ifdef MARGODIAG
-    margo_diag_start(ld_margo_rpc_id);
-#endif
-    return true;
-}
-
 /**
  * This function is only called in the preload constructor and initializes Argobots and Margo clients
  */
 void init_ld_environment_() {
-    //use rpc_addresses here to avoid "static initialization order problem"
-    if (!init_margo_client(RPC_PROTOCOL)) {
-        CTX->log()->error("{}() Unable to initialize Margo RPC client.", __func__);
-        exit(EXIT_FAILURE);
-    }
+    auto rpc_engine = std::make_shared<RPCEngine>(RPC_PROTOCOL);
+    CTX->rpc(rpc_engine);
+
     if (!rpc_send::get_fs_config()) {
         CTX->log()->error("{}() Unable to fetch file system configurations from daemon process through RPC.", __func__);
         exit(EXIT_FAILURE);
@@ -206,19 +112,6 @@ void init_preload() {
  * Called last when preload library is used with the LD_PRELOAD environment variable
  */
 void destroy_preload() {
-    if (ld_margo_rpc_id == nullptr) {
-        CTX->log()->debug("{}() No services in preload library used. Nothing to shut down.", __func__);
-        return;
-    }
-#ifdef MARGODIAG
-    std::cout << "\n####################\n\nMargo RPC client stats: " << std::endl;
-    margo_diag_dump(ld_margo_rpc_id, "-", 0);
-#endif
     cleanup_addresses();
-    CTX->log()->debug("{}() About to finalize the margo RPC client", __func__);
-    // XXX Sometimes this hangs on the cluster. Investigate.
-    // Might been solved in margo 0.3. It is not an issue with Omnipath for sure. Maybe CCI only issue.
-    margo_finalize(ld_margo_rpc_id);
-    CTX->log()->debug("{}() Shut down Margo RPC client successful", __func__);
-    CTX->log()->info("All services shut down. Client shutdown complete.");
+    CTX->log()->info("Client shutdown completed");
 }

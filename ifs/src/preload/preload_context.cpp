@@ -4,6 +4,7 @@
 #include <preload/open_dir.hpp>
 #include <preload/resolve.hpp>
 #include <global/path_util.hpp>
+#include "preload/rpc/engine.hpp"
 #include <cassert>
 
 
@@ -130,6 +131,14 @@ void PreloadContext::distributor(std::shared_ptr<Distributor> d) {
 
 std::shared_ptr<Distributor> PreloadContext::distributor() const {
     return distributor_;
+}
+
+void PreloadContext::rpc(std::shared_ptr<RPCEngine> rpc) {
+    rpc_ = rpc;
+}
+
+std::shared_ptr<RPCEngine> PreloadContext::rpc() const {
+    return rpc_;
 }
 
 const std::shared_ptr<FsConfig>& PreloadContext::fs_conf() const {

@@ -1,5 +1,6 @@
 #include <global/configure.hpp>
 #include <preload/rpc/ld_rpc_metadentry.hpp>
+#include "preload/rpc/engine.hpp"
 #include "preload/preload.hpp"
 #include "preload/preload_util.hpp"
 #include "preload/open_dir.hpp"
@@ -26,7 +27,7 @@ int mk_node(const std::string& path, const mode_t mode, fuid_t& fuid) {
     in.mode = mode;
     // Create handle
     CTX->log()->debug("{}() Creating Mercury handle ...", __func__);
-    auto ret = margo_create_wrap(rpc_mk_node_id, path, handle);
+    auto ret = margo_create_wrap(CTX->rpc()->rpc_mk_node_id, path, handle);
     if (ret != HG_SUCCESS) {
         errno = EBUSY;
         return -1;
@@ -70,18 +71,14 @@ int forward_node(const std::string& path, const Metadata& md) {
     auto serialized_metadata = md.serialize();
     in.serialized_metadata = serialized_metadata.c_str();
     // Create handle
-    auto ret = margo_create_wrap(rpc_forward_node_id, path, handle);
+    auto ret = margo_create_wrap(CTX->rpc()->rpc_forward_node_id, path, handle);
     if (ret != HG_SUCCESS) {
         errno = EBUSY;
         return -1;
     }
 
     // Send rpc
-#if defined(MARGO_FORWARD_TIMER)
-    ret = margo_forward_timed_wrap_timer(handle, &in, __func__);
-#else
     ret = margo_forward_timed_wrap(handle, &in);
-#endif
     if (ret != HG_SUCCESS) {
         CTX->log()->warn("{}() Failed to fowrward call");
         margo_destroy(handle);
@@ -117,7 +114,7 @@ int access(const std::string& path, const int mask) {
     in.path = path.c_str();
     in.mask = mask;
     CTX->log()->debug("{}() Creating Mercury handle ...", __func__);
-    auto ret = margo_create_wrap(rpc_access_id, path, handle);
+    auto ret = margo_create_wrap(CTX->rpc()->rpc_access_id, path, handle);
     if (ret != HG_SUCCESS) {
         errno = EBUSY;
         return -1;
@@ -163,7 +160,7 @@ int stat(const std::string& path, string& attr) {
     // fill in
     in.path = path.c_str();
     CTX->log()->debug("{}() Creating Mercury handle ...", __func__);
-    auto ret = margo_create_wrap(rpc_stat_id, path, handle);
+    auto ret = margo_create_wrap(CTX->rpc()->rpc_stat_id, path, handle);
     if (ret != HG_SUCCESS) {
         errno = EBUSY;
         return -1;
@@ -210,7 +207,7 @@ int decr_size(const std::string& path, size_t length) {
     in.length = length;
 
     CTX->log()->debug("{}() Creating Mercury handle ...", __func__);
-    auto ret = margo_create_wrap(rpc_decr_size_id, path, handle);
+    auto ret = margo_create_wrap(CTX->rpc()->rpc_decr_size_id, path, handle);
     if (ret != HG_SUCCESS) {
         errno = EBUSY;
         return -1;
@@ -270,9 +267,9 @@ int rm_node(const std::string& path, const fuid_t fuid, const bool remove_metade
         // create handle
         // if only the metadentry needs to removed send one rpc to metadentry's responsible node
         if (remove_metadentry_only)
-            ret = margo_create_wrap(rpc_rm_node_id, path, rpc_handles[i]);
+            ret = margo_create_wrap(CTX->rpc()->rpc_rm_node_id, path, rpc_handles[i]);
         else
-            ret = margo_create_wrap_helper(rpc_rm_node_id, i, rpc_handles[i]);
+            ret = margo_create_wrap_helper(CTX->rpc()->rpc_rm_node_id, i, rpc_handles[i]);
         if (ret != HG_SUCCESS) {
             CTX->log()->warn("{}() Unable to create Mercury handle", __func__);
             // We use continue here to remove at least some data
@@ -347,7 +344,7 @@ int update_metadentry(const string& path, const Metadata& md, const MetadentryUp
     in.ctime_flag = bool_to_merc_bool(md_flags.ctime);
 
     CTX->log()->debug("{}() Creating Mercury handle ...", __func__);
-    auto ret = margo_create_wrap(rpc_update_metadentry_id, path, handle);
+    auto ret = margo_create_wrap(CTX->rpc()->rpc_update_metadentry_id, path, handle);
     if (ret != HG_SUCCESS) {
         errno = EBUSY;
         return -1;
@@ -393,7 +390,7 @@ int update_metadentry_size(const string& path, const size_t size, const off64_t 
     int err = EUNKNOWN;
 
     CTX->log()->debug("{}() Creating Mercury handle ...", __func__);
-    auto ret = margo_create_wrap(rpc_update_metadentry_size_id, path, handle);
+    auto ret = margo_create_wrap(CTX->rpc()->rpc_update_metadentry_size_id, path, handle);
     if (ret != HG_SUCCESS) {
         errno = EBUSY;
         return -1;
@@ -433,7 +430,7 @@ int get_metadentry_size(const std::string& path, off64_t& ret_size) {
     int err = EUNKNOWN;
 
     CTX->log()->debug("{}() Creating Mercury handle ...", __func__);
-    auto ret = margo_create_wrap(rpc_get_metadentry_size_id, path, handle);
+    auto ret = margo_create_wrap(CTX->rpc()->rpc_get_metadentry_size_id, path, handle);
     if (ret != HG_SUCCESS) {
         errno = EBUSY;
         return -1;
@@ -496,7 +493,7 @@ void get_dirents(OpenDir& open_dir){
         recv_buffers[target_host] = recv_buff.get() + (target_host * per_host_buff_size);
 
         hg_ret = margo_bulk_create(
-                    ld_margo_rpc_id, 1,
+                    CTX->rpc()->mid(), 1,
                     reinterpret_cast<void**>(&recv_buffers[target_host]),
                     &per_host_buff_size,
                     HG_BULK_WRITE_ONLY, &(rpc_in[target_host].bulk_handle));
@@ -504,7 +501,7 @@ void get_dirents(OpenDir& open_dir){
             throw std::runtime_error("Failed to create margo bulk handle");
         }
 
-        hg_ret = margo_create_wrap_helper(rpc_get_dirents_id, target_host, rpc_handles[target_host]);
+        hg_ret = margo_create_wrap_helper(CTX->rpc()->rpc_get_dirents_id, target_host, rpc_handles[target_host]);
         if (hg_ret != HG_SUCCESS) {
             std::runtime_error("Failed to create margo handle");
         }

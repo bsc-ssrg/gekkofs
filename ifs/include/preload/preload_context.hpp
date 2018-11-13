@@ -10,6 +10,7 @@
 /* Forward declarations */
 class OpenFileMap;
 class Distributor;
+class RPCEngine;
 
 
 struct FsConfig {
@@ -50,6 +51,7 @@ class PreloadContext {
     std::shared_ptr<OpenFileMap> ofm_;
     std::shared_ptr<Distributor> distributor_;
     std::shared_ptr<FsConfig> fs_conf_;
+    std::shared_ptr<RPCEngine> rpc_;
 
     std::string cwd_;
     std::vector<std::string> mountdir_components_;
@@ -89,6 +91,8 @@ class PreloadContext {
 
     void distributor(std::shared_ptr<Distributor> distributor);
     std::shared_ptr<Distributor> distributor() const;
+    void rpc(std::shared_ptr<RPCEngine> rpc);
+    std::shared_ptr<RPCEngine> rpc() const;
     const std::shared_ptr<FsConfig>& fs_conf() const;
 
     void initialized(const bool& flag);

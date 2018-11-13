@@ -1,6 +1,7 @@
 #include <preload/preload_util.hpp>
 #include <global/rpc/distributor.hpp>
 #include <global/global_func.hpp>
+#include "preload/rpc/engine.hpp"
 
 #include <fstream>
 #include <sstream>
@@ -152,7 +153,7 @@ hg_addr_t margo_addr_lookup_retry(const std::string& uri) {
     ::random_device rd; // obtain a random number from hardware
     unsigned int attempts = 0;
     do {
-        ret = margo_addr_lookup(ld_margo_rpc_id, uri.c_str(), &remote_addr);
+        ret = margo_addr_lookup(CTX->rpc()->mid(), uri.c_str(), &remote_addr);
         if (ret == HG_SUCCESS) {
             break;
         }
@@ -229,7 +230,7 @@ void cleanup_addresses() {
     CTX->log()->debug("{}() Freeing Margo RPC svr addresses ...", __func__);
     for (const auto& e : *rpc_addresses) {
         CTX->log()->info("{}() Trying to free hostid {}", __func__, e.first);
-        if (margo_addr_free(ld_margo_rpc_id, e.second) != HG_SUCCESS) {
+        if (margo_addr_free(CTX->rpc()->mid(), e.second) != HG_SUCCESS) {
             CTX->log()->warn("{}() Unable to free RPC client's svr address: {}.", __func__, e.first);
         }
     }
@@ -267,9 +268,9 @@ margo_create_wrap_helper(const hg_id_t rpc_id, uint64_t recipient, hg_handle_t& 
     }
     // TODO The following is a work around until https://xgitlab.cels.anl.gov/sds/margo/issues/47 is fixed
     if (recipient == CTX->fs_conf()->host_id)
-        ret = margo_create(ld_margo_rpc_id, svr_addr, rpc_id, &handle);
+        ret = margo_create(CTX->rpc()->mid(), svr_addr, rpc_id, &handle);
     else
-        ret = margo_create_cache(ld_margo_rpc_id, svr_addr, rpc_id, &handle);
+        ret = margo_create_cache(CTX->rpc()->mid(), svr_addr, rpc_id, &handle);
     if (ret != HG_SUCCESS) {
         CTX->log()->error("{}() creating handle FAILED", __func__);
         return HG_OTHER_ERROR;

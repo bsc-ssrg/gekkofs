@@ -8,6 +8,7 @@ set(PRELOAD_SRC
     preload.cpp
     resolve.cpp
     preload_util.cpp
+    rpc/engine.cpp
     rpc/ld_rpc_management.cpp
     rpc/ld_rpc_data_ws.cpp
     rpc/ld_rpc_metadentry.cpp
@@ -33,6 +34,7 @@ set(PRELOAD_HEADERS
     ../../include/preload/preload.hpp
     ../../include/preload/resolve.hpp
     ../../include/preload/preload_util.hpp
+    ../../include/preload/rpc/engine.hpp
     ../../include/preload/rpc/ld_rpc_management.hpp
     ../../include/preload/rpc/ld_rpc_data_ws.hpp
     ../../include/preload/rpc/ld_rpc_metadentry.hpp
@@ -45,6 +47,7 @@ target_link_libraries(adafs_preload_client
     metadata
     distributor
     log_util
+    margo_wrap
     # external
     dl
     ${ABT_LIBRARIES}
