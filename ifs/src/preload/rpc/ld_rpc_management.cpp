@@ -1,4 +1,5 @@
 #include "preload/rpc/ld_rpc_management.hpp"
+#include "preload/rpc/engine.hpp"
 #include "global/rpc/rpc_types.hpp"
 #include <preload/preload_util.hpp>
 #include <boost/type_traits/is_pointer.hpp> // see https://github.com/boostorg/tokenizer/issues/9
@@ -7,7 +8,6 @@
 
 
 namespace rpc_send {
-
 
 /**
  * Gets fs configuration information from the running daemon and transfers it to the memory of the library
@@ -24,9 +24,9 @@ bool get_fs_config() {
         CTX->log()->error("{}() Unable to lookup local addr", __func__);
         return false;
     }
-    auto ret = margo_create(ld_margo_rpc_id, local_addr, rpc_config_id, &handle);
+    auto ret = margo_create(CTX->rpc()->mid(), local_addr, CTX->rpc()->rpc_config_id, &handle);
     if (ret != HG_SUCCESS) {
-        margo_addr_free(ld_margo_rpc_id, local_addr);
+        margo_addr_free(CTX->rpc()->mid(), local_addr);
         CTX->log()->error("{}() creating handle for failed", __func__);
         return false;
     }
@@ -86,7 +86,7 @@ bool get_fs_config() {
     CTX->log()->debug("{}() Got response with mountdir {}", __func__, out.mountdir);
 
     /* clean up resources consumed by this rpc */
-    margo_addr_free(ld_margo_rpc_id, local_addr);
+    margo_addr_free(CTX->rpc()->mid(), local_addr);
     margo_free_output(handle, &out);
     margo_destroy(handle);
     return true;

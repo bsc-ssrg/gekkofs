@@ -25,23 +25,6 @@ struct MetadentryUpdateFlags {
     bool path = false;
 };
 
-// Margo instances
-extern margo_instance_id ld_margo_rpc_id;
-// RPC IDs
-extern hg_id_t rpc_config_id;
-extern hg_id_t rpc_mk_node_id;
-extern hg_id_t rpc_stat_id;
-extern hg_id_t rpc_access_id;
-extern hg_id_t rpc_rm_node_id;
-extern hg_id_t rpc_decr_size_id;
-extern hg_id_t rpc_update_metadentry_id;
-extern hg_id_t rpc_get_metadentry_size_id;
-extern hg_id_t rpc_update_metadentry_size_id;
-extern hg_id_t rpc_write_data_id;
-extern hg_id_t rpc_read_data_id;
-extern hg_id_t rpc_trunc_data_id;
-extern hg_id_t rpc_get_dirents_id;
-extern hg_id_t rpc_chunk_stat_id;
 
 // function definitions
 
