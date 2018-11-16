@@ -5,6 +5,10 @@ target_sources(margo_wrap
     ${INCLUDE_DIR}/global/margo/engine.hpp
     PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/engine.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/endpoint.cpp
+    ${INCLUDE_DIR}/global/margo/endpoint.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/errors.cpp
+    ${INCLUDE_DIR}/global/margo/errors.hpp
     )
 target_link_libraries(margo_wrap
     ${ABT_LIBRARIES}

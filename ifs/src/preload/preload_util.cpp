@@ -11,9 +11,6 @@
 
 using namespace std;
 
-// rpc address cache
-std::unique_ptr<std::unordered_map<uint64_t, hg_addr_t>> rpc_addresses;
-
 /**
  * Converts the Metadata object into a stat struct, which is needed by Linux
  * @param path
@@ -146,35 +143,6 @@ bool read_system_hostfile() {
     return true;
 }
 
-hg_addr_t margo_addr_lookup_retry(const std::string& uri) {
-    // try to look up 3 times before erroring out
-    hg_return_t ret;
-    hg_addr_t remote_addr = HG_ADDR_NULL;
-    ::random_device rd; // obtain a random number from hardware
-    unsigned int attempts = 0;
-    do {
-        ret = margo_addr_lookup(CTX->rpc()->mid(), uri.c_str(), &remote_addr);
-        if (ret == HG_SUCCESS) {
-            break;
-        }
-        CTX->log()->warn("{}() Failed to lookup address {}. Attempts [{}/3]", __func__, uri, attempts + 1);
-        // Wait a random amount of time and try again
-        ::mt19937 g(rd()); // seed the random generator
-        ::uniform_int_distribution<> distr(50, 50 * (attempts + 2)); // define the range
-        ::this_thread::sleep_for(std::chrono::milliseconds(distr(g)));
-    } while (++attempts < 3);
-    return remote_addr;
-}
-
-hg_addr_t get_local_addr() {
-    auto daemon_addr = CTX->daemon_addr_str();
-    auto last_separator = daemon_addr.find_last_of(';');
-    if (last_separator != std::string::npos) {
-        daemon_addr.erase(0, ++last_separator);
-    }
-    return margo_addr_lookup_retry(daemon_addr);
-}
-
 /*
  * Get the URI of a given hostname.
  *
@@ -189,8 +157,7 @@ std::string get_uri_from_hostname(const std::string& hostname) {
     return fmt::format("{}://{}:{}", RPC_PROTOCOL, host, CTX->fs_conf()->rpc_port);
 }
 
-bool lookup_all_hosts() {
-    rpc_addresses = std::make_unique<std::unordered_map<uint64_t, hg_addr_t>>();
+void lookup_all_hosts() {
     vector<uint64_t> hosts(CTX->fs_conf()->host_size);
     // populate vector with [0, ..., host_size - 1]
     ::iota(::begin(hosts), ::end(hosts), 0);
@@ -202,86 +169,15 @@ bool lookup_all_hosts() {
     ::mt19937 g(rd()); // seed the random generator
     ::shuffle(hosts.begin(), hosts.end(), g); // Shuffle hosts vector
     // lookup addresses and put abstract server addresses into rpc_addresses
+    string remote_uri;
     for (auto& host : hosts) {
-        string uri{};
         // If local use address provided by daemon in order to use automatic shared memory routing
         if (host == CTX->fs_conf()->host_id) {
-            uri = CTX->daemon_addr_str();
+            remote_uri = CTX->daemon_addr_str();
         } else {
             auto hostname = CTX->fs_conf()->hosts.at(host);
-            uri = get_uri_from_hostname(hostname);
+            remote_uri = get_uri_from_hostname(hostname);
         }
-        auto remote_addr = margo_addr_lookup_retry(uri);
-        if (remote_addr == HG_ADDR_NULL) {
-            CTX->log()->error("{}() Failed to lookup address {}", __func__, uri);
-            return false;
-        }
-        CTX->log()->trace("{}() Successful address lookup for '{}'", __func__, uri);
-        rpc_addresses->insert(make_pair(host, remote_addr));
+        CTX->rpc()->insert_endpoint(host, remote_uri);
     }
-    return true;
-}
-
-void cleanup_addresses() {
-    CTX->log()->debug("{}() Freeing Margo RPC svr addresses ...", __func__);
-    for (const auto& e : *rpc_addresses) {
-        CTX->log()->info("{}() Trying to free hostid {}", __func__, e.first);
-        if (margo_addr_free(CTX->rpc()->mid(), e.second) != HG_SUCCESS) {
-            CTX->log()->warn("{}() Unable to free RPC client's svr address: {}.", __func__, e.first);
-        }
-    }
-}
-
-/**
- * Retrieve abstract svr address handle for hostid
- * @param hostid
- * @param svr_addr
- * @return
- */
-bool get_addr_by_hostid(const uint64_t hostid, hg_addr_t& svr_addr) {
-    auto address_lookup = rpc_addresses->find(hostid);
-    auto found = address_lookup != rpc_addresses->end();
-    if (found) {
-        svr_addr = address_lookup->second;
-        CTX->log()->trace("{}() RPC address lookup success with hostid {}", __func__, address_lookup->first);
-        return true;
-    } else {
-        // not found, unexpected host.
-        // This should not happen because all addresses are looked when the environment is initialized.
-        CTX->log()->error("{}() Unexpected host id {}. Not found in RPC address cache", __func__, hostid);
-        assert(found && "Unexpected host id for rpc address lookup. ID was not found in RPC address cache.");
-    }
-    return false;
-}
-
-hg_return
-margo_create_wrap_helper(const hg_id_t rpc_id, uint64_t recipient, hg_handle_t& handle) {
-    hg_return_t ret;
-    hg_addr_t svr_addr = HG_ADDR_NULL;
-    if (!get_addr_by_hostid(recipient, svr_addr)) {
-        CTX->log()->error("{}() server address not resolvable for host id {}", __func__, recipient);
-        return HG_OTHER_ERROR;
-    }
-    // TODO The following is a work around until https://xgitlab.cels.anl.gov/sds/margo/issues/47 is fixed
-    if (recipient == CTX->fs_conf()->host_id)
-        ret = margo_create(CTX->rpc()->mid(), svr_addr, rpc_id, &handle);
-    else
-        ret = margo_create_cache(CTX->rpc()->mid(), svr_addr, rpc_id, &handle);
-
-    if (ret != HG_SUCCESS) {
-        CTX->log()->error("{}() creating handle FAILED", __func__);
-        return HG_OTHER_ERROR;
-    }
-    return ret;
-}
-
-/**
- * Wraps certain margo functions to create a Mercury handle
- * @param path
- * @param handle
- * @return
- */
-hg_return margo_create_wrap(const hg_id_t rpc_id, const std::string& path, hg_handle_t& handle) {
-    auto recipient = CTX->distributor()->locate_file_metadata(path);
-    return margo_create_wrap_helper(rpc_id, recipient, handle);
 }

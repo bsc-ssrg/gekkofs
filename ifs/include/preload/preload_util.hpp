@@ -8,9 +8,6 @@
 #include <string>
 #include <iostream>
 
-extern "C" {
-#include <margo.h>
-}
 
 struct MetadentryUpdateFlags {
     bool atime = false;
@@ -34,19 +31,7 @@ int get_daemon_pid();
 
 bool read_system_hostfile();
 
-hg_addr_t get_local_addr();
-
-bool lookup_all_hosts();
-
-void cleanup_addresses();
-
-bool get_addr_by_hostid(uint64_t hostid, hg_addr_t& svr_addr);
-
-hg_return margo_create_wrap_helper(const hg_id_t rpc_id, uint64_t recipient,
-                                   hg_handle_t& handle);
-
-hg_return margo_create_wrap(const hg_id_t rpc_id, const std::string&,
-                            hg_handle_t& handle);
+void lookup_all_hosts();
 
 
 #endif //IFS_PRELOAD_UTIL_HPP

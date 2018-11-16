@@ -20,7 +20,7 @@ static pthread_once_t init_env_thread = PTHREAD_ONCE_INIT;
  * This function is only called in the preload constructor and initializes Argobots and Margo clients
  */
 void init_ld_environment_() {
-    auto rpc_engine = std::make_shared<RPCEngine>(RPC_PROTOCOL);
+    auto rpc_engine = std::make_shared<RPCEngine>(RPC_PROTOCOL, CTX->daemon_addr_str());
     CTX->rpc(rpc_engine);
 
     if (!rpc_send::get_fs_config()) {
@@ -36,10 +36,9 @@ void init_ld_environment_() {
         CTX->log()->error("{}() Unable to read system hostfile /etc/hosts for address mapping.", __func__);
         exit(EXIT_FAILURE);
     }
-    if (!lookup_all_hosts()) {
-        CTX->log()->error("{}() Unable to lookup all host RPC addresses.", __func__);
-        exit(EXIT_FAILURE);
-    }
+
+    lookup_all_hosts();
+
     CTX->log()->info("{}() Environment initialization successful.", __func__);
 }
 
@@ -112,6 +111,5 @@ void init_preload() {
  * Called last when preload library is used with the LD_PRELOAD environment variable
  */
 void destroy_preload() {
-    cleanup_addresses();
     CTX->log()->info("Client shutdown completed");
 }

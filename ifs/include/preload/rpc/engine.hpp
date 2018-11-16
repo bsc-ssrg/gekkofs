@@ -3,15 +3,21 @@
 
 #include "global/margo/engine.hpp"
 #include <string>
+#include <unordered_map>
 
 
 class RPCEngine {
     private:
+        std::unordered_map<uint64_t, gkfs::margo::Endpoint> endpoints_;
         gkfs::margo::Engine margo_;
+        gkfs::margo::Endpoint local_endpoint_;
 
     public:
-        RPCEngine(const std::string& na_plugin);
-        margo_instance_id mid();
+        RPCEngine(const std::string& na_plugin, const std::string& local_addr);
+        gkfs::margo::Engine& margo();
+        void insert_endpoint(uint64_t host_id, const std::string& addr_str);
+        hg_handle_t create(hg_id_t rpc_id, uint64_t host_id);
+        hg_handle_t create_local(hg_id_t rpc_id);
 
         /* RPC handles */
         hg_id_t rpc_config_id;

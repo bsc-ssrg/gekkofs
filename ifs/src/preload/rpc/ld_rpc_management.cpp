@@ -14,23 +14,13 @@ namespace rpc_send {
  * @return
  */
 bool get_fs_config() {
-    hg_handle_t handle;
     rpc_config_in_t in{};
     rpc_config_out_t out{};
     // fill in
     in.dummy = 0; // XXX should be removed. havent checked yet how empty input with margo works
-    auto local_addr = get_local_addr();
-    if (local_addr == HG_ADDR_NULL) {
-        CTX->log()->error("{}() Unable to lookup local addr", __func__);
-        return false;
-    }
-    auto ret = margo_create(CTX->rpc()->mid(), local_addr, CTX->rpc()->rpc_config_id, &handle);
-    if (ret != HG_SUCCESS) {
-        margo_addr_free(CTX->rpc()->mid(), local_addr);
-        CTX->log()->error("{}() creating handle for failed", __func__);
-        return false;
-    }
+    auto handle = CTX->rpc()->create_local(CTX->rpc()->rpc_config_id);
     CTX->log()->debug("{}() About to send get config RPC to daemon", __func__);
+
     int send_ret = HG_FALSE;
     for (int i = 0; i < RPC_TRIES; ++i) {
         send_ret = margo_forward_timed(handle, &in, RPC_TIMEOUT);
@@ -46,7 +36,7 @@ bool get_fs_config() {
 
     /* decode response */
     CTX->log()->debug("{}() Waiting for response", __func__);
-    ret = margo_get_output(handle, &out);
+    auto ret = margo_get_output(handle, &out);
     if (ret != HG_SUCCESS) {
         CTX->log()->error("{}() Retrieving fs configurations from daemon", __func__);
         margo_destroy(handle);
@@ -86,7 +76,6 @@ bool get_fs_config() {
     CTX->log()->debug("{}() Got response with mountdir {}", __func__, out.mountdir);
 
     /* clean up resources consumed by this rpc */
-    margo_addr_free(CTX->rpc()->mid(), local_addr);
     margo_free_output(handle, &out);
     margo_destroy(handle);
     return true;

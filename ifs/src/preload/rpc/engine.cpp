@@ -3,12 +3,14 @@
 #include "global/global_defs.hpp"
 
 
-RPCEngine::RPCEngine(const std::string& na_plugin) :
-    margo_(na_plugin,
+RPCEngine::RPCEngine(const std::string& na_plugin,
+                     const std::string& local_addr)
+    : margo_(na_plugin,
            false,  // server_mode
            true,   // use_auto_sm
            false,  // use_progress_thread
            1)      // rpc_thread_count
+    , local_endpoint_(margo_.addr_lookup_retry(local_addr))
 {
     /* Register RPCs */
     rpc_config_id = MARGO_REGISTER(margo_.get_instance_id(),
@@ -96,6 +98,20 @@ RPCEngine::RPCEngine(const std::string& na_plugin) :
         NULL);
 }
 
-margo_instance_id RPCEngine::mid() {
-    return margo_.get_instance_id();
+gkfs::margo::Engine& RPCEngine::margo() {
+    return margo_;
 }
+
+void RPCEngine::insert_endpoint(uint64_t host_id, const std::string& addr_str) {
+    endpoints_.insert(
+            std::make_pair(host_id, margo_.addr_lookup_retry(addr_str)));
+}
+
+hg_handle_t RPCEngine::create(hg_id_t rpc_id, uint64_t host_id) {
+    return margo_.create(rpc_id, endpoints_.at(host_id));
+}
+
+hg_handle_t RPCEngine::create_local(hg_id_t rpc_id) {
+    return margo_.create(rpc_id, local_endpoint_);
+}
+

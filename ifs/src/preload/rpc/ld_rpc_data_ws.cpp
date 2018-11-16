@@ -60,7 +60,7 @@ ssize_t write(const string& path, const void* buf, const bool append_flag, const
     auto bulk_buf = const_cast<void*>(buf);
     hg_bulk_t rpc_bulk_handle = nullptr;
     auto size = make_shared<size_t>(write_size);
-    auto ret = margo_bulk_create(CTX->rpc()->mid(), 1, &bulk_buf, size.get(), HG_BULK_READ_ONLY, &rpc_bulk_handle);
+    auto ret = margo_bulk_create(CTX->rpc()->margo().get_instance_id(), 1, &bulk_buf, size.get(), HG_BULK_READ_ONLY, &rpc_bulk_handle);
     if (ret != HG_SUCCESS) {
         CTX->log()->error("{}() Failed to create rpc bulk handle", __func__);
         errno = EBUSY;
@@ -83,7 +83,7 @@ ssize_t write(const string& path, const void* buf, const bool append_flag, const
         rpc_in[i].chunk_end = chnk_end; // chunk end id of this write
         rpc_in[i].total_chunk_size = total_chunk_size; // total size to write
         rpc_in[i].bulk_handle = rpc_bulk_handle;
-        margo_create_wrap_helper(CTX->rpc()->rpc_write_data_id, target, rpc_handles[i]);
+        rpc_handles[i] = CTX->rpc()->create(CTX->rpc()->rpc_write_data_id, target);
         // Send RPC
         ret = margo_iforward(rpc_handles[i], &rpc_in[i], &rpc_waiters[i]);
         if (ret != HG_SUCCESS) {
@@ -168,7 +168,7 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
     auto bulk_buf = buf;
     hg_bulk_t rpc_bulk_handle = nullptr;
     auto size = make_shared<size_t>(read_size);
-    auto ret = margo_bulk_create(CTX->rpc()->mid(), 1, &bulk_buf, size.get(), HG_BULK_WRITE_ONLY, &rpc_bulk_handle);
+    auto ret = margo_bulk_create(CTX->rpc()->margo().get_instance_id(), 1, &bulk_buf, size.get(), HG_BULK_WRITE_ONLY, &rpc_bulk_handle);
     if (ret != HG_SUCCESS) {
         CTX->log()->error("{}() Failed to create rpc bulk handle", __func__);
         errno = EBUSY;
@@ -191,7 +191,7 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
         rpc_in[i].chunk_end = chnk_end; // chunk end id of this write
         rpc_in[i].total_chunk_size = total_chunk_size; // total size to write
         rpc_in[i].bulk_handle = rpc_bulk_handle;
-        margo_create_wrap_helper(CTX->rpc()->rpc_read_data_id, target, rpc_handles[i]);
+        rpc_handles[i] = CTX->rpc()->create(CTX->rpc()->rpc_read_data_id, target);
         // Send RPC
         ret = margo_iforward(rpc_handles[i], &rpc_in[i], &rpc_waiters[i]);
         if (ret != HG_SUCCESS) {
@@ -260,11 +260,7 @@ int trunc_data(const std::string& path, size_t current_size, size_t new_size) {
     std::vector<margo_request> rpc_waiters(hosts.size());
     unsigned int req_num = 0;
     for (const auto& host: hosts) {
-        ret = margo_create_wrap_helper(CTX->rpc()->rpc_trunc_data_id, host, rpc_handles[req_num]);
-        if (ret != HG_SUCCESS) {
-            CTX->log()->error("{}() Unable to create Mercury handle for host: ", __func__, host);
-            break;
-        }
+        rpc_handles[req_num] = CTX->rpc()->create(CTX->rpc()->rpc_trunc_data_id, host);
 
         // send async rpc
         ret = margo_iforward(rpc_handles[req_num], &in, &rpc_waiters[req_num]);
@@ -332,11 +328,8 @@ ChunkStat chunk_stat() {
 
     for (unsigned int target_host = 0; target_host < host_size; ++target_host) {
         //Setup rpc input parameters for each host
-        hg_ret = margo_create_wrap_helper(CTX->rpc()->rpc_chunk_stat_id, target_host,
-                                          rpc_handles[target_host]);
-        if (hg_ret != HG_SUCCESS) {
-            throw std::runtime_error("Failed to create margo handle");
-        }
+        rpc_handles[target_host] = CTX->rpc()->create(CTX->rpc()->rpc_chunk_stat_id, target_host);
+
         // Send RPC
         CTX->log()->trace("{}() Sending RPC to host: {}", __func__, target_host);
         hg_ret = margo_iforward(rpc_handles[target_host],
