@@ -28,6 +28,7 @@ target_sources(metadata
     PRIVATE
     ${INCLUDE_DIR}/global/global_defs.hpp
     ${CMAKE_CURRENT_LIST_DIR}/metadata.cpp
+    ${INCLUDE_DIR}/global/configure.hpp
     )
 target_link_libraries(metadata
     fmt
