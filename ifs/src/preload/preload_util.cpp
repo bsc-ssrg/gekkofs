@@ -202,31 +202,23 @@ bool lookup_all_hosts() {
     hg_addr_t remote_addr = HG_ADDR_NULL;
     std::string remote_uri;
     for (auto& host : hosts) {
-        if (host == CTX->fs_conf()->host_id) {
-            remote_addr = get_local_addr();
-            if (remote_addr == HG_ADDR_NULL) {
-                CTX->log()->error("{}() Failed to lookup local address", __func__);
-                return false;
-            }
+        auto hostname = CTX->fs_conf()->hosts.at(host) + HOSTNAME_SUFFIX;
+        // get the ip address from /etc/hosts which is mapped to the sys_hostfile map
+        if (CTX->fs_conf()->sys_hostfile.count(hostname) == 1) {
+            auto remote_ip = CTX->fs_conf()->sys_hostfile.at(hostname);
+            remote_uri = RPC_PROTOCOL + "://"s + remote_ip + ":"s + CTX->fs_conf()->rpc_port;
         } else {
-            auto hostname = CTX->fs_conf()->hosts.at(host) + HOSTNAME_SUFFIX;
-            // get the ip address from /etc/hosts which is mapped to the sys_hostfile map
-            if (CTX->fs_conf()->sys_hostfile.count(hostname) == 1) {
-                auto remote_ip = CTX->fs_conf()->sys_hostfile.at(hostname);
-                remote_uri = RPC_PROTOCOL + "://"s + remote_ip + ":"s + CTX->fs_conf()->rpc_port;
-            } else {
-                // fallback hostname to use for lookup
-                remote_uri = RPC_PROTOCOL + "://"s + hostname + ":"s + CTX->fs_conf()->rpc_port;
-            }
-
-            remote_addr = margo_addr_lookup_retry(remote_uri);
-            if (remote_addr == HG_ADDR_NULL) {
-                CTX->log()->error("{}() Failed to lookup address {}", __func__, remote_uri);
-                return false;
-            }
-            CTX->log()->trace("generated remote_addr {} for hostname {} with rpc_port {}",
-                    remote_uri, hostname, CTX->fs_conf()->rpc_port);
+            // fallback hostname to use for lookup
+            remote_uri = RPC_PROTOCOL + "://"s + hostname + ":"s + CTX->fs_conf()->rpc_port;
         }
+
+        remote_addr = margo_addr_lookup_retry(remote_uri);
+        if (remote_addr == HG_ADDR_NULL) {
+            CTX->log()->error("{}() Failed to lookup address {}", __func__, remote_uri);
+            return false;
+        }
+        CTX->log()->trace("generated remote_addr {} for hostname {} with rpc_port {}",
+                remote_uri, hostname, CTX->fs_conf()->rpc_port);
         rpc_addresses->insert(make_pair(host, remote_addr));
     }
     return true;
