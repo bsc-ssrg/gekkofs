@@ -197,7 +197,11 @@ std::string get_uri_from_hostname(const std::string& hostname) {
     if (CTX->fs_conf()->sys_hostfile.count(host) == 1) {
         host = CTX->fs_conf()->sys_hostfile.at(host);
     }
-    return fmt::format("{}://{}:{}", RPC_PROTOCOL, host, CTX->fs_conf()->rpc_port);
+    auto internal_protocol = ""s;
+    if(RPC_PROTOCOL == "ofi+tcp"s) {
+        internal_protocol = "fi_sockaddr_in://";
+    }
+    return fmt::format("{}://{}{}:{}", RPC_PROTOCOL, internal_protocol, host, CTX->fs_conf()->rpc_port);
 }
 
 bool lookup_all_hosts() {
