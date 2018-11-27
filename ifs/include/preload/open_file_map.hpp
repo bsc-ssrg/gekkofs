@@ -7,6 +7,9 @@
 #include <memory>
 #include <atomic>
 
+#include "global/global_defs.hpp"
+
+
 /* Forward declaration */
 class OpenDir;
 
@@ -30,6 +33,7 @@ enum class FileType {
 class OpenFile {
 protected:
     FileType type_;
+    fuid_t fuid_;
     std::string path_;
     std::array<bool, static_cast<int>(OpenFile_flags::flag_count)> flags_ = {false};
     off64_t pos_;
@@ -39,11 +43,13 @@ protected:
 public:
     // multiple threads may want to update the file position if fd has been duplicated by dup()
 
-    OpenFile(const std::string& path, int flags, FileType type = FileType::regular);
+    OpenFile(const fuid_t fuid, const std::string& path, int flags, FileType type = FileType::regular);
 
     ~OpenFile();
 
     // getter/setter
+    fuid_t fuid() const;
+
     std::string path() const;
 
     void path(const std::string& path_);

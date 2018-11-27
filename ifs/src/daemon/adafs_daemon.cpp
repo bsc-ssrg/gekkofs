@@ -8,6 +8,7 @@
 #include <daemon/adafs_ops/metadentry.hpp>
 #include <daemon/backend/metadata/db.hpp>
 #include <daemon/backend/data/chunk_storage.hpp>
+#include "daemon/classes/uids_manager.hpp"
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -206,7 +207,8 @@ bool init_rpc_server() {
  */
 void register_server_rpcs(margo_instance_id mid) {
     MARGO_REGISTER(mid, hg_tag::fs_config, rpc_config_in_t, rpc_config_out_t, rpc_srv_fs_config);
-    MARGO_REGISTER(mid, hg_tag::create, rpc_mk_node_in_t, rpc_err_out_t, rpc_srv_mk_node);
+    MARGO_REGISTER(mid, hg_tag::create, rpc_mk_node_in_t, rpc_fuid_out_t, rpc_srv_mk_node);
+    MARGO_REGISTER(mid, hg_tag::insert, rpc_insert_node_in_t, rpc_err_out_t, rpc_srv_insert_node);
     MARGO_REGISTER(mid, hg_tag::access, rpc_access_in_t, rpc_err_out_t, rpc_srv_access);
     MARGO_REGISTER(mid, hg_tag::stat, rpc_path_only_in_t, rpc_stat_out_t, rpc_srv_stat);
     MARGO_REGISTER(mid, hg_tag::decr_size, rpc_trunc_in_t, rpc_err_out_t, rpc_srv_decr_size);
@@ -424,6 +426,10 @@ int main(int argc, const char* argv[]) {
     ADAFS_DATA->host_size(hostmap.size());
     ADAFS_DATA->rpc_port(fmt::format_int(RPC_PORT).str());
     ADAFS_DATA->hosts_raw(hosts_raw);
+
+    ADAFS_DATA->fuids_manager(
+            std::make_shared<UidsManager>(
+                ADAFS_DATA->host_size(), ADAFS_DATA->host_id()));
 
     ADAFS_DATA->spdlogger()->info("{}() Initializing environment. Hold on ...", __func__);
 

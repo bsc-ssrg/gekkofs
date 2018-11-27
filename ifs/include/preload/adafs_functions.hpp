@@ -30,7 +30,10 @@ std::shared_ptr<Metadata> adafs_metadata(const std::string& path);
 
 int adafs_open(const std::string& path, mode_t mode, int flags);
 
+int adafs_mk_node(const std::string& path, mode_t mode, fuid_t& fuid);
 int adafs_mk_node(const std::string& path, mode_t mode);
+
+int adafs_rename(const std::string& oldpath, const std::string& newpath);
 
 int adafs_rm_node(const std::string& path);
 
@@ -48,7 +51,7 @@ off64_t adafs_lseek(std::shared_ptr<OpenFile> adafs_fd, off64_t offset, int when
 
 int adafs_truncate(const std::string& path, off_t offset);
 
-int adafs_truncate(const std::string& path, off_t old_size, off_t new_size);
+int adafs_truncate(const std::string& path, const fuid_t fuid, off_t old_size, off_t new_size);
 
 int adafs_dup(int oldfd);
 

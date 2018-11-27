@@ -4,12 +4,14 @@
 
 
 #include "global/configure.hpp"
+#include "global/global_defs.hpp"
 #include <sys/types.h>
 #include <string>
 
 
 class Metadata {
 private:
+    fuid_t fuid_;
     time_t atime_;         // access time. gets updated on file access unless mounted with noatime
     time_t mtime_;         // modify time. gets updated when file content is modified.
     time_t ctime_;         // change time. gets updated when the file attributes are changed AND when file content is modified.
@@ -32,6 +34,8 @@ public:
     void update_ACM_time(bool a, bool c, bool m);
 
     //Getter and Setter
+    fuid_t fuid() const;
+    void fuid(fuid_t fuid);
     time_t atime() const;
     void atime(time_t atime_);
     time_t mtime() const;

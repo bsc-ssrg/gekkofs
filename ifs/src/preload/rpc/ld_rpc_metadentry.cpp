@@ -16,10 +16,10 @@ margo_forward_timed_wrap(const hg_handle_t& handle, void* in_struct) {
     return margo_forward_timed(handle, in_struct, RPC_TIMEOUT);
 }
 
-int mk_node(const std::string& path, const mode_t mode) {
+int mk_node(const std::string& path, const mode_t mode, fuid_t& fuid) {
     hg_handle_t handle;
     rpc_mk_node_in_t in{};
-    rpc_err_out_t out{};
+    rpc_fuid_out_t out{};
     int err = EUNKNOWN;
     // fill in
     in.path = path.c_str();
@@ -41,6 +41,7 @@ int mk_node(const std::string& path, const mode_t mode) {
         if (ret == HG_SUCCESS) {
             CTX->log()->debug("{}() Got response success: {}", __func__, out.err);
             err = out.err;
+            fuid = out.fuid;
         } else {
             // something is wrong
             errno = EBUSY;
@@ -52,6 +53,57 @@ int mk_node(const std::string& path, const mode_t mode) {
         CTX->log()->warn("{}() timed out");
         errno = EBUSY;
     }
+    margo_destroy(handle);
+    return err;
+}
+
+int insert_node(const std::string& path, const Metadata& md) {
+    int err = 0;
+    hg_handle_t handle;
+    rpc_insert_node_in_t in{};
+    rpc_err_out_t out{};
+
+    // fill in
+    in.path = path.c_str();
+    // NOTE if we use md.serialized().c_str() the field
+    // of the `in` struct points to empty string after a while
+    auto serialized_metadata = md.serialize();
+    in.serialized_metadata = serialized_metadata.c_str();
+    // Create handle
+    auto ret = margo_create_wrap(rpc_insert_node_id, path, handle);
+    if (ret != HG_SUCCESS) {
+        errno = EBUSY;
+        return -1;
+    }
+
+    // Send rpc
+#if defined(MARGO_FORWARD_TIMER)
+    ret = margo_forward_timed_wrap_timer(handle, &in, __func__);
+#else
+    ret = margo_forward_timed_wrap(handle, &in);
+#endif
+    if (ret != HG_SUCCESS) {
+        CTX->log()->warn("{}() Failed to fowrward call");
+        margo_destroy(handle);
+        errno = EBUSY;
+        return -1;
+    }
+
+    // Get response
+    ret = margo_get_output(handle, &out);
+    if (ret != HG_SUCCESS) {
+        CTX->log()->error("{}() while getting rpc output", __func__);
+        errno = EBUSY;
+        margo_free_output(handle, &out);
+        margo_destroy(handle);
+        return -1;
+    }
+
+    CTX->log()->debug("{}() Got response success: {}", __func__, out.err);
+    err = out.err;
+
+    /* clean up resources consumed by this rpc */
+    margo_free_output(handle, &out);
     margo_destroy(handle);
     return err;
 }
@@ -198,7 +250,7 @@ int decr_size(const std::string& path, size_t length) {
     return err;
 }
 
-int rm_node(const std::string& path, const bool remove_metadentry_only) {
+int rm_node(const std::string& path, const fuid_t fuid, const bool remove_metadentry_only) {
     hg_return_t ret;
     int err = 0; // assume we succeed
     // if metadentry should only removed only, send only 1 rpc to remove the metadata
@@ -213,6 +265,8 @@ int rm_node(const std::string& path, const bool remove_metadentry_only) {
     for (size_t i = 0; i < rpc_target_size; i++) {
         // fill in
         rpc_in[i].path = path.c_str();
+        rpc_in[i].fuid = fuid;
+        rpc_in[i].remove_md_only = remove_metadentry_only;
         // create handle
         // if only the metadentry needs to removed send one rpc to metadentry's responsible node
         if (remove_metadentry_only)

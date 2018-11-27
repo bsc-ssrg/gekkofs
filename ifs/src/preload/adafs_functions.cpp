@@ -13,6 +13,7 @@ using namespace std;
 
 int adafs_open(const std::string& path, mode_t mode, int flags) {
     init_ld_env_if_needed();
+    fuid_t fuid;
 
     if(flags & O_PATH){
         CTX->log()->error("{}() `O_PATH` flag is not supported", __func__);
@@ -54,7 +55,7 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
         }
 
         // no access check required here. If one is using our FS they have the permissions.
-        if(adafs_mk_node(path, mode | S_IFREG)) {
+        if(adafs_mk_node(path, mode | S_IFREG, fuid)) {
             CTX->log()->error("{}() error creating non-existent file", __func__);
             return -1;
         }
@@ -91,17 +92,18 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
         assert(S_ISREG(md->mode()));
 
         if( (flags & O_TRUNC) && ((flags & O_RDWR) || (flags & O_WRONLY)) ) {
-            if(adafs_truncate(path, md->size(), 0)) {
+            if(adafs_truncate(path, md->fuid(), md->size(), 0)) {
                 CTX->log()->error("{}() error truncating file", __func__);
                 return -1;
             }
         }
+        fuid = md->fuid();
     }
 
-    return CTX->file_map()->add(std::make_shared<OpenFile>(path, flags));
+    return CTX->file_map()->add(std::make_shared<OpenFile>(fuid, path, flags));
 }
 
-int adafs_mk_node(const std::string& path, const mode_t mode) {
+int adafs_mk_node(const std::string& path, mode_t mode, fuid_t& fuid) {
     init_ld_env_if_needed();
 
     //file type must be set
@@ -121,7 +123,12 @@ int adafs_mk_node(const std::string& path, const mode_t mode) {
         errno = ENOTDIR;
         return -1;
     }
-    return rpc_send::mk_node(path, mode);
+    return rpc_send::mk_node(path, mode, fuid);
+}
+
+int adafs_mk_node(const std::string& path, mode_t mode) {
+    fuid_t fuid;
+    return adafs_mk_node(path, mode, fuid);
 }
 
 /**
@@ -136,7 +143,7 @@ int adafs_rm_node(const std::string& path) {
         return -1;
     }
     bool has_data = S_ISREG(md->mode()) && (md->size() != 0);
-    return rpc_send::rm_node(path, !has_data);
+    return rpc_send::rm_node(path, md->fuid(), !has_data);
 }
 
 int adafs_access(const std::string& path, const int mask) {
@@ -245,7 +252,7 @@ off64_t adafs_lseek(shared_ptr<OpenFile> adafs_fd, off64_t offset, int whence) {
     return adafs_fd->pos();
 }
 
-int adafs_truncate(const std::string& path, off_t old_size, off_t new_size) {
+int adafs_truncate(const std::string& path, const fuid_t fuid, off_t old_size, off_t new_size) {
     assert(new_size >= 0);
     assert(new_size <= old_size);
 
@@ -258,7 +265,7 @@ int adafs_truncate(const std::string& path, off_t old_size, off_t new_size) {
         return -1;
     }
 
-    if(rpc_send::trunc_data(path, old_size, new_size)){
+    if(rpc_send::trunc_data(fuid, old_size, new_size)){
         CTX->log()->debug("{}() failed to truncate data", __func__);
         return -1;
     }
@@ -293,7 +300,7 @@ int adafs_truncate(const std::string& path, off_t length) {
         errno = EINVAL;
         return -1;
     }
-    return adafs_truncate(path, size, length);
+    return adafs_truncate(path, md->fuid(), size, length);
 }
 
 int adafs_dup(const int oldfd) {
@@ -323,7 +330,7 @@ ssize_t adafs_pwrite(std::shared_ptr<OpenFile> file, const char * buf, size_t co
         CTX->log()->error("{}() update_metadentry_size failed with ret {}", __func__, ret);
         return ret; // ERR
     }
-    ret = rpc_send::write(*path, buf, append_flag, offset, count, updated_size);
+    ret = rpc_send::write(file->fuid(), buf, append_flag, offset, count, updated_size);
     if (ret < 0) {
         CTX->log()->warn("{}() rpc_send::write failed with ret {}", __func__, ret);
     }
@@ -414,7 +421,7 @@ ssize_t adafs_pread(std::shared_ptr<OpenFile> file, char * buf, size_t count, of
 #if defined(ZERO_BUFFER_BEFORE_READ)
     memset(buf, 0, sizeof(char)*count);
 #endif
-    auto ret = rpc_send::read(file->path(), buf, offset, count);
+    auto ret = rpc_send::read(file->fuid(), buf, offset, count);
     if (ret < 0) {
         CTX->log()->warn("{}() rpc_send::read failed with ret {}", __func__, ret);
     }
@@ -440,6 +447,38 @@ ssize_t adafs_pread_ws(int fd, void* buf, size_t count, off64_t offset) {
     return adafs_pread(adafs_fd, reinterpret_cast<char*>(buf), count, offset);
 }
 
+int adafs_rename(const std::string& oldpath, const std::string& newpath) {
+    auto oldmd = adafs_metadata(oldpath);
+    if (oldmd == nullptr) {
+        CTX->log()->warn("{}() Old path does not exists", __func__);
+        errno = ENOENT;
+        return -1;
+    }
+    if (S_ISDIR(oldmd->mode())) {
+        CTX->log()->warn("{}() Moving directory is not supported", __func__);
+        errno = ENOTSUP;
+        return -1;
+    }
+
+    auto newmd = adafs_metadata(newpath);
+    if (newmd != nullptr) {
+        CTX->log()->warn("{}() New path already exists", __func__);
+        errno = EEXIST;
+        return -1;
+    }
+
+    /* TODO if the oldpath and newpath are
+     * manged by the same metadata node use just one rpc
+     * something like "move_node"
+     */
+    // Remove old entry
+    if (rpc_send::rm_node(oldpath, oldmd->fuid(), true) != 0) {
+        CTX->log()->warn("{}() Failed to remove old entry", __func__);
+        return -1;
+    }
+    return rpc_send::insert_node(newpath, *oldmd);
+}
+
 int adafs_opendir(const std::string& path) {
     init_ld_env_if_needed();
 
@@ -453,7 +492,7 @@ int adafs_opendir(const std::string& path) {
         return -1;
     }
 
-    auto open_dir = std::make_shared<OpenDir>(path);
+    auto open_dir = std::make_shared<OpenDir>(md->fuid(), path);
     rpc_send::get_dirents(*open_dir);
     return CTX->file_map()->add(open_dir);
 }
@@ -473,13 +512,13 @@ int adafs_rmdir(const std::string& path) {
         return -1;
     }
 
-    auto open_dir = std::make_shared<OpenDir>(path);
+    auto open_dir = std::make_shared<OpenDir>(md->fuid(), path);
     rpc_send::get_dirents(*open_dir);
     if(open_dir->size() != 0){
         errno = ENOTEMPTY;
         return -1;
     }
-    return rpc_send::rm_node(path, true);
+    return rpc_send::rm_node(path, md->fuid(), true);
 }
 
 struct dirent * adafs_readdir(int fd){
