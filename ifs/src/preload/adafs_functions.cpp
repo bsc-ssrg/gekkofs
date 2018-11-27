@@ -472,11 +472,11 @@ int adafs_rename(const std::string& oldpath, const std::string& newpath) {
      * something like "move_node"
      */
     // Remove old entry
-    if (rpc_send_rm_node(oldpath, oldmd->fuid(), true) != 0) {
+    if (rpc_send::rm_node(oldpath, oldmd->fuid(), true) != 0) {
         CTX->log()->warn("{}() Failed to remove old entry", __func__);
         return -1;
     }
-    return rpc_send_insert_node(newpath, *oldmd);
+    return rpc_send::insert_node(newpath, *oldmd);
 }
 
 int adafs_opendir(const std::string& path) {
