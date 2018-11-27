@@ -2,6 +2,7 @@
 #ifndef IFS_PRELOAD_C_METADENTRY_HPP
 #define IFS_PRELOAD_C_METADENTRY_HPP
 
+#include "global/global_defs.hpp"
 #include <string>
 
 /* Forward declaration */
