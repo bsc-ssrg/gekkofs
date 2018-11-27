@@ -12,8 +12,8 @@
 // If ACM time should be considered
 #define ACMtime //unused
 // XXX Should blocksize and chunksize be merged?
-#define BLOCKSIZE 524288 // in bytes 512KB
-#define CHUNKSIZE 524288 // in bytes 512KB
+#define BLOCKSIZE 4194304 // in bytes 4MB
+#define CHUNKSIZE 4194304 // in bytes 4MB
 
 // What metadata is used TODO this has to be parametrized or put into a configuration file
 #define MDATA_USE_ATIME false
