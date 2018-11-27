@@ -13,4 +13,6 @@ ssize_t read(const fuid_t fuid, void* buf, const off64_t offset, const size_t re
 
 int trunc_data(const fuid_t fuid, size_t current_size, size_t new_size);
 
+}
+
 #endif //IFS_PRELOAD_C_DATA_WS_HPP
