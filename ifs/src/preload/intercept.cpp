@@ -291,7 +291,9 @@ static inline int hook(long syscall_number,
          */
 
         #ifndef NDEBUG
-        CTX->log()->trace("Syscall [{}, {}]  Passthrough", syscall_names[syscall_number], syscall_number);
+        if(syscall_number != 232) {
+            CTX->log()->trace("Syscall [{}, {}]  Passthrough", syscall_names[syscall_number], syscall_number);
+        }
         #endif
         return NOT_HOOKED;
     }
