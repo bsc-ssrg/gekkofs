@@ -178,6 +178,8 @@ if [[ ( "${CLUSTER}" == "mogon1" ) || ( "${CLUSTER}" == "mogon2" ) || ( "${CLUST
     wgetdeps "lz4" "https://github.com/lz4/lz4/archive/v1.8.0.tar.gz" &
 	# get snappy for rocksdb
     wgetdeps "snappy" "https://github.com/google/snappy/archive/1.1.7.tar.gz" &
+    # get capstone
+    clonedeps "capstone" "https://github.com/aquynh/capstone.git" &
 fi
 #if [ "${CLUSTER}" == "fh2" ]; then
 	# no distinct 3rd party software needed as of now.

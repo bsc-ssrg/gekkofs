@@ -207,6 +207,29 @@ if [[ ( "${CLUSTER}" == "mogon1" ) || ( "${CLUSTER}" == "fh2" ) || ( "${CLUSTER}
     $CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release ..
     make -j${CORES}
     make install
+    echo "############################################################ Installing:  capstone"
+    CURR=${SOURCE}/capstone
+    prepare_build_dir ${CURR}
+    cd ${CURR}/build
+    $CMAKE \
+        -DCMAKE_INSTALL_PREFIX=${INSTALL} \
+        -DCMAKE_BUILD_TYPE:STRING="Release" \
+        -DCAPSTONE_BUILD_TESTS:BOOL=OFF \
+        -DCAPSTONE_ARM64_SUPPORT:BOOL=OFF \
+        -DCAPSTONE_ARM_SUPPORT:BOOL=OFF \
+        -DCAPSTONE_EVM_SUPPORT:BOOL=OFF \
+        -DCAPSTONE_M680X_SUPPORT:BOOL=OFF \
+        -DCAPSTONE_M68K_SUPPORT:BOOL=OFF \
+        -DCAPSTONE_MIPS_SUPPORT:BOOL=OFF \
+        -DCAPSTONE_OSXKERNEL_SUPPORT:BOOL=OFF \
+        -DCAPSTONE_SPARC_SUPPORT:BOOL=OFF \
+        -DCAPSTONE_SYSZ_SUPPORT:BOOL=OFF \
+        -DCAPSTONE_TMS320C64X_SUPPORT:BOOL=OFF \
+        -DCAPSTONE_XCORE_SUPPORT:BOOL=OFF \
+        -DCAPSTONE_X86_SUPPORT:BOOL=ON \
+        ..
+    make -j${CORES}
+    make install
 fi
 
 if [ "$NA_LAYER" == "bmi" ] || [ "$NA_LAYER" == "all" ]; then
@@ -338,7 +361,7 @@ echo "############################################################ Installing:  
 CURR=${SOURCE}/syscall_intercept
 prepare_build_dir ${CURR}
 cd ${CURR}/build
-$CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTS:BOOK=OFF ..
+$CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTS:BOOL=OFF ..
 make install
 
 echo "Done"
