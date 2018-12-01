@@ -66,7 +66,8 @@ def shutdown_system(daemon_pid_path, nodelist, sigkill):
     if PRETEND:
         print 'Pretending: %s' % cmd_str
     else:
-        print 'Running: %s' % cmd_str
+        print 'Sending shutdown command to GekkoFS daemons...'
+        #print 'RRunning: %s' % cmd_str
         pssh_ret = util.exec_shell(cmd_str, True)
         err = False
         for line in pssh_ret:
@@ -77,26 +78,25 @@ def shutdown_system(daemon_pid_path, nodelist, sigkill):
                 print line
         if not err:
             if sigkill:
-                print 'pssh daemon launch successfully executed. FS daemons have been force killed ...'
+                #print 'pssh daemon launch successfully executed. FS daemons have been force killed ...'
                 exit(1)
-            else:
-                print 'pssh daemon launch successfully executed. Checking for FS shutdown errors ...\n'
         else:
             print '[ERR] with pssh. Aborting...'
             exit(1)
 
     if not PRETEND:
-        print 'Give it some time (%d second) to finish up ...' % WAITTIME
+        print 'Give them some time (%d second) to finish up ...' % WAITTIME
         for i in range(WAITTIME):
             print '%d\r' % (WAITTIME - i),
             time.sleep(1)
-    print 'Checking logs ...\n'
+    #print 'Checking logs ...\n'
 
     cmd_chk_str = '%s "tail -4 /tmp/adafs_daemon.log"' % pssh
     if PRETEND:
         print 'Pretending: %s' % cmd_chk_str
     else:
-        print 'Running: %s' % cmd_chk_str
+        print 'Checking logs...'
+        #print 'Running: %s' % cmd_chk_str
         pssh_ret = util.exec_shell(cmd_chk_str, True)
         err = False
         fs_err = False
@@ -116,9 +116,7 @@ def shutdown_system(daemon_pid_path, nodelist, sigkill):
                           (line.strip().split(' ')[3].split('\n')[0])
                     print '%s' % line[line.find('\n') + 1:]
 
-        if not err and not fs_err:
-            print 'pssh logging check successfully executed. Looks prime.'
-        else:
+        if err or fs_err:
             print '[WARN] while checking fs logs. Something might went wrong when shutting down'
             exit(1)
 
@@ -159,5 +157,3 @@ Defaults to /tmp/hostfile_pssh''')
     PSSH_PATH = args.pssh
     WAITTIME = 5
     shutdown_system(args.daemonpidpath, args.nodelist, args.sigkill)
-
-    print '\nNothing left to do; exiting. :)'

@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 import argparse
 import time
-
+import sys
 import os
 
 from util import util
@@ -28,7 +29,7 @@ def check_dependencies():
     if pssh_path != '':
         PSSH_PATH = pssh_path
         return
-    print '[ERR] parallel-ssh/pssh executable cannot be found. Please add it to the parameter list'
+    print('[ERR] parallel-ssh/pssh executable cannot be found. Please add it to the parameter list')
     exit(1)
 
 
@@ -51,6 +52,15 @@ def init_system(daemon_path, rootdir, metadir, mountdir, nodelist, cleanroot, nu
     daemon_path = os.path.realpath(os.path.expanduser(daemon_path))
     mountdir = os.path.realpath(os.path.expanduser(mountdir))
     rootdir = os.path.realpath(os.path.expanduser(rootdir))
+
+    print("\n------ Setting up GekkoFS daemon ------")
+    print("Mountpoint: '{}'".format(mountdir))
+    print("Storage backend: '{}'".format(rootdir))
+    print("Nodes: ")
+    for node in nodelist.split(','):
+        print(" - '{}'".format(node))
+    print("")
+
     # Replace metadir with rootdir if only rootdir is given
     if len(metadir) == 0:
         metadir = rootdir
@@ -74,21 +84,23 @@ def init_system(daemon_path, rootdir, metadir, mountdir, nodelist, cleanroot, nu
     if cleanroot:
         cmd_rm_str = '%s "rm -rf %s/* %s/* && truncate -s 0 /tmp/adafs_daemon.log /tmp/adafs_preload.log"' % (pssh, rootdir, metadir)
         if PRETEND:
-            print 'Pretending: %s' % cmd_rm_str
+            print('Pretending: %s' % cmd_rm_str)
         else:
-            print 'Running: %s' % cmd_rm_str
+            print("Wiping out storage backend... ", end='')
+            sys.stdout.flush()
+            #print 'Running: %s' % cmd_rm_str
             pssh_ret = util.exec_shell(cmd_rm_str, True)
             err = False
             for line in pssh_ret:
                 if 'FAILURE' in line.strip()[:30]:
                     err = True
-                    print '------------------------- ERROR pssh -- Host "%s" -------------------------' % \
-                          (line[line.find('FAILURE'):].strip().split(' ')[1])
-                    print line
+                    print('------------------------- ERROR pssh -- Host "%s" -------------------------' % (line[line.find('FAILURE'):].strip().split(' ')[1]))
+                    print(line)
             if not err:
-                print 'pssh daemon launch successfully executed. Root and Metadata dir are cleaned.\n'
+                print("OK")
+                #print 'pssh daemon launch successfully executed. Root and Metadata dir are cleaned.\n'
             else:
-                print '[ERR] with pssh. Aborting!'
+                print('[ERR] with pssh. Aborting!')
                 exit(1)
 
     # Start deamons
@@ -109,59 +121,66 @@ def init_system(daemon_path, rootdir, metadir, mountdir, nodelist, cleanroot, nu
                       % (pssh, numactl, daemon_path, rootdir, metadir, mountdir, nodelist)
 
     if PRETEND:
-        print 'Pretending: %s' % cmd_str
+        print('Pretending: %s' % cmd_str)
     else:
-        print 'Running: %s' % cmd_str
+        print("Launching daemons... ", end='')
+        sys.stdout.flush()
+        #print 'Running: %s' % cmd_str
         pssh_ret = util.exec_shell(cmd_str, True)
         err = False
         for line in pssh_ret:
             if 'FAILURE' in line.strip()[:30]:
                 err = True
-                print '------------------------- ERROR pssh -- Host "%s" -------------------------' % \
-                      (line[line.find('FAILURE'):].strip().split(' ')[1])
-                print line
+                print('------------------------- ERROR pssh -- Host "%s" -------------------------' % (line[line.find('FAILURE'):].strip().split(' ')[1]))
+                print(line)
         if not err:
-            print 'pssh daemon launch successfully executed. Checking for FS startup errors ...\n'
+            print("OK")
+            #print('pssh daemon launch successfully executed. Checking for FS startup errors ...\n')
         else:
-            print '[ERR] with pssh. Aborting. Please run shutdown_adafs.py to shut down orphan adafs daemons!'
+            print('[ERR] with pssh. Aborting. Please run shutdown_adafs.py to shut down orphan adafs daemons!')
             exit(1)
 
     if not PRETEND:
-        print 'Give it some time (%d second) to startup ...' % WAITTIME
+        print("Waiting {} seconds to startup... ".format(WAITTIME), end='')
+        sys.stdout.flush()
         for i in range(WAITTIME):
-            print '%d\r' % (WAITTIME - i),
+            #print('·', end='')
+            #print('%d\r' % (WAITTIME - i),)
             time.sleep(1)
+        print('OK')
 
     # Check adafs logs for errors
     cmd_chk_str = '%s "head -5 /tmp/adafs_daemon.log"' % pssh
     if PRETEND:
-        print 'Pretending: %s' % cmd_chk_str
+        print('Pretending: %s' % cmd_chk_str)
     else:
-        print 'Running: %s' % cmd_chk_str
+        print('Checking daemons health...', end='')
+        sys.stdout.flush()
+        #print('Running: %s' % cmd_chk_str)
         pssh_ret = util.exec_shell(cmd_chk_str, True)
         err = False
         fs_err = False
         for line in pssh_ret:
             if 'Failure' in line.strip()[:30]:
                 err = True
-                print '------------------------- ERROR pssh -- Host "%s" -------------------------' % \
-                      (line[line.find('FAILURE'):].strip().split(' ')[1])
-                print line
+                print('------------------------- ERROR pssh -- Host "%s" -------------------------' % (line[line.find('FAILURE'):].strip().split(' ')[1]))
+                print(line)
             else:
                 # check for errors in log
                 if '[E]' in line[line.strip().find('\n') + 1:] or 'Assertion `err\'' in line[
                                                                                           line.strip().find('\n') + 1:]:
                     fs_err = True
-                    print '------------------------- ERROR pssh -- Host "%s" -------------------------' % \
-                          (line.strip().split(' ')[3].split('\n')[0])
-                    print '%s' % line[line.find('\n') + 1:]
+                    print('------------------------- ERROR pssh -- Host "%s" -------------------------' % (line.strip().split(' ')[3].split('\n')[0]))
+                    print('%s' % line[line.find('\n') + 1:])
 
         if not err and not fs_err:
-            print 'pssh logging check successfully executed. Looks prime.'
+            print("Ok")
+            #print('pssh logging check successfully executed. Looks prime.')
         else:
-            print '[ERR] while checking fs logs. Aborting. Please run shutdown_adafs.py to shut down orphan adafs daemons!'
+            print('[ERR] while checking fs logs. Aborting. Please run shutdown_adafs.py to shut down orphan adafs daemons!')
             exit(1)
 
+        print("------ GekkoFS daemons setup finished ------\n")
 
 if __name__ == "__main__":
     # Init parser
@@ -208,4 +227,4 @@ Defaults to /tmp/hostfile_pssh''')
     WAITTIME = 5
     init_system(args.daemonpath, args.rootdir, args.metadir, args.mountdir, args.nodelist, args.cleanroot, args.numactl)
 
-    print '\nNothing left to do; exiting. :)'
+    #print '\nNothing left to do; exiting. :)'
