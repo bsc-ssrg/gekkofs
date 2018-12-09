@@ -1545,3 +1545,107 @@ char *realpath(const char *path, char *resolved_path) {
     strcpy(resolved_path, absolute_path.c_str());
     return resolved_path;
 }
+
+int renameat2(int olddfd, const char * oldname,
+              int newdfd, const char * newname,
+              unsigned int flags) {
+
+    init_passthrough_if_needed();
+    if(!CTX->initialized()) {
+        return LIBC_FUNC(renameat2, olddfd, oldname, newdfd, newname, flags);
+    }
+
+    CTX->log()->trace("{}() called with olddfd {}, oldname: '{}', newfd {}, newname '{}', flags {}",
+                      __func__, olddfd, oldname, newdfd, newname, flags);
+
+    const char * oldpath_pass;
+    std::string oldpath_resolved;
+    auto oldpath_status = CTX->relativize_fd_path(olddfd, oldname, oldpath_resolved);
+    switch(oldpath_status) {
+        case RelativizeStatus::fd_unknown:
+            oldpath_pass = oldname;
+            break;
+
+        case RelativizeStatus::external:
+            oldpath_pass = oldpath_resolved.c_str();
+            break;
+
+        case RelativizeStatus::fd_not_a_dir:
+            errno = ENOTDIR;
+            return -1;
+
+        case RelativizeStatus::internal:
+            break;
+
+        default:
+            CTX->log()->error("{}() relativize status unknown", __func__);
+            errno = EINVAL;
+            return -1;
+    }
+
+    const char * newpath_pass;
+    std::string newpath_resolved;
+    auto newpath_status = CTX->relativize_fd_path(newdfd, newname, newpath_resolved);
+    switch(newpath_status) {
+        case RelativizeStatus::fd_unknown:
+            newpath_pass = newname;
+            break;
+
+        case RelativizeStatus::external:
+            newpath_pass = newpath_resolved.c_str();
+            break;
+
+        case RelativizeStatus::fd_not_a_dir:
+            errno = ENOTDIR;
+            return -1;
+
+        case RelativizeStatus::internal:
+            if (oldpath_status != RelativizeStatus::internal) {
+                CTX->log()->warn("{}() cross filesystem rename not supported", __func__);
+                errno = ENOTSUP;
+                return -1;
+            } else {
+                if (flags != 0) {
+                    CTX->log()->warn("{}() not supported flags", __func__);
+                    errno = ENOTSUP;
+                    return -1;
+                }
+                return adafs_rename(oldpath_resolved, newpath_resolved);
+            }
+
+        default:
+            CTX->log()->error("{}() relativize status unknown", __func__);
+            errno = EINVAL;
+            return -1;
+    }
+
+    assert(newpath_status == RelativizeStatus::external);
+
+    /* newpath is internal but oldpath is external */
+    if (oldpath_status == RelativizeStatus::internal) {
+        CTX->log()->warn("{}() cross filesystem rename not supported", __func__);
+        errno = ENOTSUP;
+        return -1;
+    }
+
+    return LIBC_FUNC(renameat2, olddfd, oldpath_pass, newdfd, newpath_pass, flags);
+}
+
+int rename(const char *oldpath, const char *newpath) {
+    init_passthrough_if_needed();
+    if(!CTX->initialized()) {
+        return LIBC_FUNC(rename, oldpath, newpath);
+    }
+    return renameat2(AT_FDCWD, oldpath, AT_FDCWD, newpath, 0);
+}
+
+int __renameat(int olddfd, const char * oldname,
+             int newdfd, const char * newname) {
+    init_passthrough_if_needed();
+    if(!CTX->initialized()) {
+        return LIBC_FUNC(__renameat, olddfd, oldname, newdfd, newname);
+    }
+    return renameat2(olddfd, oldname, newdfd, newname, 0);
+}
+
+

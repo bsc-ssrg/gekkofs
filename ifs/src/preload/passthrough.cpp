@@ -117,6 +117,10 @@ void* libc_symlinkat;
 
 void* libc_realpath;
 
+void* libc_rename;
+void* libc___renameat;
+void* libc_renameat2;
+
 
 void init_passthrough_() {
     libc = dlopen("libc.so.6", RTLD_LAZY);
@@ -230,6 +234,9 @@ void init_passthrough_() {
 
     libc_realpath = dlsym(libc, "realpath");
 
+    libc_rename = dlsym(libc, "rename");
+    libc___renameat = dlsym(libc, "__renameat");
+    libc_renameat2 = dlsym(libc, "renameat2");
 }
 
 void init_passthrough_if_needed() {
