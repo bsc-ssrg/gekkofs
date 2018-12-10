@@ -41,8 +41,11 @@ MERCURY_GEN_PROC(rpc_rm_node_in_t,
 
 MERCURY_GEN_PROC(rpc_trunc_in_t,
         ((hg_uint64_t) (fuid))\
-        ((hg_const_string_t) (path)) \
         ((hg_uint64_t)       (length)))
+
+MERCURY_GEN_PROC(rpc_decr_size_in_t,
+        ((hg_const_string_t) (path))\
+        ((hg_uint64_t) (length)))
 
 MERCURY_GEN_PROC(rpc_update_metadentry_in_t,
                  ((hg_const_string_t) (path))\

@@ -153,7 +153,7 @@ int stat(const std::string& path, string& attr) {
 
 int decr_size(const std::string& path, size_t length) {
     hg_handle_t handle;
-    rpc_trunc_in_t in{};
+    rpc_decr_size_in_t in{};
     int err = 0;
     in.path = path.c_str();
     in.length = length;

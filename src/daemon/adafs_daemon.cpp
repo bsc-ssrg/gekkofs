@@ -229,7 +229,7 @@ void register_server_rpcs(margo_instance_id mid) {
     MARGO_REGISTER(mid, hg_tag::create, rpc_mk_node_in_t, rpc_fuid_out_t, rpc_srv_mk_node);
     MARGO_REGISTER(mid, hg_tag::forward, rpc_forward_node_in_t, rpc_err_out_t, rpc_srv_forward_node);
     MARGO_REGISTER(mid, hg_tag::stat, rpc_path_only_in_t, rpc_stat_out_t, rpc_srv_stat);
-    MARGO_REGISTER(mid, hg_tag::decr_size, rpc_trunc_in_t, rpc_err_out_t, rpc_srv_decr_size);
+    MARGO_REGISTER(mid, hg_tag::decr_size, rpc_decr_size_in_t, rpc_err_out_t, rpc_srv_decr_size);
     MARGO_REGISTER(mid, hg_tag::remove, rpc_rm_node_in_t, rpc_err_out_t, rpc_srv_rm_node);
     MARGO_REGISTER(mid, hg_tag::update_metadentry, rpc_update_metadentry_in_t, rpc_err_out_t,
                    rpc_srv_update_metadentry);
