@@ -52,7 +52,7 @@ void register_client_rpcs(margo_instance_id mid) {
 
     rpc_decr_size_id = MARGO_REGISTER(mid,
         hg_tag::decr_size,
-        rpc_trunc_in_t,
+        rpc_decr_size_in_t,
         rpc_err_out_t,
         NULL);
 
