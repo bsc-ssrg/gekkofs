@@ -148,7 +148,7 @@ static hg_return_t rpc_srv_stat(hg_handle_t handle) {
 DEFINE_MARGO_RPC_HANDLER(rpc_srv_stat)
 
 static hg_return_t rpc_srv_decr_size(hg_handle_t handle) {
-    rpc_trunc_in_t in{};
+    rpc_decr_size_in_t in{};
     rpc_err_out_t out{};
 
     auto ret = margo_get_input(handle, &in);
