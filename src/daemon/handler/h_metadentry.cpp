@@ -23,6 +23,7 @@ static hg_return_t rpc_srv_mk_node(hg_handle_t handle) {
     try {
         // create metadentry
         create_metadentry(in.path, md);
+        md = get_metadentry(in.path);
         out.err = 0;
         out.fuid = md.fuid();
     } catch (const std::exception& e) {
