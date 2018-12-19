@@ -14,7 +14,7 @@ using namespace std;
 
 int adafs_open(const std::string& path, mode_t mode, int flags) {
     init_ld_env_if_needed();
-    fuid_t fuid;
+    fuid_t fuid = FUID_NULL;
 
     if(flags & O_PATH){
         CTX->log()->error("{}() `O_PATH` flag is not supported", __func__);
