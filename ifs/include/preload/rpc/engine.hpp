@@ -1,13 +1,13 @@
 #ifndef GKFS_RPC_ENGINE_HPP
 #define GKFS_RPC_ENGINE_HPP
 
-#include "global/margo.hpp"
+#include "global/margo/engine.hpp"
 #include <string>
 
 
 class RPCEngine {
     private:
-        gkfs::margo::Margo margo_;
+        gkfs::margo::Engine margo_;
 
     public:
         RPCEngine(const std::string& na_plugin);

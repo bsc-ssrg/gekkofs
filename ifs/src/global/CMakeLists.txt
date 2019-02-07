@@ -31,16 +31,4 @@ target_link_libraries(metadata
     fmt
     )
 
-add_library(margo_wrap STATIC)
-set_property(TARGET margo_wrap PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_sources(margo_wrap
-    PUBLIC
-    ${INCLUDE_DIR}/global/margo.hpp
-    PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/margo.cpp
-    )
-target_link_libraries(margo_wrap
-    ${ABT_LIBRARIES}
-    mercury
-    ${MARGO_LIBRARIES}
-    )
+add_subdirectory(margo)

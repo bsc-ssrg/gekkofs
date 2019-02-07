@@ -1,7 +1,6 @@
 #include "preload/rpc/engine.hpp"
 #include "global/rpc/rpc_types.hpp"
 #include "global/global_defs.hpp"
-#include "global/margo.hpp"
 
 
 RPCEngine::RPCEngine(const std::string& na_plugin) :

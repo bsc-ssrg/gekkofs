@@ -1,13 +1,13 @@
-#include "global/margo.hpp"
+#include "global/margo/engine.hpp"
 #include <stdexcept>
 
 namespace gkfs { namespace margo {
 
-Margo::Margo(const std::string& addr,
-             bool server_mode,
-             bool use_auto_sm,
-             bool use_progress_thread,
-             unsigned int rpc_thread_count)
+Engine::Engine(const std::string& addr,
+               bool server_mode,
+               bool use_auto_sm,
+               bool use_progress_thread,
+               unsigned int rpc_thread_count)
 {
 
     struct hg_init_info hg_options = {};
@@ -26,11 +26,11 @@ Margo::Margo(const std::string& addr,
     }
 }
 
-Margo::~Margo() {
+Engine::~Engine() {
     margo_finalize(mid_);
 }
         
-margo_instance_id Margo::get_instance_id() {
+margo_instance_id Engine::get_instance_id() {
     return mid_;
 }
 
