@@ -20,7 +20,7 @@
 #include <daemon/main.hpp>
 #include <daemon/backend/data/chunk_storage.hpp>
 
-
+#include "global/tracing.hpp"
 using namespace std;
 
 struct write_chunk_args {

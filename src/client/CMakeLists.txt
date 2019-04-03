@@ -40,6 +40,13 @@ set(PRELOAD_HEADERS
 
 add_library(gkfs_intercept SHARED ${PRELOAD_SRC} ${PRELOAD_HEADERS})
 
+if(USE_EXTRAE)
+    target_link_libraries(gkfs_intercept
+        dl
+        Extrae::Extrae
+    )
+endif(USE_EXTRAE)
+
 target_link_libraries(gkfs_intercept
     # internal
     metadata
@@ -66,4 +73,3 @@ install(TARGETS gkfs_intercept
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/gkfs
 )
-

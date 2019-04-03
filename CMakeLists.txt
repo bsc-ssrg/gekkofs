@@ -85,6 +85,14 @@ find_package(Abt REQUIRED)
 find_package(Margo REQUIRED)
 find_package(Syscall_intercept REQUIRED)
 
+
+option(USE_EXTRAE "Use extrae instrumentation library" OFF)
+if(USE_EXTRAE)
+    find_package(Extrae REQUIRED)
+    add_definitions(-DGKFS_USE_EXTRAE)
+endif(USE_EXTRAE)
+
+
 # boost dependencies, system is required for filesystem
 find_package(Boost 1.53 REQUIRED
     COMPONENTS

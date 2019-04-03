@@ -33,6 +33,7 @@
 
 #include <condition_variable>
 #include <global/global_func.hpp>
+#include "global/tracing.hpp"
 
 using namespace std;
 namespace po = boost::program_options;
@@ -42,6 +43,7 @@ static condition_variable shutdown_please;
 static mutex mtx;
 
 bool init_environment() {
+    TRACE_FUNC_START()
     // Initialize metadata db
     std::string metadata_path = ADAFS_DATA->metadir() + "/rocksdb"s;
     try {
@@ -112,6 +114,7 @@ bool init_environment() {
     }
 
     ADAFS_DATA->spdlogger()->info("Startup successful. Daemon is ready.");
+    TRACE_FUNC_STOP()
     return true;
 }
 
@@ -119,6 +122,7 @@ bool init_environment() {
  * Destroys the margo, argobots, and mercury environments
  */
 void destroy_enviroment() {
+    TRACE_FUNC_START();
 #ifdef MARGODIAG
     cout << "\n####################\n\nMargo RPC server stats: " << endl;
     margo_diag_dump(RPC_DATA->server_rpc_mid(), "-", 0);
@@ -147,6 +151,7 @@ void destroy_enviroment() {
     ADAFS_DATA->close_mdb();
 
     ADAFS_DATA->spdlogger()->info("Shutdown complete");
+    TRACE_FUNC_STOP();
 }
 
 bool init_io_tasklet_pool() {
@@ -343,7 +348,9 @@ void initialize_loggers() {
 }
 
 int main(int argc, const char* argv[]) {
-
+#ifdef GKFS_USE_EXTRAE
+    gkfs::trace::init();
+#endif
     initialize_loggers();
     ADAFS_DATA->spdlogger(spdlog::get("main"));
 

@@ -5,6 +5,7 @@ set(DAEMON_SRC
     ../global/rpc/rpc_utils.cpp
     ../global/global_func.cpp
     ../global/path_util.cpp
+    ../global/tracing.cpp
     main.cpp
     ops/metadentry.cpp
     classes/fs_data.cpp
@@ -21,13 +22,22 @@ set(DAEMON_HEADERS
     ../../include/global/rpc/rpc_types.hpp
     ../../include/global/rpc/rpc_utils.hpp
     ../../include/global/path_util.hpp
+    ../../include/global/tracing.hpp
     ../../include/daemon/main.hpp
     ../../include/daemon/ops/metadentry.hpp
     ../../include/daemon/classes/fs_data.hpp
     ../../include/daemon/classes/rpc_data.hpp
     ../../include/daemon/handler/rpc_defs.hpp
     )
+
 add_executable(gkfs_daemon ${DAEMON_SRC} ${DAEMON_HEADERS})
+
+if(USE_EXTRAE)
+    target_link_libraries(gkfs_daemon
+        dl
+        Extrae::Extrae)
+endif(USE_EXTRAE)
+
 target_link_libraries(gkfs_daemon
     # internal libs
     metadata
