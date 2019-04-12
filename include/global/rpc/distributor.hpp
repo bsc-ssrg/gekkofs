@@ -25,7 +25,6 @@ class SimpleHashDistributor : public Distributor {
         Host localhost_;
         unsigned int hosts_size_;
         std::vector<Host> all_hosts_;
-        std::hash<std::string> str_hash;
     public:
         SimpleHashDistributor(Host localhost, unsigned int hosts_size);
         Host localhost() const override;

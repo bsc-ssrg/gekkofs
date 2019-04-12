@@ -6,6 +6,7 @@ target_sources(distributor
     ${INCLUDE_DIR}/global/global_defs.hpp
     PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/rpc/distributor.cpp
+    ${INCLUDE_DIR}/global/hash_util.hpp
     )
 
 add_library(log_util STATIC)

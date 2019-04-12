@@ -1,4 +1,5 @@
 #include "global/rpc/distributor.hpp"
+#include "global/hash_util.hpp"
 
 
 SimpleHashDistributor::
@@ -17,15 +18,14 @@ localhost() const {
 
 Host SimpleHashDistributor::
 locate_data(const fuid_t fuid, const ChunkID chnk_id) const {
-    /* We could have also used boost::hash_combine.
-     * See https://en.cppreference.com/w/cpp/utility/hash for more details.
-     */
-    return (fuid + chnk_id) % hosts_size_;
+    std::hash<std::pair<fuid_t, ChunkID>> hasher;
+    return hasher(std::make_pair(fuid, chnk_id)) % hosts_size_;;
 }
 
 Host SimpleHashDistributor::
 locate_file_metadata(const std::string& path) const {
-    return str_hash(path) % hosts_size_;
+    std::hash<std::string> hasher;
+    return hasher(path) % hosts_size_;
 }
 
 
