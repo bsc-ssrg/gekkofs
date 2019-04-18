@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2019-04-18
+First GekkoFS pubblic release
+
+This version provides a client library that uses GLibC I/O function interception.
+
 ## [0.3.1] - 2018-03-04
 ### Changed
 - Read-write process improved. @Marc vef
