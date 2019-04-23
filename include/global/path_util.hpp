@@ -1,3 +1,10 @@
+/*
+  Copyright 2018-2019, Barcelona Supercomputing Center (BSC), Spain
+  Copyright 2015-2019, Johannes Gutenberg Universitaet Mainz, Germany
+
+  SPDX-License-Identifier: MIT
+*/
+
 #ifndef IFS_PATH_UTIL_HPP
 #define IFS_PATH_UTIL_HPP
 

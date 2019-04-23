@@ -1,3 +1,10 @@
+/*
+  Copyright 2018-2019, Barcelona Supercomputing Center (BSC), Spain
+  Copyright 2015-2019, Johannes Gutenberg Universitaet Mainz, Germany
+
+  SPDX-License-Identifier: MIT
+*/
+
 /**
  * Attention: This whole configfile is not in a final form! This will eventually be a plaintext config file.
  */

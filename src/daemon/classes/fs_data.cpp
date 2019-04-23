@@ -1,3 +1,10 @@
+/*
+  Copyright 2018-2019, Barcelona Supercomputing Center (BSC), Spain
+  Copyright 2015-2019, Johannes Gutenberg Universitaet Mainz, Germany
+
+  SPDX-License-Identifier: MIT
+*/
+
 #include <spdlog/spdlog.h>
 
 #include <daemon/classes/fs_data.hpp>

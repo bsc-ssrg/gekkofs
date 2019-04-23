@@ -1,3 +1,10 @@
+/*
+  Copyright 2018-2019, Barcelona Supercomputing Center (BSC), Spain
+  Copyright 2015-2019, Johannes Gutenberg Universitaet Mainz, Germany
+
+  SPDX-License-Identifier: MIT
+*/
+
 #include <client/preload_util.hpp>
 #include <global/rpc/distributor.hpp>
 #include <global/rpc/rpc_utils.hpp>
