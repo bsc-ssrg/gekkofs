@@ -114,7 +114,11 @@ void register_client_rpcs(margo_instance_id mid) {
 bool init_margo_client(const std::string& na_plugin) {
     // IMPORTANT: this struct needs to be zeroed before use
     struct hg_init_info hg_options = {};
+#if USE_SHM
     hg_options.auto_sm = HG_TRUE;
+#else
+    hg_options.auto_sm = HG_FALSE;
+#endif
     hg_options.stats = HG_FALSE;
     hg_options.na_class = nullptr;
 

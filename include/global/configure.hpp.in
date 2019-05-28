@@ -16,6 +16,7 @@
 
 
 #define RPC_PROTOCOL "@RPC_PROTOCOL@"
+#define USE_SHM @USE_SHM@
 
 // Daemon path to auxiliary files
 #define DAEMON_AUX_PATH "/tmp"

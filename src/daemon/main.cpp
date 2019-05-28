@@ -182,7 +182,11 @@ void init_rpc_server(const string & protocol_port) {
     char addr_self_cstring[128];
     // IMPORTANT: this struct needs to be zeroed before use
     struct hg_init_info hg_options = {};
+#if USE_SHM
     hg_options.auto_sm = HG_TRUE;
+#else
+    hg_options.auto_sm = HG_FALSE;
+#endif
     hg_options.stats = HG_FALSE;
     hg_options.na_class = nullptr;
     // Start Margo (this will also initialize Argobots and Mercury internally)
@@ -367,6 +371,11 @@ int main(int argc, const char* argv[]) {
         cout << "Debug: OFF" << endl;
 #endif
         cout << "RPC protocol: " << RPC_PROTOCOL << endl;
+#if USE_SHM
+        cout << "Shared-memory comm: ON" << endl;
+#else
+        cout << "Shared-memory comm: OFF" << endl;
+#endif
         cout << "Chunk size: " << CHUNKSIZE << " bytes" << endl;
         return 0;
     }

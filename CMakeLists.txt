@@ -104,6 +104,9 @@ set_property(CACHE RPC_PROTOCOL PROPERTY STRINGS
 )
 message(STATUS "RPC protocol: '${RPC_PROTOCOL}'")
 
+option(USE_SHM "Use shared memory for intra-node communication" ON)
+message(STATUS "Shared-memory communication: ${USE_SHM}")
+
 option(SYMLINK_SUPPORT "Compile with support for symlinks" ON)
 if(SYMLINK_SUPPORT)
     add_definitions(-DHAS_SYMLINKS)
