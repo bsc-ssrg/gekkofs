@@ -103,13 +103,14 @@ set_property(CACHE RPC_PROTOCOL PROPERTY STRINGS
    "cci+verbs"
 )
 message(STATUS "RPC protocol: '${RPC_PROTOCOL}'")
-add_definitions(-DRPC_PROTOCOL="${RPC_PROTOCOL}")
 
 option(SYMLINK_SUPPORT "Compile with support for symlinks" ON)
 if(SYMLINK_SUPPORT)
     add_definitions(-DHAS_SYMLINKS)
 endif()
 message(STATUS "Symlink support: ${SYMLINK_SUPPORT}")
+
+configure_file(include/global/configure.hpp.in include/global/configure.hpp)
 
 # Imported target
 add_library(RocksDB INTERFACE IMPORTED GLOBAL)
