@@ -11,18 +11,15 @@
   SPDX-License-Identifier: MIT
 */
 
-/**
- * Attention: This whole configfile is not in a final form! This will eventually be a plaintext config file.
- */
-#ifndef FS_CONFIGURE_H
-#define FS_CONFIGURE_H
+#ifndef GKFS_CONFIGURE_HPP
+#define GKFS_CONFIGURE_HPP
 
 // Daemon path to auxiliary files
 #define DAEMON_AUX_PATH "/tmp"
 
 #define CHUNKSIZE 524288 // in bytes 512KB
 
-// What metadata is used TODO this has to be parametrized or put into a configuration file
+// What metadata is used
 #define MDATA_USE_ATIME false
 #define MDATA_USE_MTIME false
 #define MDATA_USE_CTIME false
