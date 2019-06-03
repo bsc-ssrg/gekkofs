@@ -214,9 +214,9 @@ if [ "$NA_LAYER" == "cci" ] || [ "$NA_LAYER" == "all" ]; then
     cd ${CURR}
     # patch hanging issue
     echo "########## Patch injection: Applying cci hanging patch"
-    #git apply ${PATCH_DIR}/cci_hang_final.patch
+    git apply ${PATCH_DIR}/cci_hang_final.patch
     echo "########## Patch injection: Disabling cci debug mode/devel mode entirely"
-    #git apply ${PATCH_DIR}/cci_remove_devel_mode.patch
+    git apply ${PATCH_DIR}/cci_remove_devel_mode.patch
     ./autogen.pl
     cd ${CURR}/build
 if [[ ("${CLUSTER}" == "mogon1") || ("${CLUSTER}" == "fh2") ]]; then
@@ -277,7 +277,7 @@ prepare_build_dir ${CURR}
 cd ${CURR}
 ./autogen.sh
 cd ${CURR}/build
-../configure --prefix=${INSTALL} --enable-perf-opt --disable-checks CFLAGS="${CFLAGS} -O3"
+../configure --prefix=${INSTALL} --enable-perf-opt --disable-checks
 make -j${CORES}
 make install
 [ "${PERFORM_TEST}" ] && make check
@@ -289,7 +289,7 @@ prepare_build_dir ${CURR}
 cd ${CURR}
 ./prepare.sh
 cd ${CURR}/build
-../configure --prefix=${INSTALL} PKG_CONFIG_PATH=${INSTALL}/lib/pkgconfig:${PKG_CONFIG_PATH}  CFLAGS="${CFLAGS} -Wall -O3"
+../configure --prefix=${INSTALL} PKG_CONFIG_PATH=${INSTALL}/lib/pkgconfig CFLAGS="${CFLAGS} -Wall -O3"
 make -j${CORES}
 make install
 [ "${PERFORM_TEST}" ] && make check
@@ -306,7 +306,7 @@ echo "############################################################ Installing:  
 CURR=${SOURCE}/syscall_intercept
 prepare_build_dir ${CURR}
 cd ${CURR}/build
-PKG_CONFIG_PATH="/home/nx01/nx01/rnou/deps/build/lib64/pkgconfig" $CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTS:BOOL=OFF ..
+$CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTS:BOOK=OFF ..
 make install
 
 echo "Done"
