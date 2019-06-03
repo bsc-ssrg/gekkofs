@@ -195,13 +195,13 @@ if [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
     fi
 fi
 # get Mercury
-clonedeps "mercury" "https://github.com/mercury-hpc/mercury" "0de22781cd08931416aba8050c5a6647c23abcb9"  "--recurse-submodules" &
+clonedeps "mercury" "https://github.com/mercury-hpc/mercury" "9906f25b6f9c52079d57006f199b3ea47960c435"  "--recurse-submodules" &
 # get Argobots
 wgetdeps "argobots" "https://github.com/pmodels/argobots/archive/v1.0rc1.tar.gz" &
 # get Margo
-clonedeps "margo" "https://xgitlab.cels.anl.gov/sds/margo.git" "ad09e1e445a9275b24036e465bee3b4b75f0fb17" &
+clonedeps "margo" "https://xgitlab.cels.anl.gov/sds/margo.git" "f9516e5c27c6135356c9d21e08a06888f0f19e6d" &
 # get rocksdb
-wgetdeps "rocksdb" "https://github.com/facebook/rocksdb/archive/v6.0.1.tar.gz" &
+wgetdeps "rocksdb" "https://github.com/facebook/rocksdb/archive/v6.0.2.tar.gz" &
 # get syscall_intercept
 clonedeps "syscall_intercept" "https://github.com/pmem/syscall_intercept.git" "33ac1e772fb568241694906bdf93abf952d8db70" &
 

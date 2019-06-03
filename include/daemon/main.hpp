@@ -32,11 +32,11 @@ extern "C" {
 #define ADAFS_DATA (static_cast<FsData*>(FsData::getInstance()))
 #define RPC_DATA (static_cast<RPCData*>(RPCData::getInstance()))
 
-bool init_environment();
+void init_environment();
 void destroy_enviroment();
 
-bool init_io_tasklet_pool();
-bool init_rpc_server();
+void init_io_tasklet_pool();
+void init_rpc_server(const std::string& protocol);
 
 void register_server_rpcs(margo_instance_id mid);
 
