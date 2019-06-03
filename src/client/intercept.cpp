@@ -295,7 +295,9 @@ static inline int hook(long syscall_number,
         *result = hook_statfs(reinterpret_cast<const char *>(arg0),
                                reinterpret_cast<struct statfs *>(arg1));
         break;
-
+    case SYS_fsync:
+	*result = hook_fsync(static_cast<int>(arg0));
+	break;
     default:
         /*
          * Ignore any other syscalls

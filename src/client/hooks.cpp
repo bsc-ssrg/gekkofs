@@ -280,7 +280,7 @@ int hook_faccessat(int dirfd, const char * cpath, int mode) {
     }
 }
 
-int hook_lseek(unsigned int fd, off_t offset, unsigned int whence) {
+long hook_lseek(unsigned int fd, off_t offset, unsigned int whence) {
     CTX->log()->trace("{}() called with fd {}, offset {}, whence {}", __func__, fd, offset, whence);
     if (CTX->file_map()->exist(fd)) {
         auto off_ret = adafs_lseek(fd, static_cast<off64_t>(offset), whence);
@@ -643,3 +643,12 @@ int hook_fstatfs(unsigned int fd, struct statfs * buf) {
     }
     return syscall_no_intercept(SYS_fstatfs, fd, buf);
 }
+
+int hook_fsync(unsigned int fd) {
+    CTX->log()->trace("{}() called with fd {}", __func__, fd);
+    if(CTX->file_map()->exist(fd)) {
+        return 0;
+    }
+    return syscall_no_intercept(SYS_fsync, fd);
+}
+   
