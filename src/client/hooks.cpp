@@ -280,7 +280,7 @@ int hook_faccessat(int dirfd, const char * cpath, int mode) {
     }
 }
 
-long hook_lseek(unsigned int fd, off_t offset, unsigned int whence) {
+off_t hook_lseek(unsigned int fd, off_t offset, unsigned int whence) {
     CTX->log()->trace("{}() called with fd {}, offset {}, whence {}", __func__, fd, offset, whence);
     if (CTX->file_map()->exist(fd)) {
         auto off_ret = adafs_lseek(fd, static_cast<off64_t>(offset), whence);
