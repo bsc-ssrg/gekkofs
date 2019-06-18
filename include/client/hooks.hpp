@@ -34,7 +34,7 @@ int hook_unlinkat(int dirfd, const char * cpath, int flags);
 int hook_symlinkat(const char * oldname, int newdfd, const char * newname);
 int hook_access(const char* path, int mask);
 int hook_faccessat(int dirfd, const char * cpath, int mode);
-long hook_lseek(unsigned int fd, off_t offset, unsigned int whence);
+off_t hook_lseek(unsigned int fd, off_t offset, unsigned int whence);
 int hook_truncate(const char *path, long length);
 int hook_ftruncate(unsigned int fd, unsigned long length);
 int hook_dup(unsigned int fd);
