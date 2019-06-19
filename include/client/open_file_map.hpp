@@ -45,7 +45,7 @@ protected:
     FileType type_;
     std::string path_;
     std::array<bool, static_cast<int>(OpenFile_flags::flag_count)> flags_ = {false};
-    unsigned long pos_;
+    off_t long pos_;
     std::mutex pos_mutex_;
     std::mutex flag_mutex_;
 
@@ -61,9 +61,9 @@ public:
 
     void path(const std::string& path_);
 
-    unsigned long pos();
+    off_t pos();
 
-    void pos(unsigned long pos_);
+    void pos(off_t pos_);
 
     bool get_flag(OpenFile_flags flag);
 

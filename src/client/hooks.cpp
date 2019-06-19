@@ -280,11 +280,11 @@ int hook_faccessat(int dirfd, const char * cpath, int mode) {
     }
 }
 
-off_t hook_lseek(unsigned int fd, off_t offset, unsigned int whence) {
+off64_t hook_lseek(unsigned int fd, off64_t offset, unsigned int whence) {
     CTX->log()->trace("{}() called with fd {}, offset {}, whence {}", __func__, fd, offset, whence);
     if (CTX->file_map()->exist(fd)) {
         auto off_ret = adafs_lseek(fd, static_cast<off64_t>(offset), whence);
-        if (off_ret > std::numeric_limits<off_t>::max()) {
+        if (off_ret > std::numeric_limits<off64_t>::max()) {
             return -EOVERFLOW;
         } else if(off_ret < 0) {
             return -errno;
