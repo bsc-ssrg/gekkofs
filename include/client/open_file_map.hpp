@@ -45,7 +45,7 @@ protected:
     FileType type_;
     std::string path_;
     std::array<bool, static_cast<int>(OpenFile_flags::flag_count)> flags_ = {false};
-    off_t long pos_;
+    off_t pos_;
     std::mutex pos_mutex_;
     std::mutex flag_mutex_;
 
