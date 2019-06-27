@@ -39,7 +39,7 @@ void OpenDir::add(const std::string& name, const FileType& type) {
     entries.push_back(DirEntry(name, type));
 }
 
-const DirEntry& OpenDir::getdent(unsigned long long pos) {
+const DirEntry& OpenDir::getdent(unsigned int pos) {
     return entries.at(pos);
 }
 
