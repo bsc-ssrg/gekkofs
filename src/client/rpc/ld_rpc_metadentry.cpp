@@ -446,6 +446,11 @@ void get_dirents(OpenDir& open_dir){
             throw std::runtime_error(fmt::format("Failed to get rpc output.. [path: {}, target host: {}]", root_dir, target_host));
         }
 
+        if (out.err) {
+            CTX->log()->error("{}() Sending RPC to host: {}", __func__, target_host);
+            throw std::runtime_error(fmt::format("Failed to retrieve dir entries from host '{}'. "
+                                                 "Error '{}', path '{}'", target_host, strerror(out.err), root_dir));
+        }
         bool* bool_ptr = reinterpret_cast<bool*>(recv_buffers[target_host]);
         char* names_ptr = recv_buffers[target_host] + (out.dirents_size * sizeof(bool));
 

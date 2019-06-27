@@ -300,8 +300,9 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
     // Get input parmeters
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Could not get RPC input data with err {}", __func__, ret);
-        return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
+        ADAFS_DATA->spdlogger()->error(
+                "{}() Could not get RPC input data with err {}", __func__, ret);
+        return ret;
     }
 
     // Retrieve size of source buffer
@@ -318,6 +319,7 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
     out.dirents_size = entries.size();
 
     if(entries.size() == 0){
+        out.err = 0;
         return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
     }
 
@@ -332,6 +334,7 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
     if(bulk_size < out_size){
         //Source buffer is smaller than total output size
         ADAFS_DATA->spdlogger()->error("{}() Entries do not fit source buffer", __func__);
+        out.err = ENOBUFS;
         return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
     }
 
@@ -353,6 +356,7 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
     ret = margo_bulk_create(mid, 1, reinterpret_cast<void**>(&out_buff_ptr), &out_size, HG_BULK_READ_ONLY, &bulk_handle);
     if (ret != HG_SUCCESS) {
         ADAFS_DATA->spdlogger()->error("{}() Failed to create bulk handle", __func__);
+        out.err = EBUSY;
         return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
     }
 
@@ -369,9 +373,9 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
     }
 
     out.dirents_size = entries.size();
+    out.err = 0;
     ADAFS_DATA->spdlogger()->debug(
             "{}() Sending output response", __func__);
-
     return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
 }
 
