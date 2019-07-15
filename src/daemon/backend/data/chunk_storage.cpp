@@ -125,7 +125,7 @@ void ChunkStorage::write_chunk(const std::string& file_path, unsigned int chunk_
         throw std::system_error(errno, std::system_category(), "Failed to open chunk file for write");
     }
 
-    auto wrote = pwrite64(fd, buff, size, offset);
+    auto wrote = pwrite(fd, buff, size, offset);
     if (wrote < 0) {
         log->error("Failed to write chunk file. File: {}, size: {}, offset: {}, Error: {}",
                 chunk_path, size, offset, std::strerror(errno));

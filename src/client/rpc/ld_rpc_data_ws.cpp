@@ -118,33 +118,36 @@ ssize_t write(const string& path, const void* buf, const bool append_flag, const
     // Wait for RPC responses and then get response and add it to out_size which is the written size
     // All potential outputs are served to free resources regardless of errors, although an errorcode is set.
     ssize_t out_size = 0;
-    ssize_t err = 0;
+    bool error = false;
     for (unsigned int i = 0; i < target_n; i++) {
         // XXX We might need a timeout here to not wait forever for an output that never comes?
         ret = margo_wait(rpc_waiters[i]);
         if (ret != HG_SUCCESS) {
             CTX->log()->error("{}() Unable to wait for margo_request handle for path {} recipient {}", __func__, path,
                              targets[i]);
+            error = true;
             errno = EBUSY;
-            err = -1;
         }
         // decode response
         rpc_data_out_t out{};
         ret = margo_get_output(rpc_handles[i], &out);
         if (ret != HG_SUCCESS) {
             CTX->log()->error("{}() Failed to get rpc output for path {} recipient {}", __func__, path, targets[i]);
-            err = -1;
+            error = true;
+            errno = EIO;
         }
-        CTX->log()->debug("{}() Got response {}", __func__, out.res);
-        if (out.res != 0)
-            errno = out.res;
+        if (out.err != 0) {
+            CTX->log()->error("{}() Daemon reported error: {}", __func__, out.err);
+            error = true;
+            errno = out.err;
+        }
         out_size += static_cast<size_t>(out.io_size);
         margo_free_output(rpc_handles[i], &out);
         margo_destroy(rpc_handles[i]);
     }
     // free bulk handles for buffer
     margo_bulk_free(rpc_bulk_handle);
-    return (err < 0) ? err : out_size;
+    return (error) ? -1 : out_size;
 }
 
 /**
@@ -228,33 +231,36 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
     // Wait for RPC responses and then get response and add it to out_size which is the read size
     // All potential outputs are served to free resources regardless of errors, although an errorcode is set.
     ssize_t out_size = 0;
-    ssize_t err = 0;
+    bool error = false;
     for (unsigned int i = 0; i < target_n; i++) {
         // XXX We might need a timeout here to not wait forever for an output that never comes?
         ret = margo_wait(rpc_waiters[i]);
         if (ret != HG_SUCCESS) {
             CTX->log()->error("{}() Unable to wait for margo_request handle for path {} recipient {}", __func__, path,
                              targets[i]);
+            error = true;
             errno = EBUSY;
-            err = -1;
         }
         // decode response
         rpc_data_out_t out{};
         ret = margo_get_output(rpc_handles[i], &out);
         if (ret != HG_SUCCESS) {
             CTX->log()->error("{}() Failed to get rpc output for path {} recipient {}", __func__, path, targets[i]);
-            err = -1;
+            error = true;
+            errno = EIO;
         }
-        CTX->log()->debug("{}() Got response {}", __func__, out.res);
-        if (out.res != 0)
-            errno = out.res;
+        if (out.err != 0) {
+            CTX->log()->error("{}() Daemon reported error: {}", __func__, out.err);
+            error = true;
+            errno = out.err;
+        }
         out_size += static_cast<size_t>(out.io_size);
         margo_free_output(rpc_handles[i], &out);
         margo_destroy(rpc_handles[i]);
     }
     // free bulk handles for buffer
     margo_bulk_free(rpc_bulk_handle);
-    return (err < 0) ? err : out_size;
+    return (error) ? -1 : out_size;
 }
 
 int trunc_data(const std::string& path, size_t current_size, size_t new_size) {

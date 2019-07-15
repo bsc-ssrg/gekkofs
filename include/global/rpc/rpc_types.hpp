@@ -91,7 +91,7 @@ MERCURY_GEN_PROC(rpc_read_data_in_t,
 ((hg_bulk_t) (bulk_handle)))
 
 MERCURY_GEN_PROC(rpc_data_out_t,
-                 ((int32_t) (res))\
+        ((int32_t) (err))\
 ((hg_size_t) (io_size)))
 
 MERCURY_GEN_PROC(rpc_write_data_in_t,
