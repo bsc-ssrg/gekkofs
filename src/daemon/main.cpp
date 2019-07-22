@@ -286,6 +286,8 @@ void register_daemon_proc() {
     ofs << RPC_DATA->self_addr_str() << std::endl;
     ofs << ADAFS_DATA->mountdir() << std::endl;
     ofs.close();
+    boost::filesystem::permissions(pid_file, boost::filesystem::add_perms|boost::filesystem::owner_all|boost::filesystem::group_all|boost::filesystem::others_all);
+    boost::filesystem::permissions(pid_file, boost::filesystem::remove_perms|boost::filesystem::sticky_bit);
 }
 
 bool deregister_daemon_proc() {

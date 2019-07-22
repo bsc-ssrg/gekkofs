@@ -254,15 +254,16 @@ echo "############################################################ Installing:  
 CURR=${SOURCE}/mercury
 prepare_build_dir ${CURR}
 cd ${CURR}/build
-$CMAKE \
+PKG_CONFIG_PATH=/home/software/libfabric/1.8.0/lib/pkgconfig/:$PKG_CONFIG_PATH $CMAKE \
     -DCMAKE_BUILD_TYPE:STRING=Release \
-    -DBUILD_TESTING:BOOL=ON \
+    -DBUILD_TESTING:BOOL=OFF \
     -DMERCURY_USE_SM_ROUTING:BOOL=ON \
     -DMERCURY_USE_SELF_FORWARD:BOOL=ON \
     -DMERCURY_USE_CHECKSUMS:BOOL=OFF \
     -DMERCURY_USE_BOOST_PP:BOOL=ON \
     -DMERCURY_USE_EAGER_BULK:BOOL=ON \
-    -DBUILD_SHARED_LIBS:BOOL=ON \
+    -DMERCURY_ENABLE_PARALLEL_TESTING:BOOL=ON \
+	-DBUILD_SHARED_LIBS:BOOL=ON \
     -DCMAKE_INSTALL_PREFIX=${INSTALL} \
     ${USE_BMI} ${USE_CCI} ${USE_OFI} \
     ..
@@ -302,11 +303,21 @@ make clean
 USE_RTTI=1 make -j${CORES} static_lib
 INSTALL_PATH=${INSTALL} make install
 
+if [[ ("${CLUSTER}" == "mogon2") ]]; then
+    echo "############################################################ Installing:  Capstone (syscall intercept dependency)"
+    CURR=${SOURCE}/capstone
+    prepare_build_dir ${CURR}
+    cd ${CURR}/build
+    $CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release ..
+    make -j${CORES} install
+fi
+
+
 echo "############################################################ Installing:  Syscall_intercept"
 CURR=${SOURCE}/syscall_intercept
 prepare_build_dir ${CURR}
 cd ${CURR}/build
-$CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTS:BOOK=OFF ..
+PKG_CONFIG_PATH="/home/nx01/shared/GekkoFS-BSC/0.5dev/lib/pkgconfig" $CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTS:BOOK=OFF ..
 make install
 
 echo "Done"

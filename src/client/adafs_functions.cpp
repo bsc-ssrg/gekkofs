@@ -40,127 +40,198 @@ struct linux_dirent {
 using namespace std;
 
 int adafs_open(const std::string& path, mode_t mode, int flags) {
+  
 
-    if(flags & O_PATH){
-        CTX->log()->error("{}() `O_PATH` flag is not supported", __func__);
-        errno = ENOTSUP;
-        return -1;
-    }
-
-    if(flags & O_APPEND){
-        CTX->log()->error("{}() `O_APPEND` flag is not supported", __func__);
-        errno = ENOTSUP;
-        return -1;
-    }
-
-    bool exists = true;
-    auto md = adafs_metadata(path);
-    if (!md) {
-        if(errno == ENOENT) {
-            exists = false;
-        } else {
-            CTX->log()->error("{}() error while retriving stat to file", __func__);
-            return -1;
-        }
-    }
-
-    if (!exists) {
-        if (! (flags & O_CREAT)) {
-            // file doesn't exists and O_CREAT was not set
-            errno = ENOENT;
-            return -1;
-        }
-
-        /***   CREATION    ***/
-        assert(flags & O_CREAT);
-
-        if(flags & O_DIRECTORY){
-            CTX->log()->error("{}() O_DIRECTORY use with O_CREAT. NOT SUPPORTED", __func__);
-            errno = ENOTSUP;
-            return -1;
-        }
-
-        // no access check required here. If one is using our FS they have the permissions.
+    if (flags & O_CREAT) {
         if(adafs_mk_node(path, mode | S_IFREG)) {
             CTX->log()->error("{}() error creating non-existent file", __func__);
             return -1;
         }
     } else {
-        /* File already exists */
-
-        if(flags & O_EXCL) {
-            // File exists and O_EXCL was set
-            errno = EEXIST;
+        if(flags & O_PATH){
+            CTX->log()->error("{}() `O_PATH` flag is not supported", __func__);
+            errno = ENOTSUP;
             return -1;
         }
 
-#ifdef HAS_SYMLINKS
-        if (md->is_link()) {
-            if (flags & O_NOFOLLOW) {
-                CTX->log()->warn("{}() symlink found and O_NOFOLLOW flag was specified", __func__);
-                errno = ELOOP;
+        if(flags & O_APPEND){
+            CTX->log()->error("{}() `O_APPEND` flag is not supported", __func__);
+            errno = ENOTSUP;
+            return -1;
+        }
+        bool exists = true;
+        auto md = adafs_metadata(path);
+        if (!md) {
+            if(errno == ENOENT) {
+                exists = false;
+            } else {
+                CTX->log()->error("{}() error while retriving stat to file", __func__);
                 return -1;
             }
-            return adafs_open(md->target_path(), mode, flags);
         }
+        if (exists) {
+            /* File already exists */
+
+            if(flags & O_EXCL) {
+                // File exists and O_EXCL was set
+                errno = EEXIST;
+                return -1;
+            }
+
+#ifdef HAS_SYMLINKS
+            if (md->is_link()) {
+                if (flags & O_NOFOLLOW) {
+                    CTX->log()->warn("{}() symlink found and O_NOFOLLOW flag was specified", __func__);
+                    errno = ELOOP;
+                    return -1;
+                }
+                return adafs_open(md->target_path(), mode, flags);
+            }
 #endif
 
-        if(S_ISDIR(md->mode())) {
-            return adafs_opendir(path);
-        }
-
-
-        /*** Regular file exists ***/
-        assert(S_ISREG(md->mode()));
-
-        if( (flags & O_TRUNC) && ((flags & O_RDWR) || (flags & O_WRONLY)) ) {
-            if(adafs_truncate(path, md->size(), 0)) {
-                CTX->log()->error("{}() error truncating file", __func__);
-                return -1;
+            if(S_ISDIR(md->mode())) {
+                return adafs_opendir(path);
             }
-        }
+
+
+            /*** Regular file exists ***/
+            assert(S_ISREG(md->mode()));
+
+            if( (flags & O_TRUNC) && ((flags & O_RDWR) || (flags & O_WRONLY)) ) {
+                if(adafs_truncate(path, md->size(), 0)) {
+                    CTX->log()->error("{}() error truncating file", __func__);
+                    return -1;
+                }
+            }
+        } else
+            return -1;
     }
 
     return CTX->file_map()->add(std::make_shared<OpenFile>(path, flags));
+
+//    if(flags & O_PATH){
+//        CTX->log()->error("{}() `O_PATH` flag is not supported", __func__);
+//        errno = ENOTSUP;
+//        return -1;
+//    }
+//
+//    if(flags & O_APPEND){
+//        CTX->log()->error("{}() `O_APPEND` flag is not supported", __func__);
+//        errno = ENOTSUP;
+//        return -1;
+//    }
+//
+//    bool exists = true;
+//    auto md = adafs_metadata(path);
+//    if (!md) {
+//        if(errno == ENOENT) {
+//            exists = false;
+//        } else {
+//            CTX->log()->error("{}() error while retriving stat to file", __func__);
+//            return -1;
+//        }
+//    }
+//
+//    if (!exists) {
+//        if (! (flags & O_CREAT)) {
+//            // file doesn't exists and O_CREAT was not set
+//            errno = ENOENT;
+//            return -1;
+//        }
+//
+//        /***   CREATION    ***/
+//        assert(flags & O_CREAT);
+//
+//        if(flags & O_DIRECTORY){
+//            CTX->log()->error("{}() O_DIRECTORY use with O_CREAT. NOT SUPPORTED", __func__);
+//            errno = ENOTSUP;
+//            return -1;
+//        }
+//
+//        // no access check required here. If one is using our FS they have the permissions.
+//        if(adafs_mk_node(path, mode | S_IFREG)) {
+//            CTX->log()->error("{}() error creating non-existent file", __func__);
+//            return -1;
+//        }
+//    } else {
+//        /* File already exists */
+//
+//        if(flags & O_EXCL) {
+//            // File exists and O_EXCL was set
+//            errno = EEXIST;
+//            return -1;
+//        }
+//
+//#ifdef HAS_SYMLINKS
+//        if (md->is_link()) {
+//            if (flags & O_NOFOLLOW) {
+//                CTX->log()->warn("{}() symlink found and O_NOFOLLOW flag was specified", __func__);
+//                errno = ELOOP;
+//                return -1;
+//            }
+//            return adafs_open(md->target_path(), mode, flags);
+//        }
+//#endif
+//
+//        if(S_ISDIR(md->mode())) {
+//            return adafs_opendir(path);
+//        }
+//
+//
+//        /*** Regular file exists ***/
+//        assert(S_ISREG(md->mode()));
+//
+//        if( (flags & O_TRUNC) && ((flags & O_RDWR) || (flags & O_WRONLY)) ) {
+//            if(adafs_truncate(path, md->size(), 0)) {
+//                CTX->log()->error("{}() error truncating file", __func__);
+//                return -1;
+//            }
+//        }
+//    }
+//
+//    return CTX->file_map()->add(std::make_shared<OpenFile>(path, flags));
 }
 
 int adafs_mk_node(const std::string& path, mode_t mode) {
+    init_ld_env_if_needed();
 
     //file type must be set
-    switch (mode & S_IFMT) {
-        case 0:
-            mode |= S_IFREG;
-            break;
-        case S_IFREG: // intentionally fall-through
-        case S_IFDIR:
-            break;
-        case S_IFCHR: // intentionally fall-through
-        case S_IFBLK:
-        case S_IFIFO:
-        case S_IFSOCK:
-            CTX->log()->warn("{}() unsupported node type", __func__);
-            errno = ENOTSUP;
-            return -1;
-        default:
-            CTX->log()->warn("{}() unrecognized node type", __func__);
-            errno = EINVAL;
-            return -1;
-    }
-
-    auto p_comp = dirname(path);
-    auto md = adafs_metadata(p_comp);
-    if (!md) {
-        CTX->log()->debug("{}() parent component does not exists: '{}'", __func__, p_comp);
-        errno = ENOENT;
-        return -1;
-    }
-    if (!S_ISDIR(md->mode())) {
-        CTX->log()->debug("{}() parent component is not a direcotory: '{}'", __func__, p_comp);
-        errno = ENOTDIR;
-        return -1;
-    }
+//    switch (mode & S_IFMT) {
+//        case 0:
+//            mode |= S_IFREG;
+//            break;
+//        case S_IFREG: // intentionally fall-through
+//        case S_IFDIR:
+//            break;
+//        case S_IFCHR: // intentionally fall-through
+//        case S_IFBLK:
+//        case S_IFIFO:
+//        case S_IFSOCK:
+//            CTX->log()->warn("{}() unsupported node type", __func__);
+//            errno = ENOTSUP;
+//            return -1;
+//        default:
+//            CTX->log()->warn("{}() unrecognized node type", __func__);
+//            errno = EINVAL;
+//            return -1;
+//    }
+//
+//    auto p_comp = dirname(path);
+//    auto md = adafs_metadata(p_comp);
+//    if (!md) {
+//        CTX->log()->debug("{}() parent component does not exists: '{}'", __func__, p_comp);
+//        errno = ENOENT;
+//        return -1;
+//    }
+//    if (!S_ISDIR(md->mode())) {
+//        CTX->log()->debug("{}() parent component is not a direcotory: '{}'", __func__, p_comp);
+//        errno = ENOTDIR;
+//        return -1;
+//    }
     return rpc_send::mk_node(path, mode);
 }
+
+
 
 /**
  * This sends internally a broadcast (i.e. n RPCs) to clean their chunk folders for that path

@@ -175,9 +175,6 @@ if [[ ( "${CLUSTER}" == "mogon1" ) || ( "${CLUSTER}" == "mogon2" ) || ( "${CLUST
 	# get snappy for rocksdb
     wgetdeps "snappy" "https://github.com/google/snappy/archive/1.1.7.tar.gz" &
 fi
-#if [ "${CLUSTER}" == "fh2" ]; then
-	# no distinct 3rd party software needed as of now.
-#fi
 
 # get BMI
 if [ "${NA_LAYER}" == "bmi" ] || [ "${NA_LAYER}" == "all" ]; then
@@ -189,21 +186,27 @@ if [ "${NA_LAYER}" == "cci" ] || [ "${NA_LAYER}" == "all" ]; then
 fi
 # get libfabric
 if [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
-    # No need to get libfabric for mogon2 as it is already installed
-    if [[ ("${CLUSTER}" != "mogon2") ]]; then
-        wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.7.0/libfabric-1.7.0.tar.gz" &
+    # getting specific libpsm2 version to compile into libfabric
+    if [[ ("${CLUSTER}" == "mogon2") ]]; then
+       wgetdeps "psm2" "https://github.com/intel/opa-psm2/archive/PSM2_11.2.77.tar.gz" & 
     fi
+    wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.7.1/libfabric-1.7.1.tar.gz" &
 fi
 # get Mercury
-clonedeps "mercury" "https://github.com/mercury-hpc/mercury" "9906f25b6f9c52079d57006f199b3ea47960c435"  "--recurse-submodules" &
+clonedeps "mercury" "https://github.com/mercury-hpc/mercury" "0de22781cd08931416aba8050c5a6647c23abcb9"  "--recurse-submodules" &
 # get Argobots
 wgetdeps "argobots" "https://github.com/pmodels/argobots/archive/v1.0rc1.tar.gz" &
 # get Margo
-clonedeps "margo" "https://xgitlab.cels.anl.gov/sds/margo.git" "f9516e5c27c6135356c9d21e08a06888f0f19e6d" &
+clonedeps "margo" "https://xgitlab.cels.anl.gov/sds/margo.git" "ad09e1e445a9275b24036e465bee3b4b75f0fb17" &
 # get rocksdb
 wgetdeps "rocksdb" "https://github.com/facebook/rocksdb/archive/v6.0.2.tar.gz" &
+if [[ ("${CLUSTER}" == "mogon2") ]]; then
+    # get capstone (dep of syscall_intercept) (mogon2 dependency)
+    wgetdeps "capstone" "https://github.com/aquynh/capstone/archive/4.0.1.tar.gz" &
+fi
 # get syscall_intercept
 clonedeps "syscall_intercept" "https://github.com/pmem/syscall_intercept.git" "33ac1e772fb568241694906bdf93abf952d8db70" &
 
 # Wait for all download to be completed
 wait
+
