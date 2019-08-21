@@ -53,6 +53,6 @@ int hook_renameat(int olddfd, const char * oldname, int newdfd, const char * new
                   unsigned int flags);
 int hook_statfs(const char * path, struct statfs * buf);
 int hook_fstatfs(unsigned int fd, struct statfs * buf);
-
+int hook_fsync(unsigned int fd);
 
 #endif

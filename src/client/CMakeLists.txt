@@ -37,7 +37,6 @@ set(PRELOAD_HEADERS
     )
 
 add_library(gkfs_intercept SHARED ${PRELOAD_SRC} ${PRELOAD_HEADERS})
-
 target_link_libraries(gkfs_intercept
     # internal
     metadata

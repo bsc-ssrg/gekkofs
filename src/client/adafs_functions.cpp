@@ -40,94 +40,79 @@ struct linux_dirent {
 using namespace std;
 
 int adafs_open(const std::string& path, mode_t mode, int flags) {
-
-    if(flags & O_PATH){
-        CTX->log()->error("{}() `O_PATH` flag is not supported", __func__);
-        errno = ENOTSUP;
-        return -1;
-    }
-
-    if(flags & O_APPEND){
-        CTX->log()->error("{}() `O_APPEND` flag is not supported", __func__);
-        errno = ENOTSUP;
-        return -1;
-    }
-
-    bool exists = true;
-    auto md = adafs_metadata(path);
-    if (!md) {
-        if(errno == ENOENT) {
-            exists = false;
-        } else {
-            CTX->log()->error("{}() error while retriving stat to file", __func__);
-            return -1;
-        }
-    }
-
-    if (!exists) {
-        if (! (flags & O_CREAT)) {
-            // file doesn't exists and O_CREAT was not set
-            errno = ENOENT;
-            return -1;
-        }
-
-        /***   CREATION    ***/
-        assert(flags & O_CREAT);
-
-        if(flags & O_DIRECTORY){
-            CTX->log()->error("{}() O_DIRECTORY use with O_CREAT. NOT SUPPORTED", __func__);
-            errno = ENOTSUP;
-            return -1;
-        }
-
-        // no access check required here. If one is using our FS they have the permissions.
+    if (flags & O_CREAT) {
         if(adafs_mk_node(path, mode | S_IFREG)) {
             CTX->log()->error("{}() error creating non-existent file", __func__);
             return -1;
         }
     } else {
-        /* File already exists */
-
-        if(flags & O_EXCL) {
-            // File exists and O_EXCL was set
-            errno = EEXIST;
+        if(flags & O_PATH){
+            CTX->log()->error("{}() `O_PATH` flag is not supported", __func__);
+            errno = ENOTSUP;
             return -1;
         }
 
-#ifdef HAS_SYMLINKS
-        if (md->is_link()) {
-            if (flags & O_NOFOLLOW) {
-                CTX->log()->warn("{}() symlink found and O_NOFOLLOW flag was specified", __func__);
-                errno = ELOOP;
+        if(flags & O_APPEND){
+            CTX->log()->error("{}() `O_APPEND` flag is not supported", __func__);
+            errno = ENOTSUP;
+            return -1;
+        }
+        bool exists = true;
+        auto md = adafs_metadata(path);
+        if (!md) {
+            if(errno == ENOENT) {
+                exists = false;
+            } else {
+                CTX->log()->error("{}() error while retriving stat to file", __func__);
                 return -1;
             }
-            return adafs_open(md->target_path(), mode, flags);
         }
+        if (exists) {
+            /* File already exists */
+
+            if(flags & O_EXCL) {
+                // File exists and O_EXCL was set
+                errno = EEXIST;
+                return -1;
+            }
+
+#ifdef HAS_SYMLINKS
+            if (md->is_link()) {
+                if (flags & O_NOFOLLOW) {
+                    CTX->log()->warn("{}() symlink found and O_NOFOLLOW flag was specified", __func__);
+                    errno = ELOOP;
+                    return -1;
+                }
+                return adafs_open(md->target_path(), mode, flags);
+            }
 #endif
 
-        if(S_ISDIR(md->mode())) {
-            return adafs_opendir(path);
-        }
-
-
-        /*** Regular file exists ***/
-        assert(S_ISREG(md->mode()));
-
-        if( (flags & O_TRUNC) && ((flags & O_RDWR) || (flags & O_WRONLY)) ) {
-            if(adafs_truncate(path, md->size(), 0)) {
-                CTX->log()->error("{}() error truncating file", __func__);
-                return -1;
+            if(S_ISDIR(md->mode())) {
+                return adafs_opendir(path);
             }
-        }
+
+
+            /*** Regular file exists ***/
+            assert(S_ISREG(md->mode()));
+
+            if( (flags & O_TRUNC) && ((flags & O_RDWR) || (flags & O_WRONLY)) ) {
+                if(adafs_truncate(path, md->size(), 0)) {
+                    CTX->log()->error("{}() error truncating file", __func__);
+                    return -1;
+                }
+            }
+        } else
+            return -1;
     }
 
     return CTX->file_map()->add(std::make_shared<OpenFile>(path, flags));
+
 }
 
 int adafs_mk_node(const std::string& path, mode_t mode) {
 
     //file type must be set
-    switch (mode & S_IFMT) {
+/*    switch (mode & S_IFMT) {
         case 0:
             mode |= S_IFREG;
             break;
@@ -159,6 +144,7 @@ int adafs_mk_node(const std::string& path, mode_t mode) {
         errno = ENOTDIR;
         return -1;
     }
+*/
     return rpc_send::mk_node(path, mode);
 }
 
@@ -216,7 +202,6 @@ std::shared_ptr<Metadata> adafs_metadata(const string& path, bool follow_links) 
 }
 
 int adafs_statfs(struct statfs* buf) {
-    CTX->log()->trace("{}() called", __func__);
     auto blk_stat = rpc_send::chunk_stat();
     buf->f_type = 0;
     buf->f_bsize = blk_stat.chunk_size;
@@ -258,15 +243,12 @@ off_t adafs_lseek(unsigned int fd, off_t offset, unsigned int whence) {
 off_t adafs_lseek(shared_ptr<OpenFile> adafs_fd, off_t offset, unsigned int whence) {
     switch (whence) {
         case SEEK_SET:
-            CTX->log()->debug("{}() whence is SEEK_SET", __func__);
             adafs_fd->pos(offset);
             break;
         case SEEK_CUR:
-            CTX->log()->debug("{}() whence is SEEK_CUR", __func__);
             adafs_fd->pos(adafs_fd->pos() + offset);
             break;
         case SEEK_END: {
-            CTX->log()->debug("{}() whence is SEEK_END", __func__);
             off64_t file_size;
             auto err = rpc_send::get_metadentry_size(adafs_fd->path(), file_size);
             if (err < 0) {
@@ -277,17 +259,14 @@ off_t adafs_lseek(shared_ptr<OpenFile> adafs_fd, off_t offset, unsigned int when
             break;
         }
         case SEEK_DATA:
-            CTX->log()->warn("{}() SEEK_DATA whence is not supported", __func__);
             // We do not support this whence yet
             errno = EINVAL;
             return -1;
         case SEEK_HOLE:
-            CTX->log()->warn("{}() SEEK_HOLE whence is not supported", __func__);
             // We do not support this whence yet
             errno = EINVAL;
             return -1;
         default:
-            CTX->log()->warn("{}() unknown whence {}", __func__, whence);
             errno = EINVAL;
             return -1;
     }
@@ -359,7 +338,6 @@ ssize_t adafs_pwrite(std::shared_ptr<OpenFile> file, const char * buf, size_t co
         return -1;
     }
     auto path = make_shared<string>(file->path());
-    CTX->log()->trace("{}() count: {}, offset: {}", __func__, count, offset);
     auto append_flag = file->get_flag(OpenFile_flags::append);
     ssize_t ret = 0;
     long updated_size = 0;
@@ -400,8 +378,6 @@ ssize_t adafs_write(int fd, const void * buf, size_t count) {
 }
 
 ssize_t adafs_pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset) {
-    CTX->log()->trace("{}() called with fd {}, op num {}, offset {}",
-                      __func__, fd, iovcnt, offset);
 
     auto file = CTX->file_map()->get(fd);
     auto pos = offset; // keep truck of current position
@@ -432,8 +408,6 @@ ssize_t adafs_pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset)
 }
 
 ssize_t adafs_writev(int fd, const struct iovec * iov, int iovcnt) {
-    CTX->log()->trace("{}() called with fd {}, ops num {}",
-            __func__, fd, iovcnt);
     auto adafs_fd = CTX->file_map()->get(fd);
     auto pos = adafs_fd->pos(); // retrieve the current offset
     auto ret = adafs_pwritev(fd, iov, iovcnt, pos);
@@ -452,7 +426,6 @@ ssize_t adafs_pread(std::shared_ptr<OpenFile> file, char * buf, size_t count, of
         errno = EISDIR;
         return -1;
     }
-    CTX->log()->trace("{}() count: {}, offset: {}", __func__, count, offset);
     // Zeroing buffer before read is only relevant for sparse files. Otherwise sparse regions contain invalid data.
 #if defined(ZERO_BUFFER_BEFORE_READ)
     memset(buf, 0, sizeof(char)*count);
@@ -524,7 +497,6 @@ int adafs_rmdir(const std::string& path) {
 int getdents(unsigned int fd,
              struct linux_dirent *dirp,
              unsigned int count) {
-    CTX->log()->trace("{}() called on fd: {}, count {}", __func__, fd, count);
     auto open_dir = CTX->file_map()->get_dir(fd);
     if(open_dir == nullptr){
         //Cast did not succeeded: open_file is a regular file
@@ -557,7 +529,6 @@ int getdents(unsigned int fd,
         *(reinterpret_cast<char*>(current_dirp) + total_size - 1) =
             ((de.type() == FileType::regular)? DT_REG : DT_DIR);
 
-        CTX->log()->trace("{}() name {}: {}", __func__, pos, de.name());
         std::strcpy(&(current_dirp->d_name[0]), de.name().c_str());
         ++pos;
         current_dirp->d_off = pos;

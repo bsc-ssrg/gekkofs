@@ -23,6 +23,9 @@
 #include <random>
 #include <sys/sysmacros.h>
 
+#include <sys/types.h>
+#include <pwd.h>
+
 using namespace std;
 
 /**
@@ -91,8 +94,8 @@ vector<pair<string, string>> load_hosts_file(const std::string& lfpath) {
     std::smatch match;
     while (getline(lf, line)) {
         if (!regex_match(line, match, line_re)) {
-            spdlog::error("{}() Unrecognized line format: [path: '{}', line: '{}']",
-                          __func__, lfpath, line);
+            //spdlog::error("{}() Unrecognized line format: [path: '{}', line: '{}']",
+             //             __func__, lfpath, line);
             throw runtime_error(
                     fmt::format("unrecognized line format: '{}'", line));
         }
@@ -127,13 +130,18 @@ hg_addr_t margo_addr_lookup_retry(const std::string& uri) {
 
 void load_hosts() {
     string hosts_file;
+    char* homedir = NULL;
+	struct passwd *pw = getpwuid(getuid());
+    if (pw)
+ 	  homedir = pw->pw_dir;
+
     try {
         hosts_file = gkfs::get_env_own("HOSTS_FILE");
     } catch (const exception& e) {
-        CTX->log()->info("{}() Failed to get hosts file path"
+	hosts_file = string(homedir)+"/gkfs_hosts.txt"s;
+	CTX->log()->info("{}() Failed to get hosts file path"
                          " from environment, using default: '{}'",
-                         __func__, DEFAULT_HOSTS_FILE);
-        hosts_file = DEFAULT_HOSTS_FILE;
+                         __func__, hosts_file);
     }
 
     vector<pair<string, string>> hosts;

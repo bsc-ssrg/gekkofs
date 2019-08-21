@@ -27,6 +27,7 @@
 #define NOT_HOOKED 1
 #define HOOKED 0
 
+static thread_local long flags = -1;
 
 static inline int hook(long syscall_number,
          long arg0, long arg1, long arg2,
@@ -295,8 +296,47 @@ static inline int hook(long syscall_number,
         *result = hook_statfs(reinterpret_cast<const char *>(arg0),
                                reinterpret_cast<struct statfs *>(arg1));
         break;
+    
+    case SYS_fsync:
+	*result = hook_fsync(static_cast<int>(arg0));
+	break;
+/*
+   case SYS_clone:
+	static const char msg[] = "clone_ intercepted called\n";
 
-    default:
+	syscall_no_intercept(SYS_write, 1, msg, sizeof(msg));
+
+	if ((arg0 & CLONE_THREAD) == 0)
+	{
+		 static const char msg[] = "clone_ intercepted called2\n";
+
+        syscall_no_intercept(SYS_write, 1, msg, sizeof(msg));
+	
+	if (arg1 != 0)
+		{	flags = arg0;
+			*result = 1;
+			 static const char msg[] = "clone_ intercepted called 3\n";
+
+	        syscall_no_intercept(SYS_write, 1, msg, sizeof(msg));
+
+		} 
+		else {
+ 		 static const char msg[] = "clone_ another sys call\n";
+
+        	syscall_no_intercept(SYS_write, 1, msg, sizeof(msg));
+	
+		*result = syscall_no_intercept(syscall_number, arg0,arg1,arg2,arg3,arg4,arg5);
+
+		}
+	}
+	else
+	{
+		*result = syscall_no_intercept(syscall_number, arg0,arg1,arg2,arg3,arg4,arg5);
+
+	}
+
+	break; 
+  */ default:
         /*
          * Ignore any other syscalls
          * i.e.: pass them on to the kernel
@@ -315,23 +355,19 @@ static inline int hook(long syscall_number,
     return HOOKED;
 }
 
-
-static __thread bool guard_flag;
-
-int
+thread_local bool guard_flag;
+__attribute__((always_inline)) int
 hook_guard_wrapper(long syscall_number,
                    long arg0, long arg1, long arg2,
                    long arg3, long arg4, long arg5,
                    long *syscall_return_value)
 {
     assert(CTX->interception_enabled());
-
     if (guard_flag) {
         return NOT_HOOKED;
     }
-
-    int is_hooked;
-
+	if ( (syscall_number == SYS_write or syscall_number == SYS_read or syscall_number == SYS_close ) and (arg0 >= 0 and arg0 < 999) ) return NOT_HOOKED;
+    bool is_hooked;
     guard_flag = true;
     int oerrno = errno;
     is_hooked = hook(syscall_number,
@@ -339,10 +375,16 @@ hook_guard_wrapper(long syscall_number,
                      syscall_return_value);
     errno = oerrno;
     guard_flag = false;
-
     return is_hooked;
 }
 
+static void
+hook_child(void)
+{
+	static const char msg[] = "clone_hook_child called\n";
+
+	syscall_no_intercept(SYS_write, 1, msg, sizeof(msg));
+}
 
 void start_interception() {
     assert(CTX->interception_enabled());
@@ -351,6 +393,7 @@ void start_interception() {
 #endif
     // Set up the callback function pointer
     intercept_hook_point = hook_guard_wrapper;
+//    intercept_hook_point_clone_child = hook_child;
 }
 
 void stop_interception() {

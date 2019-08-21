@@ -185,19 +185,19 @@ fi
 if [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
     # No need to get libfabric for mogon2 as it is already installed
     if [[ ("${CLUSTER}" != "mogon2") ]]; then
-        wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.7.2/libfabric-1.7.2.tar.gz" &
+        wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.8.0/libfabric-1.8.0.tar.bz2" &
     fi
 fi
 # get Mercury
 clonedeps "mercury" "https://github.com/mercury-hpc/mercury" "9906f25b6f9c52079d57006f199b3ea47960c435"  "--recurse-submodules" &
 # get Argobots
-wgetdeps "argobots" "https://github.com/pmodels/argobots/archive/v1.0rc1.tar.gz" &
+wgetdeps "argobots" "https://github.com/pmodels/argobots/archive/master.tar.gz" &
 # get Margo
-clonedeps "margo" "https://xgitlab.cels.anl.gov/sds/margo.git" "6ed94e4f3a4d526b0a3b4e57be075461e86d3666" &
+clonedeps "margo" "https://xgitlab.cels.anl.gov/sds/margo.git" "6357c516120c1eaa4bcf33e98b53d177eab37bc6" &
 # get rocksdb
-wgetdeps "rocksdb" "https://github.com/facebook/rocksdb/archive/v6.1.2.tar.gz" &
+wgetdeps "rocksdb" "https://github.com/facebook/rocksdb/archive/6.3.fb.tar.gz" &
 # get syscall_intercept
-clonedeps "syscall_intercept" "https://github.com/pmem/syscall_intercept.git" "cc3412a2ad39f2e26cc307d5b155232811d7408e" &
+clonedeps "syscall_intercept" "https://github.com/RIKEN-SysSoft/syscall_intercept" "master" &
 
 # Wait for all download to be completed
 wait
