@@ -23,6 +23,8 @@
 #include <csignal>
 #include <random>
 #include <sys/sysmacros.h>
+#include <sys/types.h>
+#include <pwd.h>
 
 using namespace std;
 
@@ -138,6 +140,12 @@ void load_hosts() {
     try {
         hosts_file = gkfs::get_env_own("HOSTS_FILE");
     } catch (const exception& e) {
+        char* homedir = NULL;
+        struct passwd *pw = getpwuid(getuid());
+        if (pw) {
+            homedir = pw->pw_dir;
+            hosts_file = string(homedir)+"/gkfs_hosts.txt"s;
+        }
         CTX->log()->info("{}() Failed to get hosts file path"
                          " from environment, using default: '{}'",
                          __func__, DEFAULT_HOSTS_FILE);
