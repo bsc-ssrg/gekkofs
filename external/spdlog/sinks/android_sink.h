@@ -5,10 +5,6 @@
 
 #pragma once
 
-#ifndef SPDLOG_H
-#include "spdlog/spdlog.h"
-#endif
-
 #include "spdlog/details/fmt_helper.h"
 #include "spdlog/details/null_mutex.h"
 #include "spdlog/details/os.h"
@@ -47,7 +43,7 @@ protected:
         fmt::memory_buffer formatted;
         if (use_raw_msg_)
         {
-            details::fmt_helper::append_string_view(msg.payload, formatted);
+            details::fmt_helper::append_buf(msg.raw, formatted);
         }
         else
         {

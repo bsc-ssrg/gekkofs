@@ -5,10 +5,6 @@
 
 #pragma once
 
-#ifndef SPDLOG_H
-#include "spdlog/spdlog.h"
-#endif
-
 #if defined(_WIN32)
 
 #include "spdlog/details/null_mutex.h"

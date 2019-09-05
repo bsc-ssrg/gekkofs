@@ -4,15 +4,11 @@
 //
 
 #pragma once
-
-#ifndef SPDLOG_H
-#include "spdlog/spdlog.h"
-#endif
-
 #include "spdlog/details/file_helper.h"
 #include "spdlog/details/null_mutex.h"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/sinks/base_sink.h"
+#include "spdlog/spdlog.h"
 
 #include <cerrno>
 #include <chrono>
@@ -48,7 +44,7 @@ public:
         if (index != 0u)
         {
             filename_t basename, ext;
-            std::tie(basename, ext) = details::file_helper::split_by_extension(filename);
+            std::tie(basename, ext) = details::file_helper::split_by_extenstion(filename);
             fmt::format_to(w, SPDLOG_FILENAME_T("{}.{}{}"), basename, index, ext);
         }
         else
@@ -105,7 +101,6 @@ private:
                 if (!rename_file(src, target))
                 {
                     file_helper_.reopen(true); // truncate the log file anyway to prevent it to grow beyond its limit!
-                    current_size_ = 0;
                     throw spdlog_ex(
                         "rotating_file_sink: failed renaming " + filename_to_str(src) + " to " + filename_to_str(target), errno);
                 }
