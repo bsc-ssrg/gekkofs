@@ -279,7 +279,7 @@ echo "############################################################ Installing:  
 CURR=${SOURCE}/syscall_intercept
 prepare_build_dir ${CURR}
 cd ${CURR}/build
-PKG_CONFIG_PATH="/home/nx01/shared/GekkoFS-BSC/0.6slurm/lib/pkgconfig" $CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTS:BOOK=OFF ..
+PKG_CONFIG_PATH="/home/nx01/shared/GekkoFS-BSC/0.6dev/lib/pkgconfig" $CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTS:BOOK=OFF ..
 make install
 
 echo "Done"
