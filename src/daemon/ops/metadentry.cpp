@@ -23,7 +23,7 @@ using namespace std;
  * @param path
  * @param mode
  */
-void create_metadentry(const std::string& path, Metadata& md) {
+std::string create_metadentry(const std::string& path, Metadata& md) {
 
     // update metadata object based on what metadata is needed
     if (ADAFS_DATA->atime_state() || ADAFS_DATA->mtime_state() || ADAFS_DATA->ctime_state()) {
@@ -37,7 +37,7 @@ void create_metadentry(const std::string& path, Metadata& md) {
         if (ADAFS_DATA->ctime_state())
             md.ctime(time);
     }
-    ADAFS_DATA->mdb()->put(path, md.serialize());
+    return ADAFS_DATA->mdb()->put_or_get(path, md.serialize());
 }
 
 std::string get_metadentry_str(const std::string& path) {

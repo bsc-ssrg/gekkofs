@@ -16,13 +16,15 @@
 
 #include <memory>
 #include "rocksdb/db.h"
+#include "rocksdb/utilities/transaction.h"
+#include "rocksdb/utilities/optimistic_transaction_db.h"
 #include "daemon/backend/exceptions.hpp"
 
 namespace rdb = rocksdb;
 
 class MetadataDB {
     private:
-        std::unique_ptr<rdb::DB> db;
+        std::unique_ptr<rdb::OptimisticTransactionDB> db;
         rdb::Options options;
         rdb::WriteOptions write_opts;
         std::string path;
@@ -32,9 +34,12 @@ class MetadataDB {
         static inline void throw_rdb_status_excpt(const rdb::Status& s);
 
         MetadataDB(const std::string& path);
+        ~MetadataDB();
 
         std::string get(const std::string& key) const;
         void put(const std::string& key, const std::string& val);
+        std::string put_or_get(const std::string& key,
+                               const std::string& val);
         void remove(const std::string& key);
         bool exists(const std::string& key);
         void update(const std::string& old_key, const std::string& new_key, const std::string& val);

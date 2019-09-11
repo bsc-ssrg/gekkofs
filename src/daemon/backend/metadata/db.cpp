@@ -20,6 +20,7 @@
 
 #include <sys/stat.h>
 
+using namespace std;
 
 MetadataDB::MetadataDB(const std::string& path): path(path) {
     // Optimize RocksDB. This is the easiest way to get RocksDB to perform well
@@ -30,12 +31,21 @@ MetadataDB::MetadataDB(const std::string& path): path(path) {
     options.merge_operator.reset(new MetadataMergeOperator);
     MetadataDB::optimize_rocksdb_options(options);
     write_opts.disableWAL = !(KV_WOL);
-    rdb::DB * rdb_ptr;
-    auto s = rocksdb::DB::Open(options, path, &rdb_ptr);
+    rdb::OptimisticTransactionDB * txn_rdb_ptr;
+    auto s = rocksdb::OptimisticTransactionDB::Open(options, path,
+                                                    &txn_rdb_ptr);
     if (!s.ok()) {
         throw std::runtime_error("Failed to open RocksDB: " + s.ToString());
     }
-    this->db.reset(rdb_ptr);
+    this->db.reset(txn_rdb_ptr);
+}
+
+MetadataDB::~MetadataDB() {
+    auto s = db->Close();
+    if (!s.ok()) {
+        throw std::runtime_error("Failed to shutdown RocksDB: " + s.ToString());
+    }
+    db.reset();
 }
 
 void MetadataDB::throw_rdb_status_excpt(const rdb::Status& s){
@@ -54,7 +64,43 @@ std::string MetadataDB::get(const std::string& key) const {
     if(!s.ok()){
         MetadataDB::throw_rdb_status_excpt(s);
     }
+    assert(!val.empty());
     return val;
+}
+
+std::string MetadataDB::put_or_get(const std::string& key, const std::string& val) {
+    assert(is_absolute_path(key));
+    assert(key == "/" || !has_trailing_slash(key));
+
+    rdb::Transaction* txn = db->BeginTransaction(write_opts);
+    std::string old_val;
+    auto s = txn->GetForUpdate(rdb::ReadOptions(), key, &old_val);
+    if(s.ok()) {
+        assert(!old_val.empty());
+        delete txn;
+        return old_val;
+    }
+    if(!s.IsNotFound()) {
+        MetadataDB::throw_rdb_status_excpt(s);
+    }
+    s = txn->Put(key, val);
+    assert(s.ok());
+    s = txn->Commit();
+    delete txn;
+
+    if (s.IsBusy()) {
+        // write conflict happened,
+        // someone else succeded on putting the entry
+        return get(key);
+    }
+
+    if(!s.ok()) {
+        // Some other error happened
+        MetadataDB::throw_rdb_status_excpt(s);
+    }
+
+    // Transaction succesfully committed
+    return "";
 }
 
 void MetadataDB::put(const std::string& key, const std::string& val) {

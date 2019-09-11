@@ -16,6 +16,9 @@
 #define IFS_PRELOAD_C_METADENTRY_HPP
 
 #include <string>
+#include <utility> // for std::piar
+#include <experimental/optional> //for std::experimental::optional
+
 
 /* Forward declaration */
 struct MetadentryUpdateFlags;
@@ -25,7 +28,8 @@ class Metadata;
 namespace rpc_send {
 
 
-int mk_node(const std::string& path, mode_t mode);
+std::pair<int, std::experimental::optional<Metadata>>
+mk_node(const std::string& path, mode_t mode);
 
 int stat(const std::string& path, std::string& attr);
 

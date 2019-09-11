@@ -23,7 +23,7 @@ using namespace std;
 
 static hg_return_t rpc_srv_mk_node(hg_handle_t handle) {
     rpc_mk_node_in_t in{};
-    rpc_err_out_t out{};
+    rpc_mk_node_out_t out{};
 
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS)
@@ -31,15 +31,23 @@ static hg_return_t rpc_srv_mk_node(hg_handle_t handle) {
     assert(ret == HG_SUCCESS);
     ADAFS_DATA->spdlogger()->debug("{}() Got RPC with path {}", __func__, in.path);
     Metadata md(in.mode);
+    string old_md;
     try {
         // create metadentry
-        create_metadentry(in.path, md);
-        out.err = 0;
+        old_md = create_metadentry(in.path, md);
+        if (!old_md.empty()) {
+            ADAFS_DATA->spdlogger()->trace("{}() Already exists {}", __func__, old_md);
+            out.err = EEXIST;
+            out.old_md = old_md.c_str();
+        } else {
+            out.err = 0;
+            out.old_md = "";
+        }
     } catch (const std::exception& e) {
         ADAFS_DATA->spdlogger()->error("{}() Failed to create metadentry: {}",  __func__, e.what());
-        out.err = -1;
+        out.err = EBUSY;
     }
-    ADAFS_DATA->spdlogger()->debug("{}() Sending output err {}", __func__, out.err);
+    ADAFS_DATA->spdlogger()->debug("{}() Sending output err: {} value: '{}'", __func__, out.err, out.old_md);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
         ADAFS_DATA->spdlogger()->error("{}() Failed to respond");

@@ -20,7 +20,7 @@
 
 int create_node(const std::string& path, const uid_t uid, const gid_t gid, mode_t mode);
 
-void create_metadentry(const std::string& path, Metadata& md);
+std::string create_metadentry(const std::string& path, Metadata& md);
 
 std::string get_metadentry_str(const std::string& path);
 

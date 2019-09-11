@@ -23,6 +23,9 @@
 #include <client/rpc/ld_rpc_data_ws.hpp>
 #include <client/open_dir.hpp>
 
+#include <dirent.h>
+#include <tuple>
+#include <cstring>
 
 #define __ALIGN_KERNEL_MASK(x, mask)	(((x) + (mask)) & ~(mask))
 #define __ALIGN_KERNEL(x, a)		    __ALIGN_KERNEL_MASK(x, (typeof(x))(a) - 1)
@@ -59,75 +62,94 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
         return -1;
     }
 
-    bool exists = true;
-    auto md = adafs_metadata(path);
-    if (!md) {
-        if(errno == ENOENT) {
-            exists = false;
-        } else {
-            CTX->log()->error("{}() error while retriving stat to file", __func__);
-            return -1;
-        }
-    }
+    // TODO: avoid the creation of dummy object
+    Metadata md(S_IFREG);
 
-    if (!exists) {
-        if (! (flags & O_CREAT)) {
-            // file doesn't exists and O_CREAT was not set
-            errno = ENOENT;
-            return -1;
-        }
-
-        /***   CREATION    ***/
-        assert(flags & O_CREAT);
-
+    if(flags & O_CREAT) {
         if(flags & O_DIRECTORY){
             CTX->log()->error("{}() O_DIRECTORY use with O_CREAT. NOT SUPPORTED", __func__);
             errno = ENOTSUP;
             return -1;
         }
 
-        // no access check required here. If one is using our FS they have the permissions.
-        if(adafs_mk_node(path, mode | S_IFREG)) {
-            CTX->log()->error("{}() error creating non-existent file", __func__);
+        auto parent_err = check_parent_dir(path);
+        if (parent_err) {
+            errno = parent_err;
             return -1;
         }
-    } else {
-        /* File already exists */
 
-        if(flags & O_EXCL) {
-            // File exists and O_EXCL was set
-            errno = EEXIST;
+        // Create new metadata node
+        auto mk_node_res = rpc_send::mk_node(path, mode | S_IFREG);
+        auto& mk_node_err = mk_node_res.first;
+
+        if (mk_node_err == 0) {
+            // No error during new metadata entry creation
+            return CTX->file_map()->add(std::make_shared<OpenFile>(path, flags));
+        }
+
+        if (mk_node_err != EEXIST) {
+            // The metadata entry didn't exist already and an error occurred during its insertion.
+            CTX->log()->error("{}() Failed to create new metadata entry. [path: {},  err: '{}'", __func__, path, strerror(mk_node_err));
+            errno = mk_node_err;
             return -1;
         }
+
+        // The metadata entry did already exists
+        assert(mk_node_err == EEXIST);
+        assert(mk_node_res.second);
+        md = mk_node_res.second.value();
+    } else {
+        // O_CREAT flags was not set. Fetch the entry from MetadataDB.
+        auto old_md = adafs_metadata(path);
+        if (!old_md) {
+            CTX->log()->debug("{}() Failed to retrieve metadata entry from [path: {}, err: '{}'", __func__, path, strerror(errno));
+            // errno has been already set by the adafs_metadata func
+            return -1;
+        }
+        md = *old_md;
+    }
 
 #ifdef HAS_SYMLINKS
-        if (md->is_link()) {
-            if (flags & O_NOFOLLOW) {
-                CTX->log()->warn("{}() symlink found and O_NOFOLLOW flag was specified", __func__);
-                errno = ELOOP;
-                return -1;
-            }
-            return adafs_open(md->target_path(), mode, flags);
+    if (md.is_link()) {
+        if (flags & O_NOFOLLOW) {
+            CTX->log()->warn("{}() symlink found and O_NOFOLLOW flag was specified", __func__);
+            errno = ELOOP;
+            return -1;
         }
+        return adafs_open(md.target_path(), mode, flags & ~(O_CREAT));
+    }
 #endif
 
-        if(S_ISDIR(md->mode())) {
-            return adafs_opendir(path);
-        }
+    if(S_ISDIR(md.mode())) {
+        return adafs_opendir(path);
+    }
 
 
-        /*** Regular file exists ***/
-        assert(S_ISREG(md->mode()));
+    /*** Regular file exists ***/
+    assert(S_ISREG(md.mode()));
 
-        if( (flags & O_TRUNC) && ((flags & O_RDWR) || (flags & O_WRONLY)) ) {
-            if(adafs_truncate(path, md->size(), 0)) {
-                CTX->log()->error("{}() error truncating file", __func__);
-                return -1;
-            }
+    if( (flags & O_TRUNC) && ((flags & O_RDWR) || (flags & O_WRONLY)) ) {
+        if(adafs_truncate(path, md.size(), 0)) {
+            CTX->log()->error("{}() error truncating file", __func__);
+            return -1;
         }
     }
 
     return CTX->file_map()->add(std::make_shared<OpenFile>(path, flags));
+}
+
+int check_parent_dir(const std::string& path) {
+    auto p_comp = dirname(path);
+    auto md = adafs_metadata(p_comp);
+    if (!md) {
+        CTX->log()->debug("{}() parent component does not exists: '{}'", __func__, p_comp);
+        return ENOENT;
+    }
+    if (!S_ISDIR(md->mode())) {
+        CTX->log()->debug("{}() parent component is not a direcotory: '{}'", __func__, p_comp);
+        return ENOTDIR;
+    }
+    return 0;
 }
 
 int adafs_mk_node(const std::string& path, mode_t mode) {
@@ -153,19 +175,19 @@ int adafs_mk_node(const std::string& path, mode_t mode) {
             return -1;
     }
 
-    auto p_comp = dirname(path);
-    auto md = adafs_metadata(p_comp);
-    if (!md) {
-        CTX->log()->debug("{}() parent component does not exists: '{}'", __func__, p_comp);
-        errno = ENOENT;
+    auto parent_err = check_parent_dir(path);
+    if (parent_err) {
+        errno = parent_err;
         return -1;
     }
-    if (!S_ISDIR(md->mode())) {
-        CTX->log()->debug("{}() parent component is not a direcotory: '{}'", __func__, p_comp);
-        errno = ENOTDIR;
-        return -1;
+
+    auto err = (rpc_send::mk_node(path, mode)).first;
+    CTX->log()->trace("{}() Return: '{}'", __func__, strerror(err));
+    if (err) {
+       errno = err;
+       return -1;
     }
-    return rpc_send::mk_node(path, mode);
+    return 0;
 }
 
 /**

@@ -23,16 +23,19 @@
 namespace rpc_send  {
 
 using namespace std;
+using std::experimental::optional;
+using std::experimental::make_optional;
+using std::experimental::nullopt;
 
 static inline hg_return_t
 margo_forward_timed_wrap(const hg_handle_t& handle, void* in_struct) {
     return margo_forward_timed(handle, in_struct, RPC_TIMEOUT);
 }
 
-int mk_node(const std::string& path, const mode_t mode) {
+pair<int, optional<Metadata>> mk_node(const std::string& path, const mode_t mode) {
     hg_handle_t handle;
     rpc_mk_node_in_t in{};
-    rpc_err_out_t out{};
+    rpc_mk_node_out_t out{};
     // fill in
     in.path = path.c_str();
     in.mode = mode;
@@ -41,8 +44,7 @@ int mk_node(const std::string& path, const mode_t mode) {
     auto ret = margo_create_wrap(rpc_mk_node_id, path, handle);
     if (ret != HG_SUCCESS) {
         CTX->log()->error("{}() Failed to create HG handle", __func__);
-        errno = EBUSY;
-        return -1;
+        return make_pair(EBUSY, nullopt);
     }
     // Send rpc
     CTX->log()->debug("{}() About to send RPC ...", __func__);
@@ -51,8 +53,7 @@ int mk_node(const std::string& path, const mode_t mode) {
     if (ret != HG_SUCCESS) {
         CTX->log()->error("{}() Failed to forward request", __func__);
         margo_destroy(handle);
-        errno = EBUSY;
-        return -1;
+        return make_pair(EBUSY, nullopt);
     }
     CTX->log()->trace("{}() Waiting for response", __func__);
     ret = margo_get_output(handle, &out);
@@ -60,13 +61,19 @@ int mk_node(const std::string& path, const mode_t mode) {
         CTX->log()->error("{}() Failed to get output response", __func__);
         margo_free_output(handle, &out);
         margo_destroy(handle);
-        errno = EBUSY;
-        return -1;
+        return make_pair(EBUSY, nullopt);
     }
-    int err = out.err;
+    pair<int, optional<Metadata>> res(out.err, nullopt);
+    if (out.err == EEXIST) {
+        CTX->log()->trace("{}() entry '{}' already exists: '{}'", __func__, path, out.old_md);
+        // in this case the old_md must not be empty
+        assert(!string(out.old_md).empty());
+        res.second = Metadata(out.old_md);
+    }
+    CTX->log()->trace("{}() Response: '{}'", __func__, strerror(res.first));
     margo_free_output(handle, &out);
     margo_destroy(handle);
-    return err;
+    return res;
 }
 
 int stat(const std::string& path, string& attr) {
