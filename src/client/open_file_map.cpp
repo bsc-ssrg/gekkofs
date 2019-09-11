@@ -20,9 +20,10 @@
 
 using namespace std;
 
-OpenFile::OpenFile(const string& path, const int flags, FileType type) :
+OpenFile::OpenFile(const string& path, const int flags, uint64_t data_node_id, FileType type) :
     type_(type),
-    path_(path)
+    path_(path),
+    data_node_id_(data_node_id)
 {
     // set flags to OpenFile
     if (flags & O_CREAT)
@@ -81,6 +82,11 @@ void OpenFile::set_flag(OpenFile_flags flag, bool value) {
 FileType OpenFile::type() const {
     return type_;
 }
+
+uint64_t OpenFile::data_node_id() const {
+    return data_node_id_;
+}
+
 
 // OpenFileMap starts here
 

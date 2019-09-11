@@ -24,14 +24,15 @@
 
 static const char MSP = '|'; // metadata separator
 
-Metadata::Metadata(const mode_t mode) :
+Metadata::Metadata(const mode_t mode, const uint64_t data_node_id) :
     atime_(),
     mtime_(),
     ctime_(),
     mode_(mode),
     link_count_(0),
     size_(0),
-    blocks_(0)
+    blocks_(0),
+    data_node_id_(data_node_id)
 {
     assert(S_ISDIR(mode_) || S_ISREG(mode_));
 }
@@ -46,6 +47,7 @@ Metadata::Metadata(const mode_t mode, const std::string& target_path) :
     link_count_(0),
     size_(0),
     blocks_(0),
+    data_node_id_(0),
     target_path_(target_path)
 {
     assert(S_ISLNK(mode_) || S_ISDIR(mode_) || S_ISREG(mode_));
@@ -71,6 +73,11 @@ Metadata::Metadata(const std::string& binary_str) {
     // yet we have some character to parse
 
     size_ = std::stol(++ptr, &read);
+    assert(read > 0);
+    ptr += read;
+
+    assert(*ptr == MSP);
+    data_node_id_ = std::stol(++ptr, &read);
     assert(read > 0);
     ptr += read;
 
@@ -126,6 +133,8 @@ std::string Metadata::serialize() const
     s += fmt::format_int(mode_).c_str(); // add mandatory mode
     s += MSP;
     s += fmt::format_int(size_).c_str(); // add mandatory size
+    s += MSP;
+    s += fmt::format_int(data_node_id_).c_str(); // add mandatory size
     if (MDATA_USE_ATIME) {
         s += MSP;
         s += fmt::format_int(atime_).c_str();
@@ -230,6 +239,14 @@ blkcnt_t Metadata::blocks() const {
 
 void Metadata::blocks(blkcnt_t blocks_) {
     Metadata::blocks_ = blocks_;
+}
+
+uint64_t Metadata::data_node_id() const {
+    return data_node_id_;
+}
+
+void Metadata::data_node_id(uint64_t data_node_id) {
+    Metadata::data_node_id_ = data_node_id;
 }
 
 #ifdef HAS_SYMLINKS

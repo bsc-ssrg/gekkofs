@@ -32,13 +32,17 @@ margo_forward_timed_wrap(const hg_handle_t& handle, void* in_struct) {
     return margo_forward_timed(handle, in_struct, RPC_TIMEOUT);
 }
 
-pair<int, optional<Metadata>> mk_node(const std::string& path, const mode_t mode) {
+pair<int, optional<Metadata>> mk_node(const std::string& path,
+                                      const mode_t mode,
+                                      const uint64_t data_node_id) {
     hg_handle_t handle;
     rpc_mk_node_in_t in{};
     rpc_mk_node_out_t out{};
     // fill in
     in.path = path.c_str();
     in.mode = mode;
+    in.data_node_id = data_node_id;
+
     // Create handle
     CTX->log()->debug("{}() Creating Mercury handle ...", __func__);
     auto ret = margo_create_wrap(rpc_mk_node_id, path, handle);

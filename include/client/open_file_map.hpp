@@ -46,13 +46,15 @@ protected:
     std::string path_;
     std::array<bool, static_cast<int>(OpenFile_flags::flag_count)> flags_ = {false};
     unsigned long pos_;
+    uint64_t data_node_id_;
     std::mutex pos_mutex_;
     std::mutex flag_mutex_;
 
 public:
     // multiple threads may want to update the file position if fd has been duplicated by dup()
 
-    OpenFile(const std::string& path, int flags, FileType type = FileType::regular);
+    OpenFile(const std::string& path, int flags,
+             uint64_t data_node_id, FileType type = FileType::regular);
 
     ~OpenFile();
 
@@ -70,6 +72,8 @@ public:
     void set_flag(OpenFile_flags flag, bool value);
 
     FileType type() const;
+
+    uint64_t data_node_id() const;
 };
 
 

@@ -31,7 +31,7 @@ FileType DirEntry::type() {
 
 
 OpenDir::OpenDir(const std::string& path) :
-    OpenFile(path, 0, FileType::directory) {
+    OpenFile(path, 0, 0, FileType::directory) {
 }
 
 

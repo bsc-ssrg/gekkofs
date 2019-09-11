@@ -29,7 +29,9 @@ namespace rpc_send {
 
 
 std::pair<int, std::experimental::optional<Metadata>>
-mk_node(const std::string& path, mode_t mode);
+mk_node(const std::string& path,
+        const mode_t mode,
+        const uint64_t data_node_id);
 
 int stat(const std::string& path, std::string& attr);
 

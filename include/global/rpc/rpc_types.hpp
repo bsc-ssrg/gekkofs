@@ -27,8 +27,9 @@ MERCURY_GEN_PROC(rpc_err_out_t, ((hg_int32_t) (err)))
 
 // Metadentry
 MERCURY_GEN_PROC(rpc_mk_node_in_t,
-                 ((hg_const_string_t) (path))\
-((uint32_t) (mode)))
+    ((hg_const_string_t) (path))\
+    ((hg_uint64_t) (data_node_id))\
+    ((hg_uint32_t) (mode)))
 
 MERCURY_GEN_PROC(rpc_mk_node_out_t,
         ((hg_int32_t) (err))\

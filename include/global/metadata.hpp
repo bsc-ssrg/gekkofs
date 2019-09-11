@@ -34,6 +34,7 @@ private:
     nlink_t link_count_;   // number of names for this inode (hardlinks)
     size_t size_;          // size_ in bytes, might be computed instead of stored
     blkcnt_t blocks_;      // allocated file system blocks_
+    uint64_t data_node_id_;
 #ifdef HAS_SYMLINKS
     std::string target_path_;  // For links this is the path of the target file
 #endif
@@ -41,7 +42,7 @@ private:
 
 public:
     Metadata();
-    explicit Metadata(mode_t mode);
+    explicit Metadata(mode_t mode, uint64_t data_node_id);
 #ifdef HAS_SYMLINKS
     Metadata(mode_t mode, const std::string& target_path);
 #endif
@@ -68,6 +69,8 @@ public:
     void size(size_t size_);
     blkcnt_t blocks() const;
     void blocks(blkcnt_t blocks_);
+    uint64_t data_node_id() const;
+    void data_node_id(uint64_t data_node_id);
 #ifdef HAS_SYMLINKS
     std::string target_path() const;
     void target_path(const std::string& target_path);

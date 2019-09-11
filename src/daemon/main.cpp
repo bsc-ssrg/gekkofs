@@ -88,7 +88,7 @@ void init_environment() {
     ADAFS_DATA->link_cnt_state(MDATA_USE_LINK_CNT);
     ADAFS_DATA->blocks_state(MDATA_USE_BLOCKS);
     // Create metadentry for root directory
-    Metadata root_md{S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO};
+    Metadata root_md{(S_IFDIR | S_IRWXU | S_IRWXG | S_IRWXO), 0};
     try {
         create_metadentry("/", root_md);
     } catch (const std::exception& e ) {

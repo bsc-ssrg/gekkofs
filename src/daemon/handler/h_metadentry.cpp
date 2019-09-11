@@ -30,7 +30,7 @@ static hg_return_t rpc_srv_mk_node(hg_handle_t handle) {
         ADAFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
     assert(ret == HG_SUCCESS);
     ADAFS_DATA->spdlogger()->debug("{}() Got RPC with path {}", __func__, in.path);
-    Metadata md(in.mode);
+    Metadata md(in.mode, in.data_node_id);
     string old_md;
     try {
         // create metadentry

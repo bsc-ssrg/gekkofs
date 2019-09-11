@@ -32,9 +32,11 @@ using namespace std;
 /**
  * Sends an RPC request to a specific node to pull all chunks that belong to him
  */
-ssize_t write(const string& path, const void* buf, const bool append_flag, const off64_t in_offset,
-                       const size_t write_size, const int64_t updated_metadentry_size) {
+ssize_t write(std::shared_ptr<OpenFile> file,
+        const void* buf, const bool append_flag, const off64_t in_offset,
+        const size_t write_size, const int64_t updated_metadentry_size) {
     assert(write_size > 0);
+    const auto path = file->path();
     // Calculate chunkid boundaries and numbers so that daemons know in which interval to look for chunks
     off64_t offset = in_offset;
     if (append_flag)
@@ -51,7 +53,7 @@ ssize_t write(const string& path, const void* buf, const bool append_flag, const
     uint64_t chnk_start_target = 0;
     uint64_t chnk_end_target = 0;
     for (uint64_t chnk_id = chnk_start; chnk_id <= chnk_end; chnk_id++) {
-        auto target = CTX->distributor()->locate_data(path, chnk_id);
+        auto target = file->data_node_id();
         if (target_chnks.count(target) == 0) {
             target_chnks.insert(make_pair(target, vector<uint64_t>{chnk_id}));
             targets.push_back(target);
@@ -153,7 +155,8 @@ ssize_t write(const string& path, const void* buf, const bool append_flag, const
 /**
  * Sends an RPC request to a specific node to push all chunks that belong to him
  */
-ssize_t read(const string& path, void* buf, const off64_t offset, const size_t read_size) {
+ssize_t read(std::shared_ptr<OpenFile> file, void* buf, const off64_t offset, const size_t read_size) {
+    const auto path = file->path();
     // Calculate chunkid boundaries and numbers so that daemons know in which interval to look for chunks
     auto chnk_start = chnk_id_for_offset(offset, CHUNKSIZE); // first chunk number
     auto chnk_end = chnk_id_for_offset((offset + read_size - 1), CHUNKSIZE);
@@ -166,7 +169,7 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
     uint64_t chnk_start_target = 0;
     uint64_t chnk_end_target = 0;
     for (uint64_t chnk_id = chnk_start; chnk_id <= chnk_end; chnk_id++) {
-        auto target = CTX->distributor()->locate_data(path, chnk_id);
+        auto target = file->data_node_id();
         if (target_chnks.count(target) == 0) {
             target_chnks.insert(make_pair(target, vector<uint64_t>{chnk_id}));
             targets.push_back(target);
@@ -263,7 +266,7 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
     return (error) ? -1 : out_size;
 }
 
-int trunc_data(const std::string& path, size_t current_size, size_t new_size) {
+int trunc_data(const std::string& path, size_t current_size, size_t new_size, uint64_t data_node_id) {
     assert(current_size > new_size);
     hg_return_t ret;
     rpc_trunc_in_t in;
@@ -277,7 +280,7 @@ int trunc_data(const std::string& path, size_t current_size, size_t new_size) {
     const unsigned int chunk_end = chnk_id_for_offset(current_size - new_size - 1, CHUNKSIZE);
     std::unordered_set<unsigned int> hosts;
     for(unsigned int chunk_id = chunk_start; chunk_id <= chunk_end; ++chunk_id) {
-        hosts.insert(CTX->distributor()->locate_data(path, chunk_id));
+        hosts.insert(data_node_id);
     }
 
     std::vector<hg_handle_t> rpc_handles(hosts.size());

@@ -40,7 +40,8 @@ off64_t adafs_lseek(std::shared_ptr<OpenFile> adafs_fd, off64_t offset, unsigned
 
 int adafs_truncate(const std::string& path, off_t offset);
 
-int adafs_truncate(const std::string& path, off_t old_size, off_t new_size);
+int adafs_truncate(const std::string& path, off_t old_size,
+                   off_t new_size, uint64_t data_node_id);
 
 int adafs_dup(int oldfd);
 
