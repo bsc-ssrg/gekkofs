@@ -322,6 +322,11 @@ int main(int argc, const char* argv[]) {
 #else
         cout << "Shared-memory comm: OFF" << endl;
 #endif
+#if CREATE_CHECK_PARENTS
+        cout << "Create check parents: ON" << endl;
+#else
+        cout << "Create check parents: OFF" << endl;
+#endif
 #if LOG_SYSCALLS
         cout << "Syscalls logging: ON" << endl;
 #else

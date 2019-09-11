@@ -71,12 +71,13 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
             errno = ENOTSUP;
             return -1;
         }
-
+#if CREATE_CHECK_PARENTS
         auto parent_err = check_parent_dir(path);
         if (parent_err) {
             errno = parent_err;
             return -1;
         }
+#endif // CREATE_CHECK_PARENTS
 
         // Create new metadata node
         auto mk_node_res = rpc_send::mk_node(path, mode | S_IFREG);
@@ -175,11 +176,13 @@ int adafs_mk_node(const std::string& path, mode_t mode) {
             return -1;
     }
 
+#if CREATE_CHECK_PARENTS
     auto parent_err = check_parent_dir(path);
     if (parent_err) {
         errno = parent_err;
         return -1;
     }
+#endif // CREATE_CHECK_PARENTS
 
     auto err = (rpc_send::mk_node(path, mode)).first;
     CTX->log()->trace("{}() Return: '{}'", __func__, strerror(err));

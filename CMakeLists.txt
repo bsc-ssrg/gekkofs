@@ -110,6 +110,9 @@ message(STATUS "Shared-memory communication: ${USE_SHM}")
 option(LOG_SYSCALLS "Enable verbose logging for syscalls interception" OFF)
 message(STATUS "Syscall logging: ${LOG_SYSCALLS}")
 
+option(CREATE_CHECK_PARENTS "Check parent directory existance before creating child node" ON)
+message(STATUS "Create checks parents: ${CREATE_CHECK_PARENTS}")
+
 option(SYMLINK_SUPPORT "Compile with support for symlinks" ON)
 if(SYMLINK_SUPPORT)
     add_definitions(-DHAS_SYMLINKS)

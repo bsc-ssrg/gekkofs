@@ -17,6 +17,7 @@
 
 #define RPC_PROTOCOL "@RPC_PROTOCOL@"
 #cmakedefine01 USE_SHM
+#cmakedefine01 CREATE_CHECK_PARENTS
 
 #define CHUNKSIZE 524288 // in bytes 512KB
 
