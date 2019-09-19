@@ -103,6 +103,7 @@ vector<pair<string, string>> load_hosts_file(const std::string& lfpath) {
         uri = match[2];
         hosts.emplace_back(host, uri);
     }
+	sort(hosts.begin(),hosts.end());
     return hosts;
 }
 

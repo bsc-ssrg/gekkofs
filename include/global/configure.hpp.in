@@ -46,9 +46,9 @@
  * Indicates the number of concurrent progress to drive I/O operations of chunk files to and from local file systems
  * The value is directly mapped to created Argobots xstreams, controlled in a single pool with ABT_snoozer scheduler
  */
-#define DAEMON_IO_XSTREAMS 6
+#define DAEMON_IO_XSTREAMS 3
 // Number of threads used for RPC handlers at the daemon
-#define DAEMON_RPC_HANDLER_XSTREAMS 6
+#define DAEMON_RPC_HANDLER_XSTREAMS 3
 #define DEFAULT_RPC_PORT 4433
 #define RPC_TRIES 3
 // rpc timeout to try again in milliseconds
