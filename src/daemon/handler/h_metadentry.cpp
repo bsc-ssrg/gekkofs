@@ -132,7 +132,7 @@ static hg_return_t rpc_srv_rm_node(hg_handle_t handle) {
     if (ret != HG_SUCCESS)
         ADAFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
     assert(ret == HG_SUCCESS);
-    ADAFS_DATA->spdlogger()->debug("Got remove node RPC with path {}", in.path);
+    ADAFS_DATA->spdlogger()->debug("Got remove node RPC with path '{}'", in.path);
 
     try {
         // Remove metadentry if exists on the node

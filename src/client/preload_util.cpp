@@ -170,7 +170,7 @@ void load_hosts() {
     bool local_host_found = false;
 
     std::vector<hermes::endpoint> addrs;
-    addrs.reserve(hosts.size());
+    addrs.resize(hosts.size());
 
     vector<uint64_t> host_ids(hosts.size());
     // populate vector with [0, ..., host_size - 1]
@@ -187,13 +187,10 @@ void load_hosts() {
     // lookup addresses and put abstract server addresses into rpc_addressesre
 
     for (const auto& id: host_ids) {
-        const auto& hostname = hosts.at(id).first;
-        const auto& uri = hosts.at(id).second;
+         const auto& hostname = hosts.at(id).first;
+         const auto& uri = hosts.at(id).second;
 
-        auto endp = ::lookup_endpoint(uri);
-
-        auto it = std::next(addrs.begin(), id);
-        addrs.emplace(it, endp);
+        addrs[id] = ::lookup_endpoint(uri);
 
         if (!local_host_found && hostname == local_hostname) {
             CTX->log()->debug("{}() Found local host: {}", __func__, hostname);

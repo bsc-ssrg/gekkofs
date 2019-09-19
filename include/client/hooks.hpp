@@ -14,6 +14,7 @@
 #ifndef IFS_HOOKS_HPP
 #define IFS_HOOKS_HPP
 
+#include <sys/types.h>
 #include <fcntl.h>
 
 

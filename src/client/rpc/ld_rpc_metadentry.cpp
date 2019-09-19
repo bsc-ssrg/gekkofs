@@ -159,34 +159,55 @@ int rm_node(const std::string& path, const bool remove_metadentry_only) {
 
     std::vector<hermes::rpc_handle<gkfs::rpc::remove>> handles;
 
-    hermes::endpoint_set endps;
+    for (const auto& endp : CTX->hosts()) {
+        try {
+            CTX->log()->trace("{}() Sending RPC to host: {}", 
+                              __func__, endp.to_string());
 
-    std::copy(CTX->hosts().begin(), 
-              CTX->hosts().end(), 
-              std::back_inserter(endps));
+            gkfs::rpc::remove::input in(path);
 
-    try {
+            // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that
+            // we can retry for RPC_TRIES (see old commits with margo)
+            // TODO(amiranda): hermes will eventually provide a post(endpoint) 
+            // returning one result and a broadcast(endpoint_set) returning a 
+            // result_set. When that happens we can remove the .at(0) :/
+            handles.emplace_back(
+                ld_network_service->post<gkfs::rpc::remove>(endp, in));
 
-        auto output_set = 
-            ld_network_service->broadcast<gkfs::rpc::remove>(endps, path).get();
+        } catch (const std::exception& ex) {
+            // TODO(amiranda): we should cancel all previously posted requests 
+            // here, unfortunately, Hermes does not support it yet :/
+            CTX->log()->error("{}() Failed to send request to host: {}", 
+                              __func__, endp.to_string());
+            throw std::runtime_error("Failed to forward non-blocking rpc request");
+        }
+    }
 
-        // Wait for RPC responses and then get response
-        for (const auto& out : output_set) {
-            CTX->log()->debug("{}() Got response success: {}", __func__, out.err());
+    // wait for RPC responses
+    bool got_error = false;
+
+    for(const auto& h : handles) {
+
+        try {
+            // XXX We might need a timeout here to not wait forever for an
+            // output that never comes?
+            auto out = h.get().at(0);
 
             if(out.err() != 0) {
+                CTX->log()->error("{}() received error response: {}", 
+                        __func__, out.err());
+                got_error = true;
                 errno = out.err();
-                return -1;
             }
+        } catch(const std::exception& ex) {
+            CTX->log()->error("{}() while getting rpc output", __func__);
+            got_error = true;
+            errno = EBUSY;
         }
-
-        return 0;
-
-    } catch(const std::exception& ex) {
-        CTX->log()->error("{}() while getting rpc output", __func__);
-        errno = EBUSY;
-        return -1;
     }
+
+    return got_error ? -1 : 0;
+
 }
 
 
