@@ -14,7 +14,7 @@ variables:
   LOG_PATH:          "${CI_PROJECT_DIR}/logs"
   LD_LIBRARY_PATH:   "${CI_PROJECT_DIR}/deps/install/lib;${CI_PROJECT_DIR}/deps/install/lib64"
   # Configuration variables
-  GKFS_LOG_LEVEL:   "100"
+  GKFS_LOG_LEVEL:   "1"
   GKFS_DAEMON_LOG_PATH:  "${CI_PROJECT_DIR}/logs/daemon.log"
   GKFS_PRELOAD_LOG_PATH: "${CI_PROJECT_DIR}/logs/preload.log"
   GIT_SUBMODULE_STRATEGY: recursive
@@ -50,7 +50,8 @@ compile GekkoFS:
       -Wdev
       -Wdeprecate
       -DCMAKE_BUILD_TYPE=Debug 
-      -DUSE_SHM:BOOL=OFF 
+      -DUSE_SHM:BOOL=OFF
+      -DRPC_PROTOCOL="ofi+sockets"
       -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_PATH}
       -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
       ${CI_PROJECT_DIR}
