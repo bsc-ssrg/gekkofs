@@ -11,6 +11,7 @@ variables:
   BUILD_PATH:        "${CI_PROJECT_DIR}/gkfs/build"
   INSTALL_PATH:      "${CI_PROJECT_DIR}/gkfs/install"
   TESTS_BUILD_PATH:  "${CI_PROJECT_DIR}/test/build"
+  TESTS_BASH:        "${CI_PROJECT_DIR}/test"
   LOG_PATH:          "${CI_PROJECT_DIR}/logs"
   LD_LIBRARY_PATH:   "${CI_PROJECT_DIR}/deps/install/lib;${CI_PROJECT_DIR}/deps/install/lib64"
   # Configuration variables
@@ -123,6 +124,17 @@ test lseek:
     - ${INSTALL_PATH}/bin/gkfs_daemon --mount /tmp/mountdir --root /tmp/root &
     - sleep 4
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BUILD_PATH}/gkfs_test_lseek
+  artifacts:
+    paths:
+     - "${LOG_PATH}"
+
+test rm rmdir mkdir:
+  stage: test
+  script:
+    - mkdir -p "${LOG_PATH}"
+    - ${INSTALL_PATH}/bin/gkfs_daemon --mount /tmp/mountdir --root /tmp/root &
+    - sleep 4
+    - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BASH}/bash_testing.sh /tmp/mountdir
   artifacts:
     paths:
      - "${LOG_PATH}"
