@@ -167,6 +167,7 @@ hook_internal(long syscall_number,
             }
             break;
 
+
         case SYS_perf_event_open:
             *result = syscall_no_intercept(syscall_number,
                                 reinterpret_cast<struct perf_event_attr*>(arg0),
@@ -421,6 +422,12 @@ int hook(long syscall_number,
                                     reinterpret_cast<struct linux_dirent *>(arg1),
                                     static_cast<unsigned int>(arg2));
             break;
+
+       	case SYS_getdents64:
+        *result = hook_getdents64(static_cast<unsigned int>(arg0),
+                                reinterpret_cast<struct linux_dirent64 *>(arg1),
+                                static_cast<unsigned int>(arg2));
+        break;
 
         case SYS_mkdirat:
             *result = hook_mkdirat(static_cast<unsigned int>(arg0),

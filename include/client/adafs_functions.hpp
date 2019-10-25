@@ -69,6 +69,10 @@ int getdents(unsigned int fd,
              struct linux_dirent *dirp,
              unsigned int count);
 
+int getdents64(unsigned int fd,
+             struct linux_dirent64 *dirp,
+             unsigned int count);
+
 int adafs_rmdir(const std::string& path);
 
 #endif //IFS_ADAFS_FUNCTIONS_HPP

@@ -23,8 +23,6 @@
 #include <client/rpc/ld_rpc_data_ws.hpp>
 #include <client/open_dir.hpp>
 
-#include <dirent.h>
-
 
 #define __ALIGN_KERNEL_MASK(x, mask)	(((x) + (mask)) & ~(mask))
 #define __ALIGN_KERNEL(x, a)		    __ALIGN_KERNEL_MASK(x, (typeof(x))(a) - 1)
@@ -35,6 +33,14 @@ struct linux_dirent {
     unsigned long	d_off;
     unsigned short	d_reclen;
     char		d_name[1];
+};
+
+struct linux_dirent64 {
+    unsigned long long  d_ino;
+    unsigned long long  d_off;
+    unsigned short  d_reclen;
+    unsigned char d_type;
+    char        d_name[1];
 };
 
 using namespace std;
@@ -571,6 +577,59 @@ int getdents(unsigned int fd,
     open_dir->pos(pos);
     return written;
 }
+
+
+int getdents64(unsigned int fd,
+             struct linux_dirent64 *dirp,
+             unsigned int count) {
+    CTX->log()->trace("{}() called on fd: {}, count {}", __func__, fd, count);
+    auto open_dir = CTX->file_map()->get_dir(fd);
+    if(open_dir == nullptr){
+        //Cast did not succeeded: open_file is a regular file
+        errno = EBADF;
+        return -1;
+    }
+
+    auto pos = open_dir->pos();
+    if (pos >= open_dir->size()) {
+        return 0;
+    }
+
+    unsigned int written = 0;
+    struct linux_dirent64 * current_dirp = nullptr;
+    while(pos < open_dir->size()) {
+        DirEntry de = open_dir->getdent(pos);
+        auto total_size = ALIGN(offsetof(struct linux_dirent64, d_name) +
+                de.name().size() + 3, sizeof(long));
+        if (total_size > (count - written)) {
+            //no enough space left on user buffer to insert next dirent
+            break;
+        }
+        current_dirp = reinterpret_cast<struct linux_dirent64 *>(
+                        reinterpret_cast<char*>(dirp) + written);
+        current_dirp->d_ino = std::hash<std::string>()(
+                open_dir->path() + "/" + de.name());
+
+        current_dirp->d_reclen = total_size;
+        current_dirp->d_type =  ((de.type() == FileType::regular)? DT_REG : DT_DIR);
+
+        
+
+        CTX->log()->trace("{}() name {}: {}", __func__, pos, de.name());
+        std::strcpy(&(current_dirp->d_name[0]), de.name().c_str());
+        ++pos;
+        current_dirp->d_off = pos;
+        written += total_size;
+    }
+
+    if (written == 0) {
+        errno = EINVAL;
+        return -1;
+    }
+    open_dir->pos(pos);
+    return written;
+}
+
 
 #ifdef HAS_SYMLINKS
 

@@ -354,6 +354,16 @@ int hook_getdents(unsigned int fd, struct linux_dirent *dirp, unsigned int count
     return syscall_no_intercept(SYS_getdents, fd, dirp, count);
 }
 
+
+int hook_getdents64(unsigned int fd, struct linux_dirent64 *dirp, unsigned int count) {
+    CTX->log()->trace("{}() called with fd {}, count {}", __func__, fd, count);
+    if (CTX->file_map()->exist(fd)) {
+        return with_errno(getdents64(fd, dirp, count));
+    }
+    return syscall_no_intercept(SYS_getdents64, fd, dirp, count);
+}
+
+
 int hook_mkdirat(int dirfd, const char * cpath, mode_t mode) {
     CTX->log()->trace("{}() called with fd: {}, path: {}, mode: {}",
                       __func__, dirfd, cpath, mode);
