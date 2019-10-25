@@ -49,9 +49,7 @@ compile GekkoFS:
     - cmake
       -Wdev
       -Wdeprecate
-      -DCMAKE_BUILD_TYPE=Debug
-      -DRPC_PROTOCOL="ofi+sockets"
-      -DUSE_BMI:BOOL=OFF 
+      -DCMAKE_BUILD_TYPE=Debug 
       -DUSE_SHM:BOOL=OFF 
       -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_PATH}
       -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
