@@ -18,6 +18,7 @@
 #include <global/env_util.hpp>
 #include <global/rpc/rpc_types.hpp>
 #include <global/rpc/rpc_utils.hpp>
+#include <daemon/env.hpp>
 #include <daemon/handler/rpc_defs.hpp>
 #include <daemon/ops/metadentry.hpp>
 #include <daemon/backend/metadata/db.hpp>
@@ -262,7 +263,7 @@ void shutdown_handler(int dummy) {
 void initialize_loggers() {
     std::string path = DEFAULT_DAEMON_LOG_PATH;
     // Try to get log path from env variable
-    std::string env_path_key = ENV_PREFIX;
+    std::string env_path_key = DAEMON_ENV_PREFIX;
     env_path_key += "DAEMON_LOG_PATH";
     char* env_path = getenv(env_path_key.c_str());
     if (env_path != nullptr) {
@@ -271,7 +272,7 @@ void initialize_loggers() {
 
     spdlog::level::level_enum level = get_spdlog_level(DEFAULT_DAEMON_LOG_LEVEL);
     // Try to get log path from env variable
-    std::string env_level_key = ENV_PREFIX;
+    std::string env_level_key = DAEMON_ENV_PREFIX;
     env_level_key += "LOG_LEVEL";
     char* env_level = getenv(env_level_key.c_str());
     if (env_level != nullptr) {
@@ -350,11 +351,8 @@ int main(int argc, const char* argv[]) {
     if (vm.count("hosts-file")) {
         hosts_file = vm["hosts-file"].as<string>();
     } else {
-        try {
-            hosts_file = gkfs::get_env_own("HOSTS_FILE");
-        } catch (const exception& e) {
-            hosts_file = DEFAULT_HOSTS_FILE;
-        }
+        hosts_file = 
+            gkfs::env::get_var(gkfs::env::HOSTS_FILE, DEFAULT_HOSTS_FILE);
     }
     ADAFS_DATA->hosts_file(hosts_file);
 

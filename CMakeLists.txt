@@ -27,9 +27,13 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # Compiler flags for various cmake build types
 set(WARNINGS_FLAGS "-Wall -Wextra --pedantic -Wno-unused-parameter -Wno-missing-field-initializers")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -O3")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${WARNINGS_FLAGS} -g -O0")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${WARNINGS_FLAGS} -g -O0 -DGKFS_DEBUG_BUILD")
 set(CMAKE_CXX_FLAGS_MEMCHECK "${WARNINGS_FLAGS} -g -O0 -fsanitize=address -fno-omit-frame-pointer")
 set(CMAKE_CXX_FLAGS_MAINTAINER "${WARNINGS_FLAGS} -g -O0 -pg -no-pie")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -DNDEBUG -O3")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${WARNINGS_FLAGS} -g -O0 -DGKFS_DEBUG_BUILD")
+set(CMAKE_C_FLAGS_MEMCHECK "${WARNINGS_FLAGS} -g -O0 -fsanitize=address -fno-omit-frame-pointer")
+set(CMAKE_C_FLAGS_MAINTAINER "${WARNINGS_FLAGS} -g -O0 -pg -no-pie")
 mark_as_advanced(CMAKE_CXX_FLAGS_MAINTAINER)
 
 # Project version
@@ -94,6 +98,8 @@ find_package(Boost 1.53 REQUIRED
 
 find_package(Threads REQUIRED)
 
+find_package(Date REQUIRED)
+
 set(RPC_PROTOCOL "ofi+tcp" CACHE STRING "Communication plugin used for RPCs")
 set_property(CACHE RPC_PROTOCOL PROPERTY STRINGS
    "bmi+tcp"
@@ -112,24 +118,28 @@ if(SYMLINK_SUPPORT)
 endif()
 message(STATUS "Symlink support: ${SYMLINK_SUPPORT}")
 
-option(USE_BITSET_FOR_INTERNAL_FDS "Use std::bitset to track internal fds" ON)
-if(USE_BITSET_FOR_INTERNAL_FDS)
-    add_definitions(-DUSE_BITSET_FOR_INTERNAL_FDS)
-    execute_process(COMMAND getconf OPEN_MAX
-                    OUTPUT_VARIABLE GETCONF_MAX_FDS
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    ERROR_QUIET)
-    if(NOT GETCONF_MAX_FDS)
-        set(GETCONF_MAX_FDS=512)
-    endif()
-    add_definitions(-DMAX_OPEN_FDS=${GETCONF_MAX_FDS})
-endif()
+set(MAX_INTERNAL_FDS 256 CACHE STRING "Number of file descriptors reserved for internal use")
+add_definitions(-DMAX_INTERNAL_FDS=${MAX_INTERNAL_FDS})
+message(STATUS "File descriptors reserved for internal use: ${MAX_INTERNAL_FDS}")
 
-message(STATUS "Use std::bitset for internal fd tracking: ${USE_BITSET_FOR_INTERNAL_FDS}")
-
-if(USE_BITSET_FOR_INTERNAL_FDS)
-    message(STATUS "Max open files: ${GETCONF_MAX_FDS}")
+execute_process(COMMAND getconf OPEN_MAX
+                OUTPUT_VARIABLE GETCONF_MAX_FDS
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET)
+if(NOT GETCONF_MAX_FDS)
+    set(GETCONF_MAX_FDS=512)
 endif()
+add_definitions(-DMAX_OPEN_FDS=${GETCONF_MAX_FDS})
+
+option(ENABLE_CLIENT_LOG "Enable logging messages" ON)
+if(ENABLE_CLIENT_LOG)
+    set(CLIENT_LOG_MESSAGE_SIZE 1024 CACHE STRING "Maximum size of a log message in the client library")
+    add_definitions(-DLIBGKFS_LOG_MESSAGE_SIZE=${CLIENT_LOG_MESSAGE_SIZE})
+    message(STATUS "Maximum log message size in the client library: ${CLIENT_LOG_MESSAGE_SIZE}")
+else()
+    add_definitions(-DGKFS_DISABLE_LOGGING)
+endif()
+message(STATUS "Client logging output: ${ENABLE_CLIENT_LOGGING}")
 
 configure_file(include/global/configure.hpp.in include/global/configure.hpp)
 

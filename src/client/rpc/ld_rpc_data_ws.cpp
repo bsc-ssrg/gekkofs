@@ -18,9 +18,9 @@
 #include <global/rpc/distributor.hpp>
 #include <global/chunk_calc_util.hpp>
 #include <client/rpc/hg_rpcs.hpp>
+#include <client/logging.hpp>
 
 #include <unordered_set>
-
 
 namespace rpc_send {
 
@@ -94,7 +94,7 @@ ssize_t write(const string& path, const void* buf, const bool append_flag,
             ld_network_service->expose(bufseq, hermes::access_mode::read_only);
 
     } catch (const std::exception& ex) {
-        CTX->log()->error("{}() Failed to expose buffers for RMA", __func__);
+        LOG(ERROR, "Failed to expose buffers for RMA");
         errno = EBUSY;
         return -1;
     }
@@ -125,7 +125,7 @@ ssize_t write(const string& path, const void* buf, const bool append_flag,
 
         try {
 
-            CTX->log()->debug("{}() Sending RPC ...", __func__);
+            LOG(DEBUG, "Sending RPC ...");
 
             gkfs::rpc::write_data::input in(
                 path,
@@ -152,15 +152,12 @@ ssize_t write(const string& path, const void* buf, const bool append_flag,
             handles.emplace_back(
                 ld_network_service->post<gkfs::rpc::write_data>(endp, in));
 
-            CTX->log()->trace("{}() host: {}, path: {}, chunks: {}, size: {}, "
-                              "offset: {}", __func__,
-                              target, path, in.chunk_n(), 
-                              total_chunk_size, in.offset());
+            LOG(DEBUG, "host: {}, path: \"{}\", chunks: {}, size: {}, offset: {}",
+                target, path, in.chunk_n(), total_chunk_size, in.offset());
 
         } catch(const std::exception& ex) {
-            CTX->log()->error("{}() Unable to send non-blocking rpc for "
-                              "path {} and recipient {}", __func__, path,
-                              target);
+            LOG(ERROR, "Unable to send non-blocking rpc for "
+                       "path \"{}\" [peer: {}]", path, target);
             errno = EBUSY;
             return -1;
         }
@@ -180,8 +177,7 @@ ssize_t write(const string& path, const void* buf, const bool append_flag,
             auto out = h.get().at(0);
 
             if(out.err() != 0) {
-                CTX->log()->error("{}() Daemon reported error: {}", 
-                                  __func__, out.err());
+                LOG(ERROR, "Daemon reported error: {}", out.err());
                 error = true;
                 errno = out.err();
             }
@@ -189,8 +185,8 @@ ssize_t write(const string& path, const void* buf, const bool append_flag,
             out_size += static_cast<size_t>(out.io_size());
 
         } catch(const std::exception& ex) {
-            CTX->log()->error("{}() Failed to get rpc output for path {} "
-                              "recipient {}", __func__, path, targets[idx]);
+            LOG(ERROR, "Failed to get rpc output for path \"{}\" [peer: {}]", 
+                path, targets[idx]);
             error = true;
             errno = EIO;
         }
@@ -257,7 +253,7 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
             ld_network_service->expose(bufseq, hermes::access_mode::write_only);
 
     } catch (const std::exception& ex) {
-        CTX->log()->error("{}() Failed to expose buffers for RMA", __func__);
+        LOG(ERROR, "Failed to expose buffers for RMA");
         errno = EBUSY;
         return -1;
     }
@@ -288,7 +284,7 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
 
         try {
 
-            CTX->log()->debug("{}() Sending RPC ...", __func__);
+            LOG(DEBUG, "Sending RPC ...");
 
             gkfs::rpc::read_data::input in(
                 path,
@@ -315,15 +311,12 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
             handles.emplace_back(
                 ld_network_service->post<gkfs::rpc::read_data>(endp, in));
 
-            CTX->log()->trace("{}() host: {}, path: {}, chunks: {}, size: {}, "
-                              "offset: {}", __func__,
-                              target, path, in.chunk_n(), 
-                              total_chunk_size, in.offset());
+            LOG(DEBUG, "host: {}, path: {}, chunks: {}, size: {}, offset: {}",
+                target, path, in.chunk_n(), total_chunk_size, in.offset());
 
         } catch(const std::exception& ex) {
-            CTX->log()->error("{}() Unable to send non-blocking rpc for "
-                              "path {} and recipient {}", __func__, path,
-                              target);
+            LOG(ERROR, "Unable to send non-blocking rpc for path \"{}\" "
+                "[peer: {}]", path, target);
             errno = EBUSY;
             return -1;
         }
@@ -343,8 +336,7 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
             auto out = h.get().at(0);
 
             if(out.err() != 0) {
-                CTX->log()->error("{}() Daemon reported error: {}", 
-                                  __func__, out.err());
+                LOG(ERROR, "Daemon reported error: {}", out.err());
                 error = true;
                 errno = out.err();
             }
@@ -352,8 +344,8 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
             out_size += static_cast<size_t>(out.io_size());
 
         } catch(const std::exception& ex) {
-            CTX->log()->error("{}() Failed to get rpc output for path {} "
-                              "recipient {}", __func__, path, targets[idx]);
+            LOG(ERROR, "Failed to get rpc output for path \"{}\" [peer: {}]", 
+                path, targets[idx]);
             error = true;
             errno = EIO;
         }
@@ -387,7 +379,7 @@ int trunc_data(const std::string& path, size_t current_size, size_t new_size) {
         auto endp = CTX->hosts().at(host);
 
         try {
-            CTX->log()->debug("{}() Sending RPC ...", __func__);
+            LOG(DEBUG, "Sending RPC ...");
 
             gkfs::rpc::trunc_data::input in(path, new_size);
 
@@ -402,8 +394,7 @@ int trunc_data(const std::string& path, size_t current_size, size_t new_size) {
         } catch (const std::exception& ex) {
             // TODO(amiranda): we should cancel all previously posted requests 
             // here, unfortunately, Hermes does not support it yet :/
-            CTX->log()->error("{}() Failed to send request to host: {}", 
-                              __func__, host);
+            LOG(ERROR, "Failed to send request to host: {}", host);
             errno = EIO;
             return -1;
         }
@@ -419,13 +410,12 @@ int trunc_data(const std::string& path, size_t current_size, size_t new_size) {
             auto out = h.get().at(0);
 
             if(out.err() != 0) {
-                CTX->log()->error("{}() received error response: {}", 
-                        __func__, out.err());
+                LOG(ERROR, "received error response: {}", out.err());
                 error = true;
                 errno = EIO;
             }
         } catch(const std::exception& ex) {
-            CTX->log()->error("{}() while getting rpc output", __func__);
+            LOG(ERROR, "while getting rpc output");
             error = true;
             errno = EIO;
         }
@@ -436,14 +426,11 @@ int trunc_data(const std::string& path, size_t current_size, size_t new_size) {
 
 ChunkStat chunk_stat() {
 
-    CTX->log()->trace("{}()", __func__);
-
     std::vector<hermes::rpc_handle<gkfs::rpc::chunk_stat>> handles;
 
     for (const auto& endp : CTX->hosts()) {
         try {
-            CTX->log()->trace("{}() Sending RPC to host: {}", 
-                              __func__, endp.to_string());
+            LOG(DEBUG, "Sending RPC to host: {}", endp.to_string());
 
             gkfs::rpc::chunk_stat::input in(0);
 
@@ -458,8 +445,7 @@ ChunkStat chunk_stat() {
         } catch (const std::exception& ex) {
             // TODO(amiranda): we should cancel all previously posted requests 
             // here, unfortunately, Hermes does not support it yet :/
-            CTX->log()->error("{}() Failed to send request to host: {}", 
-                              __func__, endp.to_string());
+            LOG(ERROR, "Failed to send request to host: {}", endp.to_string());
             throw std::runtime_error("Failed to forward non-blocking rpc request");
         }
     }

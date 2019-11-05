@@ -12,6 +12,8 @@
 */
 
 #include <client/preload_util.hpp>
+#include <client/env.hpp>
+#include <client/logging.hpp>
 #include <global/rpc/distributor.hpp>
 #include <global/rpc/rpc_utils.hpp>
 #include <global/env_util.hpp>
@@ -77,7 +79,9 @@ int metadata_to_stat(const std::string& path, const Metadata& md, struct stat& a
 }
 
 vector<pair<string, string>> load_hosts_file(const std::string& lfpath) {
-    CTX->log()->debug("{}() Loading hosts file: '{}'", __func__, lfpath);
+
+    LOG(DEBUG, "Loading hosts file: \"{}\"", lfpath);
+
     ifstream lf(lfpath);
     if (!lf) {
         throw runtime_error(fmt::format("Failed to open hosts file '{}': {}",
@@ -92,8 +96,10 @@ vector<pair<string, string>> load_hosts_file(const std::string& lfpath) {
     std::smatch match;
     while (getline(lf, line)) {
         if (!regex_match(line, match, line_re)) {
-            spdlog::error("{}() Unrecognized line format: [path: '{}', line: '{}']",
-                          __func__, lfpath, line);
+
+            LOG(ERROR, "Unrecognized line format: [path: '{}', line: '{}']",
+                lfpath, line);
+
             throw runtime_error(
                     fmt::format("unrecognized line format: '{}'", line));
         }
@@ -107,7 +113,7 @@ vector<pair<string, string>> load_hosts_file(const std::string& lfpath) {
 hermes::endpoint lookup_endpoint(const std::string& uri, 
                                  std::size_t max_retries = 3) {
 
-    CTX->log()->debug("{}() Looking up address '{}'", __func__, uri);
+    LOG(DEBUG, "Looking up address \"{}\"", uri);
 
     std::random_device rd; // obtain a random number from hardware
     std::size_t attempts = 0;
@@ -118,8 +124,10 @@ hermes::endpoint lookup_endpoint(const std::string& uri,
             return ld_network_service->lookup(uri);
         } catch (const exception& ex) {
             error_msg = ex.what();
-            CTX->log()->warn("{}() Failed to lookup address '{}'. Attempts [{}/{}]", 
-                             __func__, uri, attempts + 1, max_retries);
+
+            LOG(WARNING, "Failed to lookup address '{}'. Attempts [{}/{}]", 
+                uri, attempts + 1, max_retries);
+
             // Wait a random amount of time and try again
             std::mt19937 g(rd()); // seed the random generator
             std::uniform_int_distribution<> distr(50, 50 * (attempts + 2)); // define the range
@@ -135,14 +143,8 @@ hermes::endpoint lookup_endpoint(const std::string& uri,
 
 void load_hosts() {
     string hosts_file;
-    try {
-        hosts_file = gkfs::get_env_own("HOSTS_FILE");
-    } catch (const exception& e) {
-        CTX->log()->info("{}() Failed to get hosts file path"
-                         " from environment, using default: '{}'",
-                         __func__, DEFAULT_HOSTS_FILE);
-        hosts_file = DEFAULT_HOSTS_FILE;
-    }
+
+    hosts_file = gkfs::env::get_var(gkfs::env::HOSTS_FILE, DEFAULT_HOSTS_FILE);
 
     vector<pair<string, string>> hosts;
     try {
@@ -156,7 +158,7 @@ void load_hosts() {
         throw runtime_error(fmt::format("Host file empty: '{}'", hosts_file));
     }
 
-    CTX->log()->info("{}() Hosts pool size: {}", __func__, hosts.size());
+    LOG(INFO, "Hosts pool size: {}", hosts.size());
 
     auto local_hostname = get_my_hostname(true);
     bool local_host_found = false;
@@ -185,15 +187,14 @@ void load_hosts() {
         addrs[id] = ::lookup_endpoint(uri);
 
         if (!local_host_found && hostname == local_hostname) {
-            CTX->log()->debug("{}() Found local host: {}", __func__, hostname);
+            LOG(DEBUG, "Found local host: {}", hostname);
             CTX->local_host_id(id);
             local_host_found = true;
         }
     }
 
     if (!local_host_found) {
-        CTX->log()->warn("{}() Failed to find local host."
-                            "Fallback: use host id '0' as local host", __func__);
+        LOG(WARNING, "Failed to find local host. Using host '0' as local host");
         CTX->local_host_id(0);
     }
 

@@ -14,6 +14,7 @@
 #include <global/configure.hpp>
 #include <client/rpc/ld_rpc_metadentry.hpp>
 #include "client/preload.hpp"
+#include "client/logging.hpp"
 #include "client/preload_util.hpp"
 #include "client/open_dir.hpp"
 #include <global/rpc/rpc_utils.hpp>
@@ -32,7 +33,7 @@ int mk_node(const std::string& path, const mode_t mode) {
             CTX->distributor()->locate_file_metadata(path));
     
     try {
-        CTX->log()->debug("{}() Sending RPC ...", __func__);
+        LOG(DEBUG, "Sending RPC ...");
         // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that we can
         // retry for RPC_TRIES (see old commits with margo)
         // TODO(amiranda): hermes will eventually provide a post(endpoint) 
@@ -41,10 +42,10 @@ int mk_node(const std::string& path, const mode_t mode) {
         auto out = 
             ld_network_service->post<gkfs::rpc::create>(endp, path, mode).get().at(0);
         err = out.err();
-        CTX->log()->debug("{}() Got response success: {}", __func__, err);
+        LOG(DEBUG, "Got response success: {}", err);
 
     } catch(const std::exception& ex) {
-        CTX->log()->error("{}() while getting rpc output", __func__);
+        LOG(ERROR, "while getting rpc output");
         errno = EBUSY;
         return -1;
     }
@@ -58,7 +59,7 @@ int stat(const std::string& path, string& attr) {
             CTX->distributor()->locate_file_metadata(path));
     
     try {
-        CTX->log()->debug("{}() Sending RPC ...", __func__);
+        LOG(DEBUG, "Sending RPC ...");
         // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that we can
         // retry for RPC_TRIES (see old commits with margo)
         // TODO(amiranda): hermes will eventually provide a post(endpoint) 
@@ -66,7 +67,7 @@ int stat(const std::string& path, string& attr) {
         // result_set. When that happens we can remove the .at(0) :/
         auto out = 
             ld_network_service->post<gkfs::rpc::stat>(endp, path).get().at(0);
-        CTX->log()->debug("{}() Got response success: {}", __func__, out.err());
+        LOG(DEBUG, "Got response success: {}", out.err());
 
         if(out.err() != 0) {
             errno = out.err();
@@ -77,7 +78,7 @@ int stat(const std::string& path, string& attr) {
         return 0;
 
     } catch(const std::exception& ex) {
-        CTX->log()->error("{}() while getting rpc output", __func__);
+        LOG(ERROR, "while getting rpc output");
         errno = EBUSY;
         return -1;
     }
@@ -92,7 +93,7 @@ int decr_size(const std::string& path, size_t length) {
 
     try {
 
-        CTX->log()->debug("{}() Sending RPC ...", __func__);
+        LOG(DEBUG, "Sending RPC ...");
         // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that we can
         // retry for RPC_TRIES (see old commits with margo)
         // TODO(amiranda): hermes will eventually provide a post(endpoint) 
@@ -102,7 +103,7 @@ int decr_size(const std::string& path, size_t length) {
             ld_network_service->post<gkfs::rpc::decr_size>(
                     endp, path, length).get().at(0);
 
-        CTX->log()->debug("{}() Got response success: {}", __func__, out.err());
+        LOG(DEBUG, "Got response success: {}", out.err());
 
         if(out.err() != 0) {
             errno = out.err();
@@ -112,7 +113,7 @@ int decr_size(const std::string& path, size_t length) {
         return 0;
 
     } catch(const std::exception& ex) {
-        CTX->log()->error("{}() while getting rpc output", __func__);
+        LOG(ERROR, "while getting rpc output");
         errno = EBUSY;
         return -1;
     }
@@ -130,7 +131,7 @@ int rm_node(const std::string& path, const bool remove_metadentry_only, const ss
 
         try {
 
-            CTX->log()->debug("{}() Sending RPC ...", __func__);
+            LOG(DEBUG, "Sending RPC ...");
             // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that we can
             // retry for RPC_TRIES (see old commits with margo)
             // TODO(amiranda): hermes will eventually provide a post(endpoint) 
@@ -139,7 +140,7 @@ int rm_node(const std::string& path, const bool remove_metadentry_only, const ss
             auto out = 
                 ld_network_service->post<gkfs::rpc::remove>(endp, path).get().at(0);
 
-            CTX->log()->debug("{}() Got response success: {}", __func__, out.err());
+            LOG(DEBUG, "Got response success: {}", out.err());
 
             if(out.err() != 0) {
                 errno = out.err();
@@ -149,7 +150,7 @@ int rm_node(const std::string& path, const bool remove_metadentry_only, const ss
             return 0;
 
         } catch(const std::exception& ex) {
-            CTX->log()->error("{}() while getting rpc output", __func__);
+            LOG(ERROR, "while getting rpc output");
             errno = EBUSY;
             return -1;
         }
@@ -159,62 +160,64 @@ int rm_node(const std::string& path, const bool remove_metadentry_only, const ss
 
     std::vector<hermes::rpc_handle<gkfs::rpc::remove>> handles;
 
-    if ((size / CHUNKSIZE) < CTX->hosts().size()) {	// Small files
-	auto endp = CTX->hosts().at(
-                 CTX->distributor()->locate_file_metadata(path));
+	// Small files
+    if(static_cast<std::size_t>(size / CHUNKSIZE) < CTX->hosts().size()) {
 
-	try {
-            CTX->log()->trace("{}() Sending RPC to host: {}",
-                              __func__, endp.to_string());
-            gkfs::rpc::remove::input in(path);
-            handles.emplace_back(ld_network_service->post<gkfs::rpc::remove>(endp,in));
+        auto endp = CTX->hosts().at(
+                CTX->distributor()->locate_file_metadata(path));
 
-	    auto chnk_start = 0;
-	    auto chnk_end = size/CHUNKSIZE;
-
-	    for (uint64_t chnk_id = chnk_start; chnk_id <= chnk_end; chnk_id++) {
-        	auto target = CTX->hosts().at(CTX->distributor()->locate_data(path, chnk_id));
-             
-                CTX->log()->trace("{}() Sending RPC to host: {}",
-                              __func__, target.to_string());
-
-		handles.emplace_back(
-                ld_network_service->post<gkfs::rpc::remove>(target, in));
-		}
-	} catch (const std::exception & ex) {
-		 CTX->log()->error("{}() Failed to send reduced remove requests",
-                              __func__);
-            throw std::runtime_error("Failed to forward non-blocking rpc request");
-        }
-    }
-   else {	// "Big" files 
-    for (const auto& endp : CTX->hosts()) {
         try {
-            CTX->log()->trace("{}() Sending RPC to host: {}", 
-                              __func__, endp.to_string());
-
+            LOG(DEBUG, "Sending RPC to host: {}", endp.to_string());
             gkfs::rpc::remove::input in(path);
-
-            // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that
-            // we can retry for RPC_TRIES (see old commits with margo)
-            // TODO(amiranda): hermes will eventually provide a post(endpoint) 
-            // returning one result and a broadcast(endpoint_set) returning a 
-            // result_set. When that happens we can remove the .at(0) :/
-            //
-            //
-
             handles.emplace_back(
-                ld_network_service->post<gkfs::rpc::remove>(endp, in));
+                    ld_network_service->post<gkfs::rpc::remove>(endp,in));
 
-        } catch (const std::exception& ex) {
-            // TODO(amiranda): we should cancel all previously posted requests 
-            // here, unfortunately, Hermes does not support it yet :/
-            CTX->log()->error("{}() Failed to send request to host: {}", 
-                              __func__, endp.to_string());
-            throw std::runtime_error("Failed to forward non-blocking rpc request");
+            uint64_t chnk_start = 0;
+            uint64_t chnk_end = size/CHUNKSIZE;
+
+            for (uint64_t chnk_id = chnk_start; chnk_id <= chnk_end; chnk_id++) {
+                const auto target = CTX->hosts().at(
+                        CTX->distributor()->locate_data(path, chnk_id));
+
+                LOG(DEBUG, "Sending RPC to host: {}", target.to_string());
+
+                handles.emplace_back(
+                        ld_network_service->post<gkfs::rpc::remove>(target, in));
+            }
+        } catch (const std::exception & ex) {
+            LOG(ERROR, "Failed to send reduced remove requests");
+            throw std::runtime_error(
+                    "Failed to forward non-blocking rpc request");
         }
     }
-   }
+    else {	// "Big" files 
+        for (const auto& endp : CTX->hosts()) {
+            try {
+                LOG(DEBUG, "Sending RPC to host: {}", endp.to_string());
+
+                gkfs::rpc::remove::input in(path);
+
+                // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that
+                // we can retry for RPC_TRIES (see old commits with margo)
+                // TODO(amiranda): hermes will eventually provide a post(endpoint) 
+                // returning one result and a broadcast(endpoint_set) returning a 
+                // result_set. When that happens we can remove the .at(0) :/
+                //
+                //
+
+                handles.emplace_back(
+                        ld_network_service->post<gkfs::rpc::remove>(endp, in));
+
+            } catch (const std::exception& ex) {
+                // TODO(amiranda): we should cancel all previously posted requests 
+                // here, unfortunately, Hermes does not support it yet :/
+                LOG(ERROR, "Failed to send request to host: {}", 
+                        endp.to_string());
+                throw std::runtime_error(
+                        "Failed to forward non-blocking rpc request");
+            }
+        }
+    }
     // wait for RPC responses
     bool got_error = false;
 
@@ -226,13 +229,12 @@ int rm_node(const std::string& path, const bool remove_metadentry_only, const ss
             auto out = h.get().at(0);
 
             if(out.err() != 0) {
-                CTX->log()->error("{}() received error response: {}", 
-                        __func__, out.err());
+                LOG(ERROR, "received error response: {}", out.err());
                 got_error = true;
                 errno = out.err();
             }
         } catch(const std::exception& ex) {
-            CTX->log()->error("{}() while getting rpc output", __func__);
+            LOG(ERROR, "while getting rpc output");
             got_error = true;
             errno = EBUSY;
         }
@@ -250,7 +252,7 @@ int update_metadentry(const string& path, const Metadata& md, const MetadentryUp
 
     try {
 
-        CTX->log()->debug("{}() Sending RPC ...", __func__);
+        LOG(DEBUG, "Sending RPC ...");
         // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that we can
         // retry for RPC_TRIES (see old commits with margo)
         // TODO(amiranda): hermes will eventually provide a post(endpoint) 
@@ -277,7 +279,7 @@ int update_metadentry(const string& path, const Metadata& md, const MetadentryUp
                     bool_to_merc_bool(md_flags.mtime),
                     bool_to_merc_bool(md_flags.ctime)).get().at(0);
 
-        CTX->log()->debug("{}() Got response success: {}", __func__, out.err());
+        LOG(DEBUG, "Got response success: {}", out.err());
 
         if(out.err() != 0) {
             errno = out.err();
@@ -287,7 +289,7 @@ int update_metadentry(const string& path, const Metadata& md, const MetadentryUp
         return 0;
 
     } catch(const std::exception& ex) {
-        CTX->log()->error("{}() while getting rpc output", __func__);
+        LOG(ERROR, "while getting rpc output");
         errno = EBUSY;
         return -1;
     }
@@ -301,7 +303,7 @@ int update_metadentry_size(const string& path, const size_t size, const off64_t 
 
     try {
 
-        CTX->log()->debug("{}() Sending RPC ...", __func__);
+        LOG(DEBUG, "Sending RPC ...");
         // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that we can
         // retry for RPC_TRIES (see old commits with margo)
         // TODO(amiranda): hermes will eventually provide a post(endpoint) 
@@ -312,7 +314,7 @@ int update_metadentry_size(const string& path, const size_t size, const off64_t 
                     endp, path, size, offset,
                     bool_to_merc_bool(append_flag)).get().at(0);
 
-        CTX->log()->debug("{}() Got response success: {}", __func__, out.err());
+        LOG(DEBUG, "Got response success: {}", out.err());
 
         if(out.err() != 0) {
             errno = out.err();
@@ -325,7 +327,7 @@ int update_metadentry_size(const string& path, const size_t size, const off64_t 
         return 0;
 
     } catch(const std::exception& ex) {
-        CTX->log()->error("{}() while getting rpc output", __func__);
+        LOG(ERROR, "while getting rpc output");
         errno = EBUSY;
         ret_size = 0;
         return EUNKNOWN;
@@ -339,7 +341,7 @@ int get_metadentry_size(const std::string& path, off64_t& ret_size) {
 
     try {
 
-        CTX->log()->debug("{}() Sending RPC ...", __func__);
+        LOG(DEBUG, "Sending RPC ...");
         // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that we can
         // retry for RPC_TRIES (see old commits with margo)
         // TODO(amiranda): hermes will eventually provide a post(endpoint) 
@@ -349,13 +351,13 @@ int get_metadentry_size(const std::string& path, off64_t& ret_size) {
             ld_network_service->post<gkfs::rpc::get_metadentry_size>(
                     endp, path).get().at(0);
 
-        CTX->log()->debug("{}() Got response success: {}", __func__, out.err());
+        LOG(DEBUG, "Got response success: {}", out.err());
 
         ret_size = out.ret_size();
         return out.err();
 
     } catch(const std::exception& ex) {
-        CTX->log()->error("{}() while getting rpc output", __func__);
+        LOG(ERROR, "while getting rpc output");
         errno = EBUSY;
         ret_size = 0;
         return EUNKNOWN;
@@ -367,7 +369,6 @@ int get_metadentry_size(const std::string& path, off64_t& ret_size) {
  */
 void get_dirents(OpenDir& open_dir){
 
-    CTX->log()->trace("{}() called", __func__);
     auto const root_dir = open_dir.path();
     auto const targets = 
         CTX->distributor()->locate_directory_metadata(root_dir);
@@ -410,7 +411,7 @@ void get_dirents(OpenDir& open_dir){
 
     for(std::size_t i = 0; i < targets.size(); ++i) {
 
-        CTX->log()->trace("{}() target_host: {}", __func__, targets[i]);
+        LOG(DEBUG, "target_host: {}", targets[i]);
 
         // Setup rpc input parameters for each host
         auto endp = CTX->hosts().at(targets[i]);
@@ -419,14 +420,12 @@ void get_dirents(OpenDir& open_dir){
 
         try {
 
-            CTX->log()->trace("{}() Sending RPC to host: {}",
-                              __func__, targets[i]);
+            LOG(DEBUG, "Sending RPC to host: {}", targets[i]);
             handles.emplace_back(
                 ld_network_service->post<gkfs::rpc::get_dirents>(endp, in));
         } catch(const std::exception& ex) {
-            CTX->log()->error("{}() Unable to send non-blocking get_dirents "
-                              "on {} to recipient {}", 
-                              __func__, root_dir, targets[i]);
+            LOG(ERROR, "Unable to send non-blocking get_dirents() "
+                "on {} [peer: {}]", root_dir, targets[i]);
             throw std::runtime_error("Failed to post non-blocking RPC request");
         }
     }
@@ -494,7 +493,7 @@ int mk_symlink(const std::string& path, const std::string& target_path) {
 
     try {
 
-        CTX->log()->debug("{}() Sending RPC ...", __func__);
+        LOG(DEBUG, "Sending RPC ...");
         // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that we can
         // retry for RPC_TRIES (see old commits with margo)
         // TODO(amiranda): hermes will eventually provide a post(endpoint) 
@@ -504,7 +503,7 @@ int mk_symlink(const std::string& path, const std::string& target_path) {
             ld_network_service->post<gkfs::rpc::mk_symlink>(
                     endp, path, target_path).get().at(0);
 
-        CTX->log()->debug("{}() Got response success: {}", __func__, out.err());
+        LOG(DEBUG, "Got response success: {}", out.err());
 
         if(out.err() != 0) {
             errno = out.err();
@@ -514,7 +513,7 @@ int mk_symlink(const std::string& path, const std::string& target_path) {
         return 0;
 
     } catch(const std::exception& ex) {
-        CTX->log()->error("{}() while getting rpc output", __func__);
+        LOG(ERROR, "while getting rpc output");
         errno = EBUSY;
         return -1;
     }

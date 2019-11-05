@@ -4,6 +4,27 @@
 
 COMMON_CURL_FLAGS="--silent --fail --show-error --location -O"
 COMMON_GIT_FLAGS="--quiet --single-branch"
+PATCH_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PATCH_DIR="${PATCH_DIR}/patches"
+CLUSTER=""
+DEPENDENCY=""
+NA_LAYER=""
+
+MOGON1_DEPS=( 
+    "zstd" "lz4" "snappy" "bmi" "libfabric" "mercury" "argobots" "margo" 
+    "rocksdb" "syscall_intercept date"
+)
+
+MOGON2_DEPS=(
+    "zstd" "lz4" "snappy" "bmi" "mercury" "argobots" "margo" "rocksdb" 
+    "syscall_intercept date"
+)
+
+FH2_DEPS=(
+    "zstd" "lz4" "snappy" "bmi" "libfabric" "mercury" "argobots" "margo" 
+    "rocksdb" "syscall_intercept date"
+)
+
 
 # Stop all backround jobs on interruption.
 # "kill -- -$$" sends a SIGTERM to the whole process group,
@@ -23,14 +44,41 @@ error_exit() {
     exit "${2:-1}"  ## Return a code specified by $2 or 1 by default.
 }
 
+list_dependencies() {
+
+    echo "Available dependencies: "
+
+    echo -n "  Mogon 1: "
+    for d in "${MOGON1_DEPS[@]}"
+    do
+        echo -n "$d "
+    done
+    echo ""
+
+    echo -n "  Mogon 2: "
+    for d in "${MOGON2_DEPS[@]}"
+    do
+        echo -n "$d "
+    done
+    echo ""
+
+    echo -n "  fh2: "
+    for d in "${FH2_DEPS[@]}"
+    do
+        echo -n "$d "
+    done
+    echo ""
+}
+
 clonedeps() {
-    set -e
+    set -ex
     trap exit_child EXIT
 
     local FOLDER=$1
     local REPO=$2
     local COMMIT=$3
     local GIT_FLAGS=$4
+    local PATCH=$5
 
     local ACTION
 
@@ -44,6 +92,12 @@ clonedeps() {
     # fix the version
     cd "${SOURCE}/${FOLDER}" && git checkout -qf ${COMMIT}
     echo "${ACTION} ${FOLDER} [$COMMIT]"
+
+    # apply patch if provided
+    if [ ! -z ${PATCH} ]; then
+        git apply --verbose ${PATCH_DIR}/${PATCH}
+    fi
+
 }
 
 wgetdeps() {
@@ -69,7 +123,7 @@ wgetdeps() {
 
 usage_short() {
 	echo "
-usage: dl_dep.sh [-h] [-n <NAPLUGIN>] [-c <CLUSTER>]
+usage: dl_dep.sh [-h] [-l] [-n <NAPLUGIN>] [-c <CLUSTER>] [-d <DEPENDENCY>] 
                     source_path
 	"
 }
@@ -86,16 +140,19 @@ positional arguments:
 
 optional arguments:
         -h, --help              shows this help message and exits
+        -l, --list-dependencies
+                                list dependencies available for download
         -n <NAPLUGIN>, --na <NAPLUGIN>
                                 network layer that is used for communication. Valid: {bmi,ofi,all}
                                 defaults to 'all'
         -c <CLUSTER>, --cluster <CLUSTER>
                                 additional configurations for specific compute clusters
                                 supported clusters: {mogon1,mogon2,fh2}
+        -d <DEPENDENCY>, --dependency <DEPENDENCY>
+                                download a specific dependency. If unspecified 
+                                all dependencies are built and installed.
         "
 }
-CLUSTER=""
-NA_LAYER=""
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
@@ -112,6 +169,19 @@ case ${key} in
     CLUSTER="$2"
     shift # past argument
     shift # past value
+    ;;
+    -d|--dependency)
+    if [[ -z "$2" ]]; then
+        echo "Missing argument for -d/--dependency option"
+        exit
+    fi
+    DEPENDENCY="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -l|--list-dependencies)
+    list_dependencies
+    exit
     ;;
     -h|--help)
     help_msg
@@ -166,38 +236,72 @@ mkdir -p ${SOURCE}
 
 # get cluster dependencies
 if [[ ( "${CLUSTER}" == "mogon1" ) || ( "${CLUSTER}" == "mogon2" ) || ( "${CLUSTER}" == "fh2" ) ]]; then
+
     # get zstd for fast compression in rocksdb
-    wgetdeps "zstd" "https://github.com/facebook/zstd/archive/v1.3.2.tar.gz" &
+    if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "zstd" ) ]]; then
+        wgetdeps "zstd" "https://github.com/facebook/zstd/archive/v1.3.2.tar.gz" &
+    fi
+
     # get zlib for rocksdb
-    wgetdeps "lz4" "https://github.com/lz4/lz4/archive/v1.8.0.tar.gz" &
+    if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "zstd" ) ]]; then
+        wgetdeps "lz4" "https://github.com/lz4/lz4/archive/v1.8.0.tar.gz" &
+    fi
+
 	# get snappy for rocksdb
-    wgetdeps "snappy" "https://github.com/google/snappy/archive/1.1.7.tar.gz" &
+    if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "snappy" ) ]]; then
+            wgetdeps "snappy" "https://github.com/google/snappy/archive/1.1.7.tar.gz" &
+    fi
 fi
 #if [ "${CLUSTER}" == "fh2" ]; then
 	# no distinct 3rd party software needed as of now.
 #fi
 
 # get BMI
-if [ "${NA_LAYER}" == "bmi" ] || [ "${NA_LAYER}" == "all" ]; then
-    clonedeps "bmi" "https://xgitlab.cels.anl.gov/sds/bmi.git" "81ad0575fc57a69269a16208417cbcbefa51f9ea" &
-fi
-# get libfabric
-if [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
-    # No need to get libfabric for mogon2 as it is already installed
-    if [[ ("${CLUSTER}" != "mogon2") ]]; then
-        wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.7.2/libfabric-1.7.2.tar.gz" &
+if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "bmi" ) ]]; then
+    if [ "${NA_LAYER}" == "bmi" ] || [ "${NA_LAYER}" == "all" ]; then
+        clonedeps "bmi" "https://xgitlab.cels.anl.gov/sds/bmi.git" "81ad0575fc57a69269a16208417cbcbefa51f9ea" &
     fi
 fi
+
+# get libfabric
+if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "ofi" ) ]]; then
+    if [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
+        # No need to get libfabric for mogon2 as it is already installed
+        if [[ ("${CLUSTER}" != "mogon2") ]]; then
+            wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.7.2/libfabric-1.7.2.tar.gz" &
+        fi
+    fi
+fi
+
 # get Mercury
-clonedeps "mercury" "https://github.com/mercury-hpc/mercury" "9906f25b6f9c52079d57006f199b3ea47960c435"  "--recurse-submodules" &
+if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "mercury" ) ]]; then
+    clonedeps "mercury" "https://github.com/mercury-hpc/mercury" "9906f25b6f9c52079d57006f199b3ea47960c435"  "--recurse-submodules" &
+fi
+
 # get Argobots
-wgetdeps "argobots" "https://github.com/pmodels/argobots/archive/v1.0rc1.tar.gz" &
+if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "argobots" ) ]]; then
+    wgetdeps "argobots" "https://github.com/pmodels/argobots/archive/v1.0rc1.tar.gz" &
+fi
+
 # get Margo
-clonedeps "margo" "https://xgitlab.cels.anl.gov/sds/margo.git" "6ed94e4f3a4d526b0a3b4e57be075461e86d3666" &
+if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "margo" ) ]]; then
+    clonedeps "margo" "https://xgitlab.cels.anl.gov/sds/margo.git" "6ed94e4f3a4d526b0a3b4e57be075461e86d3666" &
+fi
+
 # get rocksdb
-wgetdeps "rocksdb" "https://github.com/facebook/rocksdb/archive/v6.1.2.tar.gz" &
+if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "rocksdb" ) ]]; then
+    wgetdeps "rocksdb" "https://github.com/facebook/rocksdb/archive/v6.1.2.tar.gz" &
+fi
+
 # get syscall_intercept
-clonedeps "syscall_intercept" "https://github.com/pmem/syscall_intercept.git" "cc3412a2ad39f2e26cc307d5b155232811d7408e" &
+if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "syscall_intercept" ) ]]; then
+    clonedeps "syscall_intercept" "https://github.com/pmem/syscall_intercept.git" "cc3412a2ad39f2e26cc307d5b155232811d7408e" "" "syscall_intercept.patch" &
+fi
+
+# get date
+if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "date" ) ]]; then
+    clonedeps "date" "https://github.com/HowardHinnant/date.git" "e7e1482087f58913b80a20b04d5c58d9d6d90155" &
+fi
 
 # Wait for all download to be completed
 wait

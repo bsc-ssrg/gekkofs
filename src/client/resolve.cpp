@@ -21,9 +21,9 @@
 #include "global/path_util.hpp"
 #include "global/configure.hpp"
 #include "client/preload.hpp"
+#include "client/logging.hpp"
+#include "client/env.hpp"
 
-
-constexpr static const char * ENV_NAME_CWD = ENV_PREFIX "CWD";
 
 /* Match components in path
  *
@@ -79,7 +79,9 @@ unsigned int path_match_components(const std::string& path, unsigned int &path_c
  * and false otherwise.
  */
  bool resolve_path (const std::string& path, std::string& resolved, bool resolve_last_link) {
-    CTX->log()->debug("{}() path: '{}'", __func__, path);
+
+    LOG(DEBUG, "path: \"{}\", resolved: \"{}\", resolve_last_link: {}", 
+        path, resolved, resolve_last_link);
 
     struct stat st;
     const std::vector<std::string>& mnt_components = CTX->mountdir_components();
@@ -149,9 +151,9 @@ unsigned int path_match_components(const std::string& path, unsigned int &path_c
                 ++matched_components;
             }
             if (lstat(resolved.c_str(), &st) < 0) {
-#ifndef NDEBUG
-                CTX->log()->debug("{}() path does not exists: '{}'", __func__, resolved.c_str());
-#endif
+
+                LOG(DEBUG, "path \"{}\" does not exist", resolved);
+
                 resolved.append(path, end, std::string::npos);
                 return false;
             }
@@ -161,7 +163,10 @@ unsigned int path_match_components(const std::string& path, unsigned int &path_c
                 }
                 auto link_resolved = std::unique_ptr<char[]>(new char[PATH_MAX]);
                 if (realpath(resolved.c_str(), link_resolved.get()) == nullptr) {
-                    CTX->log()->error("{}() Failed to get realpath for link '{}'. Error: {}", __func__, resolved, strerror(errno));
+
+                    LOG(ERROR, "Failed to get realpath for link \"{}\". "
+                        "Error: {}", resolved, ::strerror(errno));
+
                     resolved.append(path, end, std::string::npos);
                     return false;
                 }
@@ -184,14 +189,14 @@ unsigned int path_match_components(const std::string& path, unsigned int &path_c
 
     if (matched_components >= mnt_components.size()) {
         resolved.erase(1, CTX->mountdir().size());
-        CTX->log()->debug("{}() internal: '{}'", __func__, resolved);
+        LOG(DEBUG, "internal: \"{}\"", resolved);
         return true;
     }
 
     if (resolved.size() == 0) {
         resolved.push_back(PSP);
     }
-    CTX->log()->debug("{}() external: '{}'", __func__, resolved);
+    LOG(DEBUG, "external: \"{}\"", resolved);
     return false;
 }
 
@@ -211,10 +216,12 @@ std::string get_sys_cwd() {
 }
 
 void set_sys_cwd(const std::string& path) {
-    CTX->log()->debug("{}() to '{}'", __func__, path);
+
+    LOG(DEBUG, "Changing working directory to \"{}\"", path);
+
     if (long ret = syscall_no_intercept(SYS_chdir, path.c_str())) {
-        CTX->log()->error("{}() failed to set system current working directory: {}",
-                __func__, std::strerror(syscall_error_code(ret)));
+        LOG(ERROR, "Failed to change working directory: {}",
+            std::strerror(syscall_error_code(ret)));
         throw std::system_error(syscall_error_code(ret),
                                 std::system_category(),
                                 "Failed to set system current working directory");
@@ -222,10 +229,12 @@ void set_sys_cwd(const std::string& path) {
 }
 
 void set_env_cwd(const std::string& path) {
-    CTX->log()->debug("{}() to '{}'", __func__, path);
-    if(setenv(ENV_NAME_CWD, path.c_str(), 1)) {
-        CTX->log()->error("{}() failed to set environment current working directory: {}",
-                __func__, std::strerror(errno));
+
+    LOG(DEBUG, "Setting {} to \"{}\"", gkfs::env::CWD, path);
+
+    if(setenv(gkfs::env::CWD, path.c_str(), 1)) {
+        LOG(ERROR, "Failed while setting {}: {}",
+            gkfs::env::CWD, std::strerror(errno));
         throw std::system_error(errno,
                                 std::system_category(),
                                 "Failed to set environment current working directory");
@@ -233,10 +242,14 @@ void set_env_cwd(const std::string& path) {
 }
 
 void unset_env_cwd() {
-    CTX->log()->debug("{}()", __func__);
-    if(unsetenv(ENV_NAME_CWD)) {
-        CTX->log()->error("{}() failed to unset environment current working directory: {}",
-                __func__, std::strerror(errno));
+
+    LOG(DEBUG, "Clearing {}()", gkfs::env::CWD);
+
+    if(unsetenv(gkfs::env::CWD)) {
+
+        LOG(ERROR, "Failed to clear {}: {}", 
+            gkfs::env::CWD, std::strerror(errno));
+
         throw std::system_error(errno,
                                 std::system_category(),
                                 "Failed to unset environment current working directory");
@@ -244,7 +257,7 @@ void unset_env_cwd() {
 }
 
 void init_cwd() {
-    const char* env_cwd = std::getenv(ENV_NAME_CWD);
+    const char* env_cwd = std::getenv(gkfs::env::CWD);
     if (env_cwd != nullptr) {
         CTX->cwd(env_cwd);
     } else {

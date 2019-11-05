@@ -15,20 +15,21 @@
 #define IFS_PRELOAD_CTX_HPP
 
 #include <hermes.hpp>
-#include <spdlog/spdlog.h>
 #include <map>
 #include <mercury.h>
 #include <memory>
 #include <vector>
 #include <string>
 
-#ifdef USE_BITSET_FOR_INTERNAL_FDS
 #include <bitset>
-#endif // USE_BITSET_FOR_INTERNAL_FDS
 
 /* Forward declarations */
 class OpenFileMap;
 class Distributor;
+
+namespace gkfs { namespace log {
+    struct logger;
+}}
 
 
 struct FsConfig {
@@ -54,10 +55,13 @@ enum class RelativizeStatus {
 };
 
 class PreloadContext {
+
+    static const auto constexpr INTERNAL_FD_BASE = 
+        MAX_OPEN_FDS - MAX_INTERNAL_FDS;
+
     private:
     PreloadContext();
 
-    std::shared_ptr<spdlog::logger> log_;
     std::shared_ptr<OpenFileMap> ofm_;
     std::shared_ptr<Distributor> distributor_;
     std::shared_ptr<FsConfig> fs_conf_;
@@ -71,12 +75,8 @@ class PreloadContext {
 
     bool interception_enabled_;
 
-#ifdef USE_BITSET_FOR_INTERNAL_FDS
-    std::bitset<MAX_OPEN_FDS> internal_fds_;
-#else
-    std::set<int> internal_fds_;
-#endif // USE_BITSET_FOR_INTERNAL_FDS
-
+    std::bitset<MAX_INTERNAL_FDS> internal_fds_;
+    mutable std::mutex internal_fds_mutex_;
 
     public:
     static PreloadContext* getInstance() {
@@ -87,9 +87,7 @@ class PreloadContext {
     PreloadContext(PreloadContext const&) = delete;
     void operator=(PreloadContext const&) = delete;
 
-    void log(std::shared_ptr<spdlog::logger> logger);
-    std::shared_ptr<spdlog::logger> log() const;
-
+    void init_logging();
     void mountdir(const std::string& path);
     const std::string& mountdir() const;
     const std::vector<std::string>& mountdir_components() const;
@@ -121,7 +119,7 @@ class PreloadContext {
     void disable_interception();
     bool interception_enabled() const;
 
-    void register_internal_fd(int fd);
+    int register_internal_fd(int fd);
     void unregister_internal_fd(int fd);
     bool is_internal_fd(int fd) const;
 };

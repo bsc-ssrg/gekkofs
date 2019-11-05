@@ -17,7 +17,8 @@ variables:
   # Configuration variables
   GKFS_LOG_LEVEL:   "1"
   GKFS_DAEMON_LOG_PATH:  "${CI_PROJECT_DIR}/logs/daemon.log"
-  GKFS_PRELOAD_LOG_PATH: "${CI_PROJECT_DIR}/logs/preload.log"
+  LIBGKFS_LOG:           "all"
+  LIBGKFS_LOG_OUTPUT:    "${CI_PROJECT_DIR}/logs/gkfs_client.log"
   GIT_SUBMODULE_STRATEGY: recursive
 
 image: gekkofs/gekkofs:build_env

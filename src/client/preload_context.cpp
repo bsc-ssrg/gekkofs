@@ -14,24 +14,43 @@
 #include <hermes.hpp>
 #include <client/preload_context.hpp>
 
+#include <libsyscall_intercept_hook_point.h>
+#include <syscall.h>
+
+#include <client/env.hpp>
+#include <global/env_util.hpp>
+#include <client/logging.hpp>
 #include <client/open_file_map.hpp>
 #include <client/open_dir.hpp>
 #include <client/resolve.hpp>
+
 #include <global/path_util.hpp>
 #include <cassert>
+#include <cstdio>
 
 
 PreloadContext::PreloadContext():
     ofm_(std::make_shared<OpenFileMap>()),
-    fs_conf_(std::make_shared<FsConfig>())
-{}
+    fs_conf_(std::make_shared<FsConfig>()) {
 
-void PreloadContext::log(std::shared_ptr<spdlog::logger> logger) {
-    log_ = logger;
+    internal_fds_.set();
 }
 
-std::shared_ptr<spdlog::logger> PreloadContext::log() const {
-    return log_;
+void 
+PreloadContext::init_logging() {
+
+    const std::string log_opts = 
+        gkfs::env::get_var(gkfs::env::LOG, DEFAULT_CLIENT_LOG_LEVEL);
+
+    const std::string log_output = 
+        gkfs::env::get_var(gkfs::env::LOG_OUTPUT, DEFAULT_CLIENT_LOG_PATH);
+
+    const std::string trunc_val = 
+        gkfs::env::get_var(gkfs::env::LOG_OUTPUT_TRUNC);
+
+    const bool log_trunc = !(!trunc_val.empty() && trunc_val[0] == 0);
+
+    gkfs::log::create_global_logger(log_opts, log_output, log_trunc);
 }
 
 void PreloadContext::mountdir(const std::string& path) {
@@ -50,7 +69,6 @@ const std::vector<std::string>& PreloadContext::mountdir_components() const {
 }
 
 void PreloadContext::cwd(const std::string& path) {
-    log_->debug("Setting CWD to '{}'", path);
     cwd_ = path;
 }
 
@@ -172,39 +190,87 @@ bool PreloadContext::interception_enabled() const {
     return interception_enabled_;
 }
 
-void PreloadContext::register_internal_fd(int fd) {
+int PreloadContext::register_internal_fd(int fd) {
 
-#ifdef USE_BITSET_FOR_INTERNAL_FDS
-    internal_fds_.set(fd);
+    LOG(DEBUG, "registering fd {} as internal", fd);
+
+    assert(fd >= 0);
+
+    std::lock_guard<std::mutex> lock(internal_fds_mutex_);
+    const int pos = internal_fds_._Find_first();
+    internal_fds_.reset(pos);
+
+
+#if !defined(GKFS_DISABLE_LOGGING) && defined(GKFS_DEBUG_BUILD)
+    long args[gkfs::syscall::MAX_ARGS]{fd, pos + INTERNAL_FD_BASE, O_CLOEXEC};
+#endif
+
+    LOG(SYSCALL, 
+        gkfs::syscall::from_internal_code | 
+        gkfs::syscall::to_kernel |
+        gkfs::syscall::not_executed, 
+        SYS_dup3, args);
+
+    const int ifd = 
+        ::syscall_no_intercept(SYS_dup3, fd, pos + INTERNAL_FD_BASE, O_CLOEXEC);
+
+    LOG(SYSCALL, 
+        gkfs::syscall::from_internal_code | 
+        gkfs::syscall::to_kernel |
+        gkfs::syscall::executed, 
+        SYS_dup3, args, ifd);
+
+    assert(::syscall_error_code(ifd) != -1);
+
+#if !defined(GKFS_DISABLE_LOGGING) && defined(GKFS_DEBUG_BUILD)
+    long args2[gkfs::syscall::MAX_ARGS]{fd};
+#endif
+
+    LOG(SYSCALL, 
+        gkfs::syscall::from_internal_code | 
+        gkfs::syscall::to_kernel |
+        gkfs::syscall::not_executed, 
+        SYS_close, args2);
+
+#if !defined(GKFS_DISABLE_LOGGING) && defined(GKFS_DEBUG_BUILD)
+    int rv = ::syscall_no_intercept(SYS_close, fd);
 #else
-    decltype(internal_fds_)::iterator it;
-    bool inserted;
+    ::syscall_no_intercept(SYS_close, fd);
+#endif
 
-    std::tie(it, inserted) = internal_fds_.insert(fd);
-    assert(inserted);
-#endif // USE_BITSET_FOR_INTERNAL_FDS
+    LOG(SYSCALL, 
+        gkfs::syscall::from_internal_code | 
+        gkfs::syscall::to_kernel |
+        gkfs::syscall::executed, 
+        SYS_close, args2, rv);
 
+    LOG(DEBUG, "    (fd {} reassigned to ifd {})", fd, ifd);
+
+    return ifd;
 }
 
 void PreloadContext::unregister_internal_fd(int fd) {
 
-#ifdef USE_BITSET_FOR_INTERNAL_FDS
-    internal_fds_.reset(fd);
-#else
-    std::size_t n = internal_fds_.erase(fd);
-    assert(n == 1);
-#endif // USE_BITSET_FOR_INTERNAL_FDS
+    LOG(DEBUG, "unregistering internal fd {}", fd);
 
+    assert(fd >= INTERNAL_FD_BASE);
+
+    const auto pos = fd - INTERNAL_FD_BASE;
+
+    std::lock_guard<std::mutex> lock(internal_fds_mutex_);
+    internal_fds_.set(pos);
 }
 
 bool PreloadContext::is_internal_fd(int fd) const {
 
-#ifdef USE_BITSET_FOR_INTERNAL_FDS
-    return internal_fds_[fd];
-#else
-    return internal_fds_.count(fd) != 0;
-#endif // USE_BITSET_FOR_INTERNAL_FDS
+    if(fd < INTERNAL_FD_BASE) {
+        return false;
+    }
 
+    const auto pos = fd - INTERNAL_FD_BASE;
+
+    std::lock_guard<std::mutex> lock(internal_fds_mutex_);
+    return !internal_fds_.test(pos);
 }
 
 

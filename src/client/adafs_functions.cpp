@@ -18,6 +18,7 @@
 #include <global/path_util.hpp>
 #include <client/preload.hpp>
 #include "client/preload_util.hpp"
+#include <client/logging.hpp>
 #include <client/adafs_functions.hpp>
 #include <client/rpc/ld_rpc_metadentry.hpp>
 #include <client/rpc/ld_rpc_data_ws.hpp>
@@ -48,13 +49,13 @@ using namespace std;
 int adafs_open(const std::string& path, mode_t mode, int flags) {
 
     if(flags & O_PATH){
-        CTX->log()->error("{}() `O_PATH` flag is not supported", __func__);
+        LOG(ERROR, "`O_PATH` flag is not supported");
         errno = ENOTSUP;
         return -1;
     }
 
     if(flags & O_APPEND){
-        CTX->log()->error("{}() `O_APPEND` flag is not supported", __func__);
+        LOG(ERROR, "`O_APPEND` flag is not supported");
         errno = ENOTSUP;
         return -1;
     }
@@ -65,7 +66,7 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
         if(errno == ENOENT) {
             exists = false;
         } else {
-            CTX->log()->error("{}() error while retriving stat to file", __func__);
+            LOG(ERROR, "Error while retriving stat to file");
             return -1;
         }
     }
@@ -81,14 +82,14 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
         assert(flags & O_CREAT);
 
         if(flags & O_DIRECTORY){
-            CTX->log()->error("{}() O_DIRECTORY use with O_CREAT. NOT SUPPORTED", __func__);
+            LOG(ERROR, "O_DIRECTORY use with O_CREAT. NOT SUPPORTED");
             errno = ENOTSUP;
             return -1;
         }
 
         // no access check required here. If one is using our FS they have the permissions.
         if(adafs_mk_node(path, mode | S_IFREG)) {
-            CTX->log()->error("{}() error creating non-existent file", __func__);
+            LOG(ERROR, "Error creating non-existent file");
             return -1;
         }
     } else {
@@ -103,7 +104,7 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
 #ifdef HAS_SYMLINKS
         if (md->is_link()) {
             if (flags & O_NOFOLLOW) {
-                CTX->log()->warn("{}() symlink found and O_NOFOLLOW flag was specified", __func__);
+                LOG(WARNING, "Symlink found and O_NOFOLLOW flag was specified");
                 errno = ELOOP;
                 return -1;
             }
@@ -121,7 +122,7 @@ int adafs_open(const std::string& path, mode_t mode, int flags) {
 
         if( (flags & O_TRUNC) && ((flags & O_RDWR) || (flags & O_WRONLY)) ) {
             if(adafs_truncate(path, md->size(), 0)) {
-                CTX->log()->error("{}() error truncating file", __func__);
+                LOG(ERROR, "Error truncating file");
                 return -1;
             }
         }
@@ -144,11 +145,11 @@ int adafs_mk_node(const std::string& path, mode_t mode) {
         case S_IFBLK:
         case S_IFIFO:
         case S_IFSOCK:
-            CTX->log()->warn("{}() unsupported node type", __func__);
+            LOG(WARNING, "Unsupported node type");
             errno = ENOTSUP;
             return -1;
         default:
-            CTX->log()->warn("{}() unrecognized node type", __func__);
+            LOG(WARNING, "Unrecognized node type");
             errno = EINVAL;
             return -1;
     }
@@ -156,12 +157,12 @@ int adafs_mk_node(const std::string& path, mode_t mode) {
     auto p_comp = dirname(path);
     auto md = adafs_metadata(p_comp);
     if (!md) {
-        CTX->log()->debug("{}() parent component does not exists: '{}'", __func__, p_comp);
+        LOG(DEBUG, "Parent component does not exist: '{}'", p_comp);
         errno = ENOENT;
         return -1;
     }
     if (!S_ISDIR(md->mode())) {
-        CTX->log()->debug("{}() parent component is not a direcotory: '{}'", __func__, p_comp);
+        LOG(DEBUG, "Parent component is not a directory: '{}'", p_comp);
         errno = ENOTDIR;
         return -1;
     }
@@ -222,7 +223,6 @@ std::shared_ptr<Metadata> adafs_metadata(const string& path, bool follow_links) 
 }
 
 int adafs_statfs(struct statfs* buf) {
-    CTX->log()->trace("{}() called", __func__);
     auto blk_stat = rpc_send::chunk_stat();
     buf->f_type = 0;
     buf->f_bsize = blk_stat.chunk_size;
@@ -264,15 +264,12 @@ off_t adafs_lseek(unsigned int fd, off_t offset, unsigned int whence) {
 off_t adafs_lseek(shared_ptr<OpenFile> adafs_fd, off_t offset, unsigned int whence) {
     switch (whence) {
         case SEEK_SET:
-            CTX->log()->debug("{}() whence is SEEK_SET", __func__);
             adafs_fd->pos(offset);
             break;
         case SEEK_CUR:
-            CTX->log()->debug("{}() whence is SEEK_CUR", __func__);
             adafs_fd->pos(adafs_fd->pos() + offset);
             break;
         case SEEK_END: {
-            CTX->log()->debug("{}() whence is SEEK_END", __func__);
             off64_t file_size;
             auto err = rpc_send::get_metadentry_size(adafs_fd->path(), file_size);
             if (err < 0) {
@@ -283,17 +280,17 @@ off_t adafs_lseek(shared_ptr<OpenFile> adafs_fd, off_t offset, unsigned int when
             break;
         }
         case SEEK_DATA:
-            CTX->log()->warn("{}() SEEK_DATA whence is not supported", __func__);
+            LOG(WARNING, "SEEK_DATA whence is not supported");
             // We do not support this whence yet
             errno = EINVAL;
             return -1;
         case SEEK_HOLE:
-            CTX->log()->warn("{}() SEEK_HOLE whence is not supported", __func__);
+            LOG(WARNING, "SEEK_HOLE whence is not supported");
             // We do not support this whence yet
             errno = EINVAL;
             return -1;
         default:
-            CTX->log()->warn("{}() unknown whence {}", __func__, whence);
+            LOG(WARNING, "Unknown whence value {:#x}", whence);
             errno = EINVAL;
             return -1;
     }
@@ -309,12 +306,12 @@ int adafs_truncate(const std::string& path, off_t old_size, off_t new_size) {
     }
 
     if (rpc_send::decr_size(path, new_size)) {
-        CTX->log()->debug("{}() failed to decrease size", __func__);
+        LOG(DEBUG, "Failed to decrease size");
         return -1;
     }
 
     if(rpc_send::trunc_data(path, old_size, new_size)){
-        CTX->log()->debug("{}() failed to truncate data", __func__);
+        LOG(DEBUG, "Failed to truncate data");
         return -1;
     }
     return 0;
@@ -330,7 +327,7 @@ int adafs_truncate(const std::string& path, off_t length) {
      * length increased.
      */
     if(length < 0) {
-        CTX->log()->debug("{}() length is negative: {}", __func__, length);
+        LOG(DEBUG, "Length is negative: {}", length);
         errno = EINVAL;
         return -1;
     }
@@ -341,8 +338,7 @@ int adafs_truncate(const std::string& path, off_t length) {
     }
     auto size = md->size();
     if(static_cast<unsigned long>(length) > size) {
-        CTX->log()->debug("{}() length is greater then file size: {} > {}",
-               __func__, length, size);
+        LOG(DEBUG, "Length is greater then file size: {} > {}", length, size);
         errno = EINVAL;
         return -1;
     }
@@ -360,24 +356,23 @@ int adafs_dup2(const int oldfd, const int newfd) {
 ssize_t adafs_pwrite(std::shared_ptr<OpenFile> file, const char * buf, size_t count, off64_t offset) {
     if (file->type() != FileType::regular) {
         assert(file->type() == FileType::directory);
-        CTX->log()->warn("{}() cannot read from directory", __func__);
+        LOG(WARNING, "Cannot read from directory");
         errno = EISDIR;
         return -1;
     }
     auto path = make_shared<string>(file->path());
-    CTX->log()->trace("{}() count: {}, offset: {}", __func__, count, offset);
     auto append_flag = file->get_flag(OpenFile_flags::append);
     ssize_t ret = 0;
     long updated_size = 0;
 
     ret = rpc_send::update_metadentry_size(*path, count, offset, append_flag, updated_size);
     if (ret != 0) {
-        CTX->log()->error("{}() update_metadentry_size failed with ret {}", __func__, ret);
+        LOG(ERROR, "update_metadentry_size() failed with ret {}", ret);
         return ret; // ERR
     }
     ret = rpc_send::write(*path, buf, append_flag, offset, count, updated_size);
     if (ret < 0) {
-        CTX->log()->warn("{}() rpc_send::write failed with ret {}", __func__, ret);
+        LOG(WARNING, "rpc_send::write() failed with ret {}", ret);
     }
     return ret; // return written size or -1 as error
 }
@@ -406,8 +401,6 @@ ssize_t adafs_write(int fd, const void * buf, size_t count) {
 }
 
 ssize_t adafs_pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset) {
-    CTX->log()->trace("{}() called with fd {}, op num {}, offset {}",
-                      __func__, fd, iovcnt, offset);
 
     auto file = CTX->file_map()->get(fd);
     auto pos = offset; // keep truck of current position
@@ -438,8 +431,7 @@ ssize_t adafs_pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset)
 }
 
 ssize_t adafs_writev(int fd, const struct iovec * iov, int iovcnt) {
-    CTX->log()->trace("{}() called with fd {}, ops num {}",
-            __func__, fd, iovcnt);
+
     auto adafs_fd = CTX->file_map()->get(fd);
     auto pos = adafs_fd->pos(); // retrieve the current offset
     auto ret = adafs_pwritev(fd, iov, iovcnt, pos);
@@ -454,18 +446,18 @@ ssize_t adafs_writev(int fd, const struct iovec * iov, int iovcnt) {
 ssize_t adafs_pread(std::shared_ptr<OpenFile> file, char * buf, size_t count, off64_t offset) {
     if (file->type() != FileType::regular) {
         assert(file->type() == FileType::directory);
-        CTX->log()->warn("{}() cannot read from directory", __func__);
+        LOG(WARNING, "Cannot read from directory");
         errno = EISDIR;
         return -1;
     }
-    CTX->log()->trace("{}() count: {}, offset: {}", __func__, count, offset);
+
     // Zeroing buffer before read is only relevant for sparse files. Otherwise sparse regions contain invalid data.
 #if defined(ZERO_BUFFER_BEFORE_READ)
     memset(buf, 0, sizeof(char)*count);
 #endif
     auto ret = rpc_send::read(file->path(), buf, offset, count);
     if (ret < 0) {
-        CTX->log()->warn("{}() rpc_send::read failed with ret {}", __func__, ret);
+        LOG(WARNING, "rpc_send::read() failed with ret {}", ret);
     }
     // XXX check that we don't try to read past end of the file
     return ret; // return read size or -1 as error
@@ -494,7 +486,7 @@ int adafs_opendir(const std::string& path) {
         return -1;
     }
     if (!S_ISDIR(md->mode())) {
-        CTX->log()->debug("{}() path is not a directory", __func__);
+        LOG(DEBUG, "Path is not a directory");
         errno = ENOTDIR;
         return -1;
     }
@@ -507,12 +499,12 @@ int adafs_opendir(const std::string& path) {
 int adafs_rmdir(const std::string& path) {
     auto md = adafs_metadata(path);
     if (!md) {
-        CTX->log()->debug("{}() path does not exists: '{}'", __func__, path);
+        LOG(DEBUG, "Path '{}' does not exist: ", path);
         errno = ENOENT;
         return -1;
     }
     if (!S_ISDIR(md->mode())) {
-        CTX->log()->debug("{}() path is not a directory", __func__);
+        LOG(DEBUG, "Path '{}' is not a directory", path);
         errno = ENOTDIR;
         return -1;
     }
@@ -530,7 +522,7 @@ int adafs_rmdir(const std::string& path) {
 int getdents(unsigned int fd,
              struct linux_dirent *dirp,
              unsigned int count) {
-    CTX->log()->trace("{}() called on fd: {}, count {}", __func__, fd, count);
+
     auto open_dir = CTX->file_map()->get_dir(fd);
     if(open_dir == nullptr){
         //Cast did not succeeded: open_file is a regular file
@@ -563,7 +555,7 @@ int getdents(unsigned int fd,
         *(reinterpret_cast<char*>(current_dirp) + total_size - 1) =
             ((de.type() == FileType::regular)? DT_REG : DT_DIR);
 
-        CTX->log()->trace("{}() name {}: {}", __func__, pos, de.name());
+        LOG(DEBUG, "name {}: {}", pos, de.name());
         std::strcpy(&(current_dirp->d_name[0]), de.name().c_str());
         ++pos;
         current_dirp->d_off = pos;
@@ -582,7 +574,7 @@ int getdents(unsigned int fd,
 int getdents64(unsigned int fd,
              struct linux_dirent64 *dirp,
              unsigned int count) {
-    CTX->log()->trace("{}() called on fd: {}, count {}", __func__, fd, count);
+
     auto open_dir = CTX->file_map()->get_dir(fd);
     if(open_dir == nullptr){
         //Cast did not succeeded: open_file is a regular file
@@ -615,7 +607,7 @@ int getdents64(unsigned int fd,
 
         
 
-        CTX->log()->trace("{}() name {}: {}", __func__, pos, de.name());
+        LOG(DEBUG, "name {}: {}", pos, de.name());
         std::strcpy(&(current_dirp->d_name[0]), de.name().c_str());
         ++pos;
         current_dirp->d_off = pos;
@@ -645,7 +637,7 @@ int adafs_mk_symlink(const std::string& path, const std::string& target_path) {
         auto trg_mode = target_md->mode();
         if (!(S_ISREG(trg_mode) || S_ISLNK(trg_mode))) {
             assert(S_ISDIR(trg_mode));
-            CTX->log()->debug("{}() target path is a directory. Not supported", __func__);
+            LOG(DEBUG, "Target path is a directory. Not supported");
             errno = ENOTSUP;
             return -1;
         }
@@ -654,19 +646,19 @@ int adafs_mk_symlink(const std::string& path, const std::string& target_path) {
     auto p_comp = dirname(path);
     auto md = adafs_metadata(p_comp, false);
     if (md == nullptr) {
-        CTX->log()->debug("{}() parent component does not exist: '{}'", __func__, p_comp);
+        LOG(DEBUG, "Parent component does not exist: '{}'", p_comp);
         errno = ENOENT;
         return -1;
     }
     if (!S_ISDIR(md->mode())) {
-        CTX->log()->debug("{}() parent component is not a directory: '{}'", __func__, p_comp);
+        LOG(DEBUG, "Parent component is not a directory: '{}'", p_comp);
         errno = ENOTDIR;
         return -1;
     }
 
     auto link_md = adafs_metadata(path, false);
     if (link_md != nullptr) {
-        CTX->log()->debug("{}() Link exists: '{}'", __func__, p_comp);
+        LOG(DEBUG, "Link exists: '{}'", p_comp);
         errno = EEXIST;
         return -1;
     }
@@ -678,17 +670,17 @@ int adafs_readlink(const std::string& path, char *buf, int bufsize) {
     init_ld_env_if_needed();
     auto md = adafs_metadata(path, false);
     if (md == nullptr) {
-        CTX->log()->debug("{}() named link doesn't exists", __func__);
+        LOG(DEBUG, "Named link doesn't exist");
         return -1;
     }
     if (!(md->is_link())) {
-        CTX->log()->debug("{}() The named file is not a symbolic link", __func__);
+        LOG(DEBUG, "The named file is not a symbolic link");
         errno = EINVAL;
         return -1;
     }
     int path_size = md->target_path().size() + CTX->mountdir().size();
     if (path_size >= bufsize) {
-        CTX->log()->warn("{}() destination buffer size is to short: {} < {}, {} ", __func__, bufsize, path_size, md->target_path());
+        LOG(WARNING, "Destination buffer size is too short: {} < {}, {} ", bufsize, path_size, md->target_path());
         errno = ENAMETOOLONG;
         return -1;
     }

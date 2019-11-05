@@ -17,7 +17,6 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/types.h>
-
 int hook_openat(int dirfd, const char *cpath, int flags, mode_t mode);
 int hook_close(int fd);
 int hook_stat(const char* path, struct stat* buf);

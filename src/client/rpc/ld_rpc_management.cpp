@@ -13,6 +13,7 @@
 
 #include "client/rpc/ld_rpc_management.hpp"
 #include "global/rpc/rpc_types.hpp"
+#include <client/logging.hpp>
 #include <client/preload_util.hpp>
 #include <boost/type_traits/is_pointer.hpp> // see https://github.com/boostorg/tokenizer/issues/9
 #include <boost/token_functions.hpp>
@@ -34,7 +35,7 @@ bool get_fs_config() {
     gkfs::rpc::fs_config::output out;
 
     try {
-        CTX->log()->debug("{}() Retrieving file system configurations from daemon", __func__);
+        LOG(DEBUG, "Retrieving file system configurations from daemon");
         // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that we can retry
         // for RPC_TRIES (see old commits with margo)
         // TODO(amiranda): hermes will eventually provide a post(endpoint) 
@@ -42,12 +43,12 @@ bool get_fs_config() {
         // result_set. When that happens we can remove the .at(0) :/
         out = ld_network_service->post<gkfs::rpc::fs_config>(endp).get().at(0);
     } catch (const std::exception& ex) {
-        CTX->log()->error("{}() Retrieving fs configurations from daemon", __func__);
+        LOG(ERROR, "Retrieving fs configurations from daemon");
         return false;
     }
 
     CTX->mountdir(out.mountdir());
-    CTX->log()->info("Mountdir: '{}'", CTX->mountdir());
+    LOG(INFO, "Mountdir: '{}'", CTX->mountdir());
 
     CTX->fs_conf()->rootdir = out.rootdir();
     CTX->fs_conf()->atime_state = out.atime_state();
@@ -58,7 +59,7 @@ bool get_fs_config() {
     CTX->fs_conf()->uid = out.uid();
     CTX->fs_conf()->gid = out.gid();
 
-    CTX->log()->debug("{}() Got response with mountdir {}", __func__, out.mountdir());
+    LOG(DEBUG, "Got response with mountdir {}", out.mountdir());
 
     return true;
 }

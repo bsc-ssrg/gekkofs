@@ -11,7 +11,6 @@
   SPDX-License-Identifier: MIT
 */
 
-#include <global/log_util.hpp>
 #include <global/env_util.hpp>
 #include <global/path_util.hpp>
 #include <global/global_defs.hpp>
@@ -20,6 +19,7 @@
 #include <client/resolve.hpp>
 #include <global/rpc/distributor.hpp>
 #include "global/rpc/rpc_types.hpp"
+#include <client/logging.hpp>
 #include <client/rpc/ld_rpc_management.hpp>
 #include <client/preload_util.hpp>
 #include <client/intercept.hpp>
@@ -28,6 +28,7 @@
 
 #include <sys/types.h>
 #include <dirent.h>
+#include <stdarg.h>
 
 #include <fstream>
 
@@ -56,9 +57,34 @@ hg_id_t rpc_chunk_stat_id;
 std::unique_ptr<hermes::async_engine> ld_network_service;
 
 static inline void exit_error_msg(int errcode, const string& msg) {
-    CTX->log()->error(msg);
-    cerr << "GekkoFS error: " << msg << endl;
-    exit(errcode);
+
+    LOG_ERROR("{}", msg);
+    gkfs::log::logger::log_message(stderr, "{}\n", msg);
+
+    // if we don't disable interception before calling ::exit()
+    // syscall hooks may find an inconsistent in shared state
+    // (e.g. the logger) and thus, crash
+    stop_interception();
+    CTX->disable_interception();
+    ::exit(errcode);
+}
+
+int 
+hg_log_function(FILE *stream, const char *fmt, ...) {
+
+#ifdef GKFS_DISABLE_LOGGING
+    (void) stream;
+    (void) fmt;
+
+    return 0;
+#endif // GKFS_DISABLE_LOGGING
+
+    va_list ap;
+    ::va_start(ap, fmt);
+    int n = gkfs::log::get_global_logger()->log(gkfs::log::mercury, fmt, ap);
+    ::va_end(ap);
+
+    return n;
 }
 
 /**
@@ -78,6 +104,9 @@ bool init_hermes_client(const std::string& transport_prefix) {
         ld_network_service = 
             std::make_unique<hermes::async_engine>(
                     hermes::get_transport_type(transport_prefix), opts);
+
+        ld_network_service->set_mercury_log_function(::hg_log_function);
+
         ld_network_service->run();
     } catch (const std::exception& ex) {
         fmt::print(stderr, "Failed to initialize Hermes RPC client {}\n", 
@@ -107,57 +136,21 @@ bool init_hermes_client(const std::string& transport_prefix) {
     return true;
 }
 
-static inline std::set<int>
-query_open_fds() {
-
-    std::set<int> fds;
-    const std::string path{"/proc/self/fd"};
-
-    std::unique_ptr<DIR, decltype(&::closedir)> dirp(
-            ::opendir(path.c_str()), 
-            closedir);
-
-    struct dirent entry;
-    struct dirent *result;
-
-    while (::readdir_r(dirp.get(), &entry, &result) == 0 && result != NULL) {
-        const std::string name{entry.d_name};
-
-        if(name == "." || name == ".." || 
-           std::stoi(name) == dirfd(dirp.get())) {
-            continue;
-        }
-
-        fds.insert(std::stoi(name));
-    }
-
-    return fds;
-}
-
-
 /**
  * This function is only called in the preload constructor and initializes 
  * the file system client
  */
 void init_ld_environment_() {
 
-    // Client applications such as ssh attempt to close all open file 
-    // descriptors, which causes havoc with the interception library's internal 
-    // state. To account for this, in the interception code we keep track of
-    // internal fds by distinguishing between internal syscalls (i.e. those
-    // coming from internal code) application syscalls. The problem is that
-    // at this point in initialization we have not enabled interception yet,
-    // but the initialization process itself needs to create file descriptors.
-    // To solve this problem, we find out which fds are created by the 
-    // initialization process and manually protect them at this point
-    auto pre_init_fds = query_open_fds();
-
     // initialize Hermes interface to Mercury
+    LOG(INFO, "Initializing RPC subsystem...");
+
     if (!init_hermes_client(RPC_PROTOCOL)) {
-        exit_error_msg(EXIT_FAILURE, "Unable to initialize Hermes RPC client");
+        exit_error_msg(EXIT_FAILURE, "Unable to initialize RPC subsystem");
     }
 
     try {
+        LOG(INFO, "Loading peer addresses...");
         load_hosts();
     } catch (const std::exception& e) {
         exit_error_msg(EXIT_FAILURE, "Failed to load hosts addresses: "s + e.what());
@@ -167,62 +160,32 @@ void init_ld_environment_() {
     auto simple_hash_dist = std::make_shared<SimpleHashDistributor>(CTX->local_host_id(), CTX->hosts().size());
     CTX->distributor(simple_hash_dist);
 
+    LOG(INFO, "Retrieving file system configuration...");
+
     if (!rpc_send::get_fs_config()) {
         exit_error_msg(EXIT_FAILURE, "Unable to fetch file system configurations from daemon process through RPC.");
     }
 
-    auto post_init_fds = query_open_fds();
-    std::set<int> internal_fds{3}; // fd 3 is created by the logging system
-
-    std::set_difference(post_init_fds.begin(), post_init_fds.end(),
-                        pre_init_fds.begin(), pre_init_fds.end(),
-                        std::inserter(internal_fds, internal_fds.end()));
-
-    for(const auto& fd : internal_fds) {
-        CTX->register_internal_fd(fd);
-    }
-
-    CTX->log()->info("{}() Environment initialization successful.", __func__);
+    LOG(INFO, "Environment initialization successful.");
 }
 
 void init_ld_env_if_needed() {
     pthread_once(&init_env_thread, init_ld_environment_);
 }
 
-void init_logging() {
-    std::string path;
-    try {
-        path = gkfs::get_env_own("PRELOAD_LOG_PATH");
-    } catch (const std::exception& e) {
-        path = DEFAULT_PRELOAD_LOG_PATH;
-    }
-
-    spdlog::level::level_enum level;
-    try {
-        level = get_spdlog_level(gkfs::get_env_own("LOG_LEVEL"));
-    } catch (const std::exception& e) {
-        level = get_spdlog_level(DEFAULT_DAEMON_LOG_LEVEL);
-    }
-
-    auto logger_names = std::vector<std::string> {"main"};
-
-    setup_loggers(logger_names, level, path);
-
-    CTX->log(spdlog::get(logger_names.at(0)));
-}
-
 void log_prog_name() {
     std::string line;
     std::ifstream cmdline("/proc/self/cmdline");
     if (!cmdline.is_open()) {
-        CTX->log()->error("Unable to open cmdline file");
+        LOG(ERROR, "Unable to open cmdline file");
         throw std::runtime_error("Unable to open cmdline file");
     }
     if(!getline(cmdline, line)) {
         throw std::runtime_error("Unable to read cmdline file");
     }
     std::replace(line.begin(), line.end(), '\0', ' ');
-    CTX->log()->info("Command to itercept: '{}'", line);
+    line.erase(line.length() - 1, line.length());
+    LOG(INFO, "Process cmdline: '{}'", line);
     cmdline.close();
 }
 
@@ -231,14 +194,20 @@ void log_prog_name() {
  */
 void init_preload() {
 
-    init_logging();
-    CTX->log()->debug("Initialized logging subsystem");
+    CTX->enable_interception();
+    start_self_interception();
+
+    CTX->init_logging();
+
+    // from here ownwards it is safe to print messages
+    LOG(DEBUG, "Logging subsystem initialized");
+
     log_prog_name();
     init_cwd();
-    CTX->log()->debug("Current working directory: '{}'", CTX->cwd());
+
+    LOG(DEBUG, "Current working directory: '{}'", CTX->cwd());
     init_ld_env_if_needed();
     CTX->enable_interception();
-    CTX->log()->debug("{}() exit", __func__);
     start_interception();
 }
 
@@ -247,14 +216,15 @@ void init_preload() {
  */
 void destroy_preload() {
 
-    stop_interception();
-    CTX->disable_interception();
-
     CTX->clear_hosts();
-    CTX->log()->debug("{}() About to finalize the Hermes RPC client", __func__);
+    LOG(DEBUG, "Peer information deleted");
 
     ld_network_service.reset();
+    LOG(DEBUG, "RPC subsystem shut down");
 
-    CTX->log()->debug("{}() Shut down Hermes RPC client successful", __func__);
-    CTX->log()->info("All services shut down. Client shutdown complete.");
+    stop_interception();
+    CTX->disable_interception();
+    LOG(DEBUG, "Syscall interception stopped");
+
+    LOG(INFO, "All subsystems shut down. Client shutdown complete.");
 }
