@@ -2,7 +2,7 @@
 
 MOGON2_DEPS=(
     "zstd" "lz4" "snappy" "bmi" "mercury" "argobots" "margo" "rocksdb" 
-    "syscall_intercept date"
+    "capstone" "syscall_intercept" "date"
 )
 
 usage_short() {
@@ -198,7 +198,6 @@ export LIBRARY_PATH="${LIBRARY_PATH}:${INSTALL}/lib:${INSTALL}/lib64"
 
 # Set cluster dependencies first
 if [[ ( "${CLUSTER}" == "mogon2" ) ]]; then
-
     # compile zstd
     if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "zstd" ) ]]; then
         echo "############################################################ Installing:  zstd"
@@ -228,6 +227,16 @@ if [[ ( "${CLUSTER}" == "mogon2" ) ]]; then
         $CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release ..
         make -j${CORES}
         make install
+    fi
+
+    # build capstone for syscall-intercept
+    if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "capstone" ) ]]; then
+      echo "############################################################ Installing:  capstone"
+      CURR=${SOURCE}/capstone
+      prepare_build_dir ${CURR}
+      cd ${CURR}/build
+      $CMAKE -DCMAKE_INSTALL_PREFIX=/home/vef/gekkofs_deps/install -DCMAKE_BUILD_TYPE:STRING=Release ..
+      make -j${CORES} install
     fi
 fi
 

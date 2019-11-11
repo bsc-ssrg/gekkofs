@@ -12,7 +12,7 @@ NA_LAYER=""
 
 MOGON2_DEPS=(
     "zstd" "lz4" "snappy" "bmi" "mercury" "argobots" "margo" "rocksdb" 
-    "syscall_intercept date"
+    "capstone" "syscall_intercept" "date"
 )
 
 # Stop all backround jobs on interruption.
@@ -223,9 +223,14 @@ if [[ ( "${CLUSTER}" == "mogon2" ) ]]; then
         wgetdeps "lz4" "https://github.com/lz4/lz4/archive/v1.8.0.tar.gz" &
     fi
 
-	# get snappy for rocksdb
+	  # get snappy for rocksdb
     if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "snappy" ) ]]; then
             wgetdeps "snappy" "https://github.com/google/snappy/archive/1.1.7.tar.gz" &
+    fi
+
+    # get capstone for syscall-intercept
+    if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "capstone" ) ]]; then
+      wgetdeps "capstone" "https://github.com/aquynh/capstone/archive/4.0.1.tar.gz" &
     fi
 fi
 
