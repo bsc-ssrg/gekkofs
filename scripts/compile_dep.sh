@@ -1,18 +1,8 @@
 #!/bin/bash
 
-MOGON1_DEPS=( 
-    "zstd" "lz4" "snappy" "bmi" "libfabric" "mercury" "argobots" "margo" 
-    "rocksdb" "syscall_intercept date"
-)
-
 MOGON2_DEPS=(
     "zstd" "lz4" "snappy" "bmi" "mercury" "argobots" "margo" "rocksdb" 
     "syscall_intercept date"
-)
-
-FH2_DEPS=(
-    "zstd" "lz4" "snappy" "bmi" "libfabric" "mercury" "argobots" "margo" 
-    "rocksdb" "syscall_intercept date"
 )
 
 usage_short() {
@@ -42,7 +32,7 @@ optional arguments:
                 defaults to 'all'
     -c <CLUSTER>, --cluster <CLUSTER>
                 additional configurations for specific compute clusters
-                supported clusters: {mogon1,mogon2,fh2}
+                supported clusters: {mogon2}
     -d <DEPENDENCY>, --dependency <DEPENDENCY>
                 build and install a specific dependency. If unspecified 
                 all dependencies are built and installed.
@@ -58,13 +48,6 @@ list_dependencies() {
 
     echo "Available dependencies: "
 
-    echo -n "  Mogon 1: "
-    for d in "${MOGON1_DEPS[@]}"
-    do
-        echo -n "$d "
-    done
-    echo ""
-
     echo -n "  Mogon 2: "
     for d in "${MOGON2_DEPS[@]}"
     do
@@ -72,12 +55,6 @@ list_dependencies() {
     done
     echo ""
 
-    echo -n "  fh2: "
-    for d in "${FH2_DEPS[@]}"
-    do
-        echo -n "$d "
-    done
-    echo ""
 }
 
 prepare_build_dir() {
@@ -191,7 +168,7 @@ else
     exit
 fi
 if [[ "${CLUSTER}" != "" ]]; then
-	if [[ ( "${CLUSTER}" == "mogon1" ) || ( "${CLUSTER}" == "fh2" ) || ( "${CLUSTER}" == "mogon2" ) ]]; then
+	if [[ ( "${CLUSTER}" == "mogon2" ) ]]; then
 		echo CLUSTER  = "${CLUSTER}"
     else
         echo "${CLUSTER} cluster configuration is invalid. Exiting ..."
@@ -220,7 +197,7 @@ export CPATH="${CPATH}:${INSTALL}/include"
 export LIBRARY_PATH="${LIBRARY_PATH}:${INSTALL}/lib:${INSTALL}/lib64"
 
 # Set cluster dependencies first
-if [[ ( "${CLUSTER}" == "mogon1" ) || ( "${CLUSTER}" == "fh2" ) || ( "${CLUSTER}" == "mogon2" ) ]]; then
+if [[ ( "${CLUSTER}" == "mogon2" ) ]]; then
 
     # compile zstd
     if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "zstd" ) ]]; then

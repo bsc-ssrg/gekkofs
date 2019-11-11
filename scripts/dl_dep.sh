@@ -10,21 +10,10 @@ CLUSTER=""
 DEPENDENCY=""
 NA_LAYER=""
 
-MOGON1_DEPS=( 
-    "zstd" "lz4" "snappy" "bmi" "libfabric" "mercury" "argobots" "margo" 
-    "rocksdb" "syscall_intercept date"
-)
-
 MOGON2_DEPS=(
     "zstd" "lz4" "snappy" "bmi" "mercury" "argobots" "margo" "rocksdb" 
     "syscall_intercept date"
 )
-
-FH2_DEPS=(
-    "zstd" "lz4" "snappy" "bmi" "libfabric" "mercury" "argobots" "margo" 
-    "rocksdb" "syscall_intercept date"
-)
-
 
 # Stop all backround jobs on interruption.
 # "kill -- -$$" sends a SIGTERM to the whole process group,
@@ -48,13 +37,6 @@ list_dependencies() {
 
     echo "Available dependencies: "
 
-    echo -n "  Mogon 1: "
-    for d in "${MOGON1_DEPS[@]}"
-    do
-        echo -n "$d "
-    done
-    echo ""
-
     echo -n "  Mogon 2: "
     for d in "${MOGON2_DEPS[@]}"
     do
@@ -62,12 +44,6 @@ list_dependencies() {
     done
     echo ""
 
-    echo -n "  fh2: "
-    for d in "${FH2_DEPS[@]}"
-    do
-        echo -n "$d "
-    done
-    echo ""
 }
 
 clonedeps() {
@@ -147,7 +123,7 @@ optional arguments:
                                 defaults to 'all'
         -c <CLUSTER>, --cluster <CLUSTER>
                                 additional configurations for specific compute clusters
-                                supported clusters: {mogon1,mogon2,fh2}
+                                supported clusters: {mogon2}
         -d <DEPENDENCY>, --dependency <DEPENDENCY>
                                 download a specific dependency. If unspecified 
                                 all dependencies are built and installed.
@@ -219,7 +195,7 @@ else
     exit
 fi
 if [[ "${CLUSTER}" != "" ]]; then
-	if [[ ( "${CLUSTER}" == "mogon1" ) || ( "${CLUSTER}" == "mogon2" ) || ( "${CLUSTER}" == "fh2" ) ]]; then
+	if [[ ( "${CLUSTER}" == "mogon2" ) ]]; then
 		echo CLUSTER  = "${CLUSTER}"
     else
         echo "${CLUSTER} cluster configuration is invalid. Exiting ..."
@@ -235,7 +211,7 @@ echo "Source path is set to  \"${SOURCE}\""
 mkdir -p ${SOURCE}
 
 # get cluster dependencies
-if [[ ( "${CLUSTER}" == "mogon1" ) || ( "${CLUSTER}" == "mogon2" ) || ( "${CLUSTER}" == "fh2" ) ]]; then
+if [[ ( "${CLUSTER}" == "mogon2" ) ]]; then
 
     # get zstd for fast compression in rocksdb
     if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "zstd" ) ]]; then
@@ -252,9 +228,6 @@ if [[ ( "${CLUSTER}" == "mogon1" ) || ( "${CLUSTER}" == "mogon2" ) || ( "${CLUST
             wgetdeps "snappy" "https://github.com/google/snappy/archive/1.1.7.tar.gz" &
     fi
 fi
-#if [ "${CLUSTER}" == "fh2" ]; then
-	# no distinct 3rd party software needed as of now.
-#fi
 
 # get BMI
 if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "bmi" ) ]]; then
