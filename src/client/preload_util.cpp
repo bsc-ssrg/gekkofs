@@ -182,15 +182,24 @@ void load_hosts() {
 
     for (const auto& id: host_ids) {
          const auto& hostname = hosts.at(id).first;
-         const auto& uri = hosts.at(id).second;
-
-        addrs[id] = ::lookup_endpoint(uri);
+         auto& uri = hosts.at(id).second;
 
         if (!local_host_found && hostname == local_hostname) {
             LOG(DEBUG, "Found local host: {}", hostname);
             CTX->local_host_id(id);
             local_host_found = true;
         }
+#if USE_SHM
+        else {
+            // remove everything from uri except the requested transport layer for local hosts
+            // auto_sm uri is always build like this: uid://<...>;na+sm://<pid>/0;<PROTOCOL>://<uri>
+            auto pos = uri.find(RPC_PROTOCOL);
+            if (pos > 0)
+                uri.erase(0, pos);
+        }
+#endif
+        addrs[id] = ::lookup_endpoint(uri);
+
 
         LOG(DEBUG, "Found peer: {}", addrs[id].to_string()); 
     }
