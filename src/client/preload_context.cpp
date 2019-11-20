@@ -28,12 +28,17 @@
 #include <cassert>
 #include <cstdio>
 
+decltype(PreloadContext::MIN_INTERNAL_FD) constexpr 
+PreloadContext::MIN_INTERNAL_FD;
+decltype(PreloadContext::MAX_USER_FDS) constexpr 
+PreloadContext::MAX_USER_FDS;
 
 PreloadContext::PreloadContext():
     ofm_(std::make_shared<OpenFileMap>()),
     fs_conf_(std::make_shared<FsConfig>()) {
 
     internal_fds_.set();
+    internal_fds_must_relocate_ = true;
 }
 
 void 
@@ -45,12 +50,18 @@ PreloadContext::init_logging() {
     const std::string log_output = 
         gkfs::env::get_var(gkfs::env::LOG_OUTPUT, DEFAULT_CLIENT_LOG_PATH);
 
+#ifdef GKFS_DEBUG_BUILD
+    const std::string log_filter =
+        gkfs::env::get_var(gkfs::env::LOG_SYSCALL_FILTER, "");
+#endif
+
     const std::string trunc_val = 
         gkfs::env::get_var(gkfs::env::LOG_OUTPUT_TRUNC);
 
     const bool log_trunc = !(!trunc_val.empty() && trunc_val[0] == 0);
 
-    gkfs::log::create_global_logger(log_opts, log_output, log_trunc);
+    gkfs::log::create_global_logger(log_opts, log_output, 
+                                    log_trunc, log_filter);
 }
 
 void PreloadContext::mountdir(const std::string& path) {
@@ -192,17 +203,30 @@ bool PreloadContext::interception_enabled() const {
 
 int PreloadContext::register_internal_fd(int fd) {
 
-    LOG(DEBUG, "registering fd {} as internal", fd);
-
     assert(fd >= 0);
+
+    if(!internal_fds_must_relocate_) {
+        LOG(DEBUG, "registering fd {} as internal (no relocation needed)", fd);
+        assert(fd >= MIN_INTERNAL_FD);
+        internal_fds_.reset(fd - MIN_INTERNAL_FD);
+        return fd;
+    }
+
+    LOG(DEBUG, "registering fd {} as internal (needs relocation)", fd);
 
     std::lock_guard<std::mutex> lock(internal_fds_mutex_);
     const int pos = internal_fds_._Find_first();
+
+    if(static_cast<std::size_t>(pos) == internal_fds_.size()) {
+        throw std::runtime_error(
+"Internal GekkoFS file descriptors exhausted, increase MAX_INTERNAL_FDS in "
+"CMake, rebuild GekkoFS and try again.");
+    }
     internal_fds_.reset(pos);
 
 
 #if !defined(GKFS_DISABLE_LOGGING) && defined(GKFS_DEBUG_BUILD)
-    long args[gkfs::syscall::MAX_ARGS]{fd, pos + INTERNAL_FD_BASE, O_CLOEXEC};
+    long args[gkfs::syscall::MAX_ARGS]{fd, pos + MIN_INTERNAL_FD, O_CLOEXEC};
 #endif
 
     LOG(SYSCALL, 
@@ -212,7 +236,7 @@ int PreloadContext::register_internal_fd(int fd) {
         SYS_dup3, args);
 
     const int ifd = 
-        ::syscall_no_intercept(SYS_dup3, fd, pos + INTERNAL_FD_BASE, O_CLOEXEC);
+        ::syscall_no_intercept(SYS_dup3, fd, pos + MIN_INTERNAL_FD, O_CLOEXEC);
 
     LOG(SYSCALL, 
         gkfs::syscall::from_internal_code | 
@@ -220,7 +244,7 @@ int PreloadContext::register_internal_fd(int fd) {
         gkfs::syscall::executed, 
         SYS_dup3, args, ifd);
 
-    assert(::syscall_error_code(ifd) != -1);
+    assert(::syscall_error_code(ifd) == 0);
 
 #if !defined(GKFS_DISABLE_LOGGING) && defined(GKFS_DEBUG_BUILD)
     long args2[gkfs::syscall::MAX_ARGS]{fd};
@@ -244,7 +268,7 @@ int PreloadContext::register_internal_fd(int fd) {
         gkfs::syscall::executed, 
         SYS_close, args2, rv);
 
-    LOG(DEBUG, "    (fd {} reassigned to ifd {})", fd, ifd);
+    LOG(DEBUG, "    (fd {} relocated to ifd {})", fd, ifd);
 
     return ifd;
 }
@@ -253,9 +277,9 @@ void PreloadContext::unregister_internal_fd(int fd) {
 
     LOG(DEBUG, "unregistering internal fd {}", fd);
 
-    assert(fd >= INTERNAL_FD_BASE);
+    assert(fd >= MIN_INTERNAL_FD);
 
-    const auto pos = fd - INTERNAL_FD_BASE;
+    const auto pos = fd - MIN_INTERNAL_FD;
 
     std::lock_guard<std::mutex> lock(internal_fds_mutex_);
     internal_fds_.set(pos);
@@ -263,14 +287,60 @@ void PreloadContext::unregister_internal_fd(int fd) {
 
 bool PreloadContext::is_internal_fd(int fd) const {
 
-    if(fd < INTERNAL_FD_BASE) {
+    if(fd < MIN_INTERNAL_FD) {
         return false;
     }
 
-    const auto pos = fd - INTERNAL_FD_BASE;
+    const auto pos = fd - MIN_INTERNAL_FD;
 
     std::lock_guard<std::mutex> lock(internal_fds_mutex_);
     return !internal_fds_.test(pos);
 }
 
+void
+PreloadContext::protect_user_fds() {
 
+    LOG(DEBUG, "Protecting application fds [{}, {}]", 0, MAX_USER_FDS - 1);
+
+    const int nullfd = ::syscall_no_intercept(SYS_open, "/dev/null", O_RDONLY);
+    assert(::syscall_error_code(nullfd) == 0);
+    protected_fds_.set(nullfd);
+
+    const auto fd_is_open = [](int fd) -> bool {
+        const int ret = ::syscall_no_intercept(SYS_fcntl, fd, F_GETFD);
+        return ::syscall_error_code(ret) == 0 || 
+               ::syscall_error_code(ret) != EBADF;
+    };
+
+    for(int fd = 0; fd < MAX_USER_FDS; ++fd) {
+        if(fd_is_open(fd)) {
+            LOG(DEBUG, "  fd {} was already in use, skipping", fd);
+            continue;
+        }
+
+        const int ret = ::syscall_no_intercept(SYS_dup3, nullfd, fd, O_CLOEXEC);
+        assert(::syscall_error_code(ret) == 0);
+        protected_fds_.set(fd);
+    }
+
+    internal_fds_must_relocate_ = false;
+}
+
+void
+PreloadContext::unprotect_user_fds() {
+
+    for(std::size_t fd = 0; fd < protected_fds_.size(); ++fd) {
+        if(!protected_fds_[fd]) {
+            continue;
+        }
+
+        const int ret = 
+            ::syscall_error_code(::syscall_no_intercept(SYS_close, fd));
+
+        if(ret != 0) {
+            LOG(ERROR, "Failed to unprotect fd")
+        }
+    }
+
+    internal_fds_must_relocate_ = true;
+}

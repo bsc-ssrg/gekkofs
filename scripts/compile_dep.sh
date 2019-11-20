@@ -298,10 +298,10 @@ if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "mercury" ) ]]; then
     prepare_build_dir ${CURR}
     cd ${CURR}/build
     PKG_CONFIG_PATH=${INSTALL}/lib/pkgconfig $CMAKE \
-        -DCMAKE_BUILD_TYPE:STRING=Debug \
+        -DCMAKE_BUILD_TYPE:STRING=Release \
         -DBUILD_TESTING:BOOL=ON \
-        -DMERCURY_USE_SM_ROUTING:BOOL=OFF \
-        -DMERCURY_USE_SELF_FORWARD:BOOL=OFF \
+        -DMERCURY_USE_SM_ROUTING:BOOL=ON \
+        -DMERCURY_USE_SELF_FORWARD:BOOL=ON \
         -DMERCURY_USE_CHECKSUMS:BOOL=OFF \
         -DMERCURY_USE_BOOST_PP:BOOL=ON \
         -DMERCURY_USE_EAGER_BULK:BOOL=ON \

@@ -24,6 +24,10 @@
 #include <fmt/ostr.h>
 #include <date/tz.h>
 
+#ifdef GKFS_DEBUG_BUILD
+#include <bitset>
+#endif
+
 namespace gkfs {
 namespace log {
 
@@ -264,7 +268,11 @@ struct logger {
 
     logger(const std::string& opts, 
            const std::string& path, 
-           bool trunc);
+           bool trunc,
+#ifdef GKFS_DEBUG_BUILD
+           const std::string& filter
+#endif
+           );
 
     ~logger();
 
@@ -397,9 +405,13 @@ struct logger {
 
     int log_fd_;
     log_level log_mask_;
+
+#ifdef GKFS_DEBUG_BUILD
+    std::bitset<512> filtered_syscalls_;
+#endif
+
     const date::time_zone * const timezone_;
 };
-
 
 // the following static functions can be used to interact 
 // with a globally registered logger instance

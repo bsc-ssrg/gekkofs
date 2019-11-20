@@ -62,21 +62,27 @@ struct descriptor : private ::syscall_info {
 };
 
 static inline descriptor
-lookup_syscall(const long syscall_number) {
+lookup_by_number(const long syscall_number) {
     const auto* info = ::get_syscall_info(syscall_number, nullptr);
     return *reinterpret_cast<const descriptor*>(info);
 }
 
 static inline descriptor
-lookup_syscall(const long syscall_number,
+lookup_by_number(const long syscall_number,
                const long argv[MAX_ARGS]) {
     const auto* info = ::get_syscall_info(syscall_number, argv);
     return *reinterpret_cast<const descriptor*>(info);
 }
 
+static inline descriptor
+lookup_by_name(const std::string syscall_name) {
+    const auto* info = ::get_syscall_info_by_name(syscall_name.c_str());
+    return *reinterpret_cast<const descriptor*>(info);
+}
+
 static inline bool
 never_returns(const long syscall_number) {
-    const auto desc = lookup_syscall(syscall_number);
+    const auto desc = lookup_by_number(syscall_number);
     return desc.return_type() == ret::none;
 }
 

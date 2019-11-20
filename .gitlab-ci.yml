@@ -82,6 +82,7 @@ test wr:
     - sleep 4
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BUILD_PATH}/gkfs_test_wr
   artifacts:
+    when: on_failure
     paths:
      - "${LOG_PATH}"
 
@@ -93,6 +94,7 @@ test directories:
     - sleep 4
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BUILD_PATH}/gkfs_test_dir
   artifacts:
+    when: on_failure
     paths:
      - "${LOG_PATH}"
 
@@ -104,6 +106,7 @@ test truncate:
     - sleep 4
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BUILD_PATH}/gkfs_test_truncate
   artifacts:
+    when: on_failure
     paths:
      - "${LOG_PATH}"
 
@@ -115,6 +118,7 @@ test path resolution:
     - sleep 4
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BUILD_PATH}/gkfs_test_path_resolution
   artifacts:
+    when: on_failure
     paths:
      - "${LOG_PATH}"
 
@@ -126,6 +130,7 @@ test lseek:
     - sleep 4
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BUILD_PATH}/gkfs_test_lseek
   artifacts:
+    when: on_failure
     paths:
      - "${LOG_PATH}"
 

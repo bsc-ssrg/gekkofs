@@ -169,6 +169,11 @@ The following modules are available:
  - `all`: All previous options combined.
  - `help`: Print a help message and exit.
 
+When tracing sytem calls, specific syscalls can be removed from log messages by
+setting the `LIBGKFS_LOG_SYSCALL_FILTER` environment variable. For instance,
+setting it to `LIBGKFS_LOG_SYSCALL_FILTER=epoll_wait,epoll_create` will filter
+out any log entries from the `epoll_wait()` and `epoll_create()` system calls.
+
 Additionally, setting the `LIBGKFS_LOG_OUTPUT_TRUNC` environment variable with
 a value different from `0` will instruct the logging subsystem to truncate 
 the file used for logging, rather than append to it.

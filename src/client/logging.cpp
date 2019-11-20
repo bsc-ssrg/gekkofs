@@ -140,6 +140,12 @@ process_log_options(const std::string gkfs_debug) {
         bool is_known = false;
 
         for(const auto& opt : debug_opts) {
+
+            // none disables any future and previous flags observed
+            if(t == "none") {
+                return log::none;
+            }
+
             if(t == opt.name_) {
                 dm |= opt.mask_;
                 is_known = true;
@@ -186,22 +192,53 @@ process_log_options(const std::string gkfs_debug) {
     return dm;
 }
 
+#ifdef GKFS_DEBUG_BUILD
+std::bitset<512>
+process_log_filter(const std::string& log_filter) {
+
+    std::bitset<512> filtered_syscalls;
+    std::vector<std::string> tokens;
+
+    if(log_filter.empty()) {
+        return filtered_syscalls;
+    }
+
+    // skip separating white spaces and commas
+    boost::split(tokens, log_filter, 
+            [](char c) { return c == ' ' || c == ','; });
+
+    for(const auto& t : tokens) {
+        const auto sc = syscall::lookup_by_name(t);
+
+        if(std::strcmp(sc.name(), "unknown_syscall") == 0) {
+            logger::log_message(stdout, "warning: system call '{}' unknown; "
+                                "will not filter", t);
+            continue;
+        }
+        
+        filtered_syscalls.set(sc.number());
+    }
+
+    return filtered_syscalls;
+}
+#endif // GKFS_DEBUG_BUILD
 
 logger::logger(const std::string& opts, 
                const std::string& path, 
-               bool trunc) :
+               bool trunc,
+#ifdef GKFS_DEBUG_BUILD
+               const std::string& filter
+#endif
+               ) :
     timezone_(date::current_zone()) {
 
-    /* use stderr (dup()ed to an internal fd) by default */
-    log_fd_ = ::dup(2);
-
-    if(log_fd_ == -1) {
-        log(gkfs::log::error, __func__, __LINE__, "Failed to dup stderr. "
-            "Logging will fall back to normal stderr", path);
-        log_fd_ = 2;
-    }
-
+    /* use stderr by default */
+    log_fd_ = 2;
     log_mask_ = process_log_options(opts);
+
+#ifdef GKFS_DEBUG_BUILD
+    filtered_syscalls_ = process_log_filter(filter);
+#endif
 
     if(!path.empty()) {
 		int flags = O_CREAT | O_RDWR | O_APPEND | O_TRUNC;
@@ -212,7 +249,8 @@ logger::logger(const std::string& opts,
 
         // we use ::open() here rather than ::syscall_no_intercept(SYS_open)
         // because we want the call to be intercepted by our hooks, which 
-        // allows us to categorize the resulting fd as 'internal'
+        // allows us to categorize the resulting fd as 'internal' and
+        // relocate it to our private range
 		int fd = ::open(path.c_str(), flags, 0600);
 
 		if(fd == -1) {
@@ -264,6 +302,12 @@ logger::log_syscall(syscall::info info,
     if(!log_syscall_entry && !log_syscall_result) {
         return;
     }
+
+#ifdef GKFS_DEBUG_BUILD
+    if(filtered_syscalls_[syscall_number]) {
+        return;
+    }
+#endif
 
     // log the syscall even if we don't have information on it, since it may
     // be important to the user (we assume that the syscall has completed 

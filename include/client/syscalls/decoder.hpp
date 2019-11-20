@@ -45,7 +45,7 @@ decode(FmtBuffer& buffer,
 
     detail::errno_saver _(errno);
 
-    const auto sc = lookup_syscall(syscall_number, argv);
+    const auto sc = lookup_by_number(syscall_number, argv);
 
     fmt::format_to(buffer, "{}(", sc.name());
 
@@ -71,7 +71,7 @@ decode(FmtBuffer& buffer,
 
     detail::errno_saver _(errno);
 
-    const auto sc = lookup_syscall(syscall_number, argv);
+    const auto sc = lookup_by_number(syscall_number, argv);
 
     fmt::format_to(buffer, "{}(", sc.name());
 

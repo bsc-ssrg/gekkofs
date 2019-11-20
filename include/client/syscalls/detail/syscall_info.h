@@ -66,9 +66,14 @@ struct syscall_info {
 };
 
 extern const struct syscall_info syscall_table[];
+
 extern const struct syscall_info* 
 get_syscall_info(const long syscall_number, 
                  const long* argv);
+
+extern const struct syscall_info* 
+get_syscall_info_by_name(const char* syscall_name);
+
 extern bool 
 syscall_never_returns(long);
 

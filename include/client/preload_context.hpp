@@ -56,8 +56,8 @@ enum class RelativizeStatus {
 
 class PreloadContext {
 
-    static const auto constexpr INTERNAL_FD_BASE = 
-        MAX_OPEN_FDS - MAX_INTERNAL_FDS;
+    static auto constexpr MIN_INTERNAL_FD = MAX_OPEN_FDS - MAX_INTERNAL_FDS;
+    static auto constexpr MAX_USER_FDS = MIN_INTERNAL_FD;
 
     private:
     PreloadContext();
@@ -77,6 +77,8 @@ class PreloadContext {
 
     std::bitset<MAX_INTERNAL_FDS> internal_fds_;
     mutable std::mutex internal_fds_mutex_;
+    bool internal_fds_must_relocate_;
+    std::bitset<MAX_USER_FDS> protected_fds_;
 
     public:
     static PreloadContext* getInstance() {
@@ -122,6 +124,9 @@ class PreloadContext {
     int register_internal_fd(int fd);
     void unregister_internal_fd(int fd);
     bool is_internal_fd(int fd) const;
+
+    void protect_user_fds();
+    void unprotect_user_fds(); 
 };
 
 

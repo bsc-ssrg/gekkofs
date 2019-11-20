@@ -96,7 +96,8 @@ bool init_hermes_client(const std::string& transport_prefix) {
 
     try {
 
-        hermes::engine_options opts;
+        hermes::engine_options opts{};
+
 #if USE_SHM
         opts |= hermes::use_auto_sm;
 #endif
@@ -198,9 +199,18 @@ void init_preload() {
     start_self_interception();
 
     CTX->init_logging();
-
     // from here ownwards it is safe to print messages
     LOG(DEBUG, "Logging subsystem initialized");
+
+    // Kernel modules such as ib_uverbs may create fds in kernel space and pass
+    // them to user-space processes using ioctl()-like interfaces. if this 
+    // happens during our internal initialization, there's no way for us to 
+    // control this creation and the fd will be created in the 
+    // [0, MAX_USER_FDS) range rather than in our private 
+    // [MAX_USER_FDS, MAX_OPEN_FDS) range. To prevent this for our internal 
+    // initialization code, we forcefully occupy the user fd range to force 
+    // such modules to create fds in our private range.
+    CTX->protect_user_fds();
 
     log_prog_name();
     init_cwd();
@@ -208,6 +218,9 @@ void init_preload() {
     LOG(DEBUG, "Current working directory: '{}'", CTX->cwd());
     init_ld_env_if_needed();
     CTX->enable_interception();
+
+    CTX->unprotect_user_fds();
+
     start_interception();
 }
 
