@@ -202,9 +202,10 @@ void load_hosts() {
 #endif
         if (string(RPC_PROTOCOL) == rpc_protocol::ofi_psm2) {
             // convert ip address to native psm2 address that is required for the Mercury lookup address
-            auto native_psm2_addr = fmt::format("{}://{}", RPC_PROTOCOL, ofi_gethostbyname(uri, "psm2"));
+            LOG(INFO, "Looking up native address for host '{}'", hostname);
+            auto uri_tmp = hostname + "-opa";
+            auto native_psm2_addr = fmt::format("{}://{}", RPC_PROTOCOL, ofi_gethostbyname(uri_tmp, "psm2"));
             LOG(INFO, "Native psm2 address for host '{}': '{}'", hostname, native_psm2_addr);
-            exit(1);
         }
         addrs[id] = ::lookup_endpoint(uri);
 
