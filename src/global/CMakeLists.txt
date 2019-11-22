@@ -40,3 +40,20 @@ target_sources(metadata
 target_link_libraries(metadata
     fmt::fmt
     )
+
+add_library(ofi_util STATIC)
+set_property(TARGET ofi_util PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_sources(ofi_util
+    PUBLIC
+    ${INCLUDE_DIR}/global/ofi_util.hpp
+    PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/ofi_util.cpp
+    )
+target_link_libraries(ofi_util
+    fmt::fmt
+    ${LIBFABRIC_LIBRARIES}
+    )
+target_include_directories(ofi_util
+    PRIVATE
+    ${LIBFABRIC_INCLUDE_DIRS}
+    )

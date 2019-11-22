@@ -56,6 +56,7 @@ target_link_libraries(gkfs_intercept
     metadata
     distributor
     env_util
+    ofi_util
     # external
     Syscall_intercept::Syscall_intercept
     dl
@@ -70,7 +71,6 @@ target_link_libraries(gkfs_intercept
 target_include_directories(gkfs_intercept
     PRIVATE
     ${ABT_INCLUDE_DIRS}
-    ${MARGO_INCLUDE_DIRS}
     )
 
 install(TARGETS gkfs_intercept
