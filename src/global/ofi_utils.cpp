@@ -23,14 +23,14 @@ using namespace std;
 
 
 std::string ofi_gethostbyname(const std::string& name, const std::string& provider) {
-    struct fi_info *hints;
-    struct fi_info *fi;
+    struct fi_info* hints;
+    struct fi_info* fi;
     hints = fi_allocinfo();
     if (!hints) {
         throw runtime_error("Failed to allocate hints struct for fi_getinfo call");
     }
     // hints is passed to fi_getinfo as const struct, so the cast here is safe
-    hints->fabric_attr->prov_name = const_cast<char *>(provider.c_str());
+    hints->fabric_attr->prov_name = const_cast<char*>(provider.c_str());
     hints->addr_format = FI_ADDR_STR;
     hints->ep_attr->protocol = FI_PROTO_PSMX2;
 
@@ -43,30 +43,23 @@ std::string ofi_gethostbyname(const std::string& name, const std::string& provid
     }
 
     if (fi->next != nullptr) {
-        while(fi->next) {
+        while (fi->next) {
             cerr << "Name: " << name << endl;
-            cerr << "Src: " << (char*)fi->src_addr << "\" [" << fi->dest_addrlen << "]" << endl;
-            cerr << "Dst: \"" << (char*)fi->dest_addr << "\" [" << fi->dest_addrlen << "]" << endl;
+            cerr << "Src: " << (char*) fi->src_addr << "\" [" << fi->dest_addrlen << "]" << endl;
+            cerr << "Dst: \"" << (char*) fi->dest_addr << "\" [" << fi->dest_addrlen << "]" << endl;
             cerr << "Format: " << fi->addr_format << endl;
             cerr << "Prov: " << fi->fabric_attr->prov_name << endl;
-            fi=fi->next;
+            fi = fi->next;
         }
         throw runtime_error("fi_getinfo: multiple results found for specific hostname");
     }
 
-    cerr << "Name: " << name << endl;
-    cerr << "Src: " << (char*)fi->src_addr << "\" [" << fi->dest_addrlen << "]" << endl;
-    cerr << "Dst: \"" << (char*)fi->dest_addr << "\" [" << fi->dest_addrlen << "]" << endl;
-    cerr << "Format: " << fi->addr_format << endl;
-    cerr << "Prov: " << fi->fabric_attr->prov_name << endl;
+    cout << "Name: " << name << endl;
+    cout << "Src: " << (char*) fi->src_addr << "\" [" << fi->dest_addrlen << "]" << endl;
+    cout << "Dst: \"" << (char*) fi->dest_addr << "\" [" << fi->dest_addrlen << "]" << endl;
+    cout << "Format: " << fi->addr_format << endl;
+    cout << "Prov: " << fi->fabric_attr->prov_name << endl;
 
-/*    CTX->log()->info("{}() fi_getinfo: src_addr '{}' dest_addr '{}' domain_name '{}' fabric_name '{}' fabric_prov_name '{}' fabric_prov_version '{}'", __func__,
-                     (char*) fi->src_addr,
-                     (char*) fi->dest_addr,
-                     fi->domain_attr->name,
-                     fi->fabric_attr->name,
-                     fi->fabric_attr->prov_version);
-*/
     string host = reinterpret_cast<char*>(fi->dest_addr);
     //fi_freeinfo(fi);
     //fi_freeinfo(hints);

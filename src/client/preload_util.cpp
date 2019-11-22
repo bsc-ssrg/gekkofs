@@ -17,6 +17,7 @@
 #include <global/rpc/distributor.hpp>
 #include <global/rpc/rpc_utils.hpp>
 #include <global/env_util.hpp>
+#include "global/ofi_utils.hpp"
 #include <hermes.hpp>
 
 #include <fstream>
@@ -25,6 +26,7 @@
 #include <csignal>
 #include <random>
 #include <sys/sysmacros.h>
+#include <global/global_defs.hpp>
 
 using namespace std;
 
@@ -198,8 +200,13 @@ void load_hosts() {
                 uri.erase(0, pos);
         }
 #endif
+        if (string(RPC_PROTOCOL) == rpc_protocol::ofi_psm2) {
+            // convert ip address to native psm2 address that is required for the Mercury lookup address
+            auto native_psm2_addr = fmt::format("{}://{}", RPC_PROTOCOL, ofi_gethostbyname(uri, "psm2"));
+            LOG(INFO, "Native psm2 address for host '{}': '{}'", hostname, native_psm2_addr);
+            exit(1);
+        }
         addrs[id] = ::lookup_endpoint(uri);
-
 
         LOG(DEBUG, "Found peer: {}", addrs[id].to_string()); 
     }

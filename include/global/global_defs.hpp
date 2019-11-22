@@ -36,6 +36,12 @@ namespace hg_tag {
     constexpr auto chunk_stat = "rpc_srv_chunk_stat";
 }
 
+namespace rpc_protocol {
+    constexpr auto ofi_psm2 = "ofi+psm2";
+    constexpr auto ofi_sockets = "ofi+sockets";
+    constexpr auto ofi_tcp = "ofi+tcp";
+}
+
 // typedefs
 typedef unsigned long rpc_chnk_id_t;
 
