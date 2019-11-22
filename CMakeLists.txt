@@ -88,6 +88,7 @@ find_package(Mercury REQUIRED)
 find_package(Abt REQUIRED)
 find_package(Margo REQUIRED)
 find_package(Syscall_intercept REQUIRED)
+find_package(LibFabric REQUIRED)
 
 # boost dependencies, system is required for filesystem
 find_package(Boost 1.53 REQUIRED
