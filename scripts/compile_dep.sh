@@ -2,12 +2,12 @@
 
 MOGON2_DEPS=(
     "zstd" "lz4" "snappy" "bmi" "mercury" "argobots" "margo" "rocksdb" 
-    "capstone" "syscall_intercept" "date"
+    "capstone" "syscall_intercept" "date" "psm2"
 )
 
 usage_short() {
 	echo "
-usage: compile_dep.sh [-h] [-l] [-n <NAPLUGIN>] [-c <CLUSTER>] [-d <DEPENDENCY>] [-j <COMPILE_CORES>]
+usage: compile_dep.sh [-h] [-l] [-n <NAPLUGIN>] [-c <CLUSTER>] [-d <DEPENDENCY>] [--use-bundled-psm2] [-j <COMPILE_CORES>]
                       source_path install_path
 	"
 }
@@ -36,6 +36,12 @@ optional arguments:
     -d <DEPENDENCY>, --dependency <DEPENDENCY>
                 build and install a specific dependency. If unspecified 
                 all dependencies are built and installed.
+    --use-psm2
+                Link opa-psm2 to libfabric. Uses system installed one
+                if --use-bundled-psm2 is not given.
+    --use-bundled-psm2          
+                Build libfabric with the recommended opa-psm2 library.
+                Otherwise system opa-psm2 is linked to libfabric
     -j <COMPILE_CORES>, --compilecores <COMPILE_CORES>
                 number of cores that are used to compile the dependencies
                 defaults to number of available cores
@@ -81,6 +87,8 @@ NA_LAYER=""
 CORES=""
 SOURCE=""
 INSTALL=""
+USE_PSM2=false
+USE_BUNDLED_PSM2=false
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
@@ -97,6 +105,14 @@ case ${key} in
     CLUSTER="$2"
     shift # past argument
     shift # past value
+    ;;
+    --use-psm2)
+    USE_PSM2=true
+    shift # past argument
+    ;;
+    --use-bundled-psm2)
+    USE_BUNDLED_PSM2=true
+    shift # past argument
     ;;
     -d|--dependency)
     if [[ -z "$2" ]]; then
@@ -242,7 +258,7 @@ fi
 
 # build bmi
 if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "bmi" ) ]]; then
-    if [ "$NA_LAYER" == "bmi" ] || [ "$NA_LAYER" == "all" ]; then
+    if [[ ( "${NA_LAYER}" == "bmi" ) || ( "${NA_LAYER}" == "all" ) ]]; then
         USE_BMI="-DNA_USE_BMI:BOOL=ON"
         echo "############################################################ Installing:  BMI"
         # BMI
@@ -259,20 +275,24 @@ fi
 
 # build ofi
 if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "ofi" ) ]]; then
-    if [ "$NA_LAYER" == "ofi" ] || [ "$NA_LAYER" == "all" ]; then
+    if [[ ( "${NA_LAYER}" == "ofi" ) || ( "${NA_LAYER}" == "all" ) ]]; then
         USE_OFI="-DNA_USE_OFI:BOOL=ON"
-        # Mogon2 already has libfabric installed in a version that Mercury supports.
-        if [[ ("${CLUSTER}" != "mogon2") ]]; then
-            echo "############################################################ Installing:  LibFabric"
-            #libfabric
-            CURR=${SOURCE}/libfabric
-            prepare_build_dir ${CURR}
-            cd ${CURR}/build
+        echo "############################################################ Installing:  LibFabric"
+        #libfabric
+        CURR=${SOURCE}/libfabric
+        prepare_build_dir ${CURR}
+        cd ${CURR}/build
+        # decide if to build with psm2
+        if [[ ( "${CLUSTER}" == "mogon2" ) || [[ ( ${USE_PSM2} == true ) && ( ${USE_BUNDLED_PSM2} == true ) ]] ]]; then
+            ../configure --prefix=${INSTALL} --enable-tcp=yes --enable-psm2=yes --with-psm2-src=${SOURCE}/psm2
+        elif [[ ( ${USE_PSM2} == true ) && ( ${USE_BUNDLED_PSM2} == false ) ]]; then
+            ../configure --prefix=${INSTALL} --enable-tcp=yes --enable-psm2=yes
+        else
             ../configure --prefix=${INSTALL} --enable-tcp=yes
-            make -j${CORES}
-            make install
-            [ "${PERFORM_TEST}" ] && make check
         fi
+        make -j${CORES}
+        make install
+        [ "${PERFORM_TEST}" ] && make check
     fi
 fi
 
@@ -301,6 +321,7 @@ if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "mercury" ) ]]; then
         -DMERCURY_USE_BOOST_PP:BOOL=ON \
         -DMERCURY_USE_EAGER_BULK:BOOL=ON \
         -DBUILD_SHARED_LIBS:BOOL=ON \
+        -DNA_SM_TMP_DIRECTORY:STRING="/dev/shm" \
         -DCMAKE_INSTALL_PREFIX=${INSTALL} \
         ${USE_BMI} ${USE_OFI} \
         ..

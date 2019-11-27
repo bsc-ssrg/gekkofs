@@ -9,10 +9,11 @@ PATCH_DIR="${PATCH_DIR}/patches"
 CLUSTER=""
 DEPENDENCY=""
 NA_LAYER=""
+USE_PSM2=false
 
 MOGON2_DEPS=(
     "zstd" "lz4" "snappy" "bmi" "mercury" "argobots" "margo" "rocksdb" 
-    "capstone" "syscall_intercept" "date"
+    "capstone" "syscall_intercept" "date" "psm2"
 )
 
 # Stop all backround jobs on interruption.
@@ -99,7 +100,7 @@ wgetdeps() {
 
 usage_short() {
 	echo "
-usage: dl_dep.sh [-h] [-l] [-n <NAPLUGIN>] [-c <CLUSTER>] [-d <DEPENDENCY>] 
+usage: dl_dep.sh [-h] [-l] [-n <NAPLUGIN>] [-c <CLUSTER>] [-d <DEPENDENCY>] [--get-psm2]
                     source_path
 	"
 }
@@ -124,9 +125,11 @@ optional arguments:
         -c <CLUSTER>, --cluster <CLUSTER>
                                 additional configurations for specific compute clusters
                                 supported clusters: {mogon2}
+                                mogon2 automatically enables --get-psm2 flag
         -d <DEPENDENCY>, --dependency <DEPENDENCY>
                                 download a specific dependency. If unspecified 
                                 all dependencies are built and installed.
+        --get-psm2              Gets the recommened opa-psm2 library version to build with libfabric.
         "
 }
 
@@ -140,6 +143,10 @@ case ${key} in
     NA_LAYER="$2"
     shift # past argument
     shift # past value
+    ;;
+    --get-psm2)
+    USE_PSM2=true
+    shift # past argument
     ;;
     -c|--cluster)
     CLUSTER="$2"
@@ -244,11 +251,13 @@ fi
 # get libfabric
 if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "ofi" ) ]]; then
     if [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
-        # No need to get libfabric for mogon2 as it is already installed
-        if [[ ("${CLUSTER}" != "mogon2") ]]; then
             wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.8.1/libfabric-1.8.1.tar.bz2" &
-        fi
     fi
+fi
+
+# get opa-psm2
+if [[ ( "${DEPENDENCY}" == "psm2" ) || ( "${CLUSTER}" == "mogon2" ) || ( ${USE_PSM2} == true ) ]]; then
+    wgetdeps "psm2" "https://github.com/intel/opa-psm2/archive/PSM2_11.2.86.tar.gz" &
 fi
 
 # get Mercury
