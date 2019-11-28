@@ -1,12 +1,12 @@
 #!/bin/bash
 
 MOGON2_DEPS=(
-    "zstd" "lz4" "snappy" "bmi" "mercury" "argobots" "margo" "rocksdb" 
+    "zstd" "lz4" "snappy" "bmi" "mercury" "argobots" "margo" "rocksdb"
     "capstone" "syscall_intercept" "date" "psm2"
 )
 
 usage_short() {
-	echo "
+    echo "
 usage: compile_dep.sh [-h] [-l] [-n <NAPLUGIN>] [-c <CLUSTER>] [-d <DEPENDENCY>] [--use-bundled-psm2] [-j <COMPILE_CORES>]
                       source_path install_path
 	"
@@ -14,7 +14,7 @@ usage: compile_dep.sh [-h] [-l] [-n <NAPLUGIN>] [-c <CLUSTER>] [-d <DEPENDENCY>]
 
 help_msg() {
 
-	usage_short
+    usage_short
     echo "
 This script compiles all GekkoFS dependencies (excluding the fs itself)
 
@@ -42,6 +42,8 @@ optional arguments:
     --use-bundled-psm2          
                 Build libfabric with the recommended opa-psm2 library.
                 Otherwise system opa-psm2 is linked to libfabric
+    --na_sm_conf_path <PATH>
+                Used by Mercury to store na_sm configurations. Defaults to /tmp
     -j <COMPILE_CORES>, --compilecores <COMPILE_CORES>
                 number of cores that are used to compile the dependencies
                 defaults to number of available cores
@@ -49,14 +51,12 @@ optional arguments:
 "
 }
 
-
 list_dependencies() {
 
     echo "Available dependencies: "
 
     echo -n "  Mogon 2: "
-    for d in "${MOGON2_DEPS[@]}"
-    do
+    for d in "${MOGON2_DEPS[@]}"; do
         echo -n "$d "
     done
     echo ""
@@ -65,21 +65,22 @@ list_dependencies() {
 
 prepare_build_dir() {
     if [ ! -d "$1/build" ]; then
-        mkdir $1/build
+        mkdir "$1"/build
     fi
-    rm -rf $1/build/*
+    rm -rf "$1"/build/*
 }
 
 find_cmake() {
-    local CMAKE=`command -v cmake3 || command -v cmake`
+    local CMAKE
+    CMAKE=$(command -v cmake3 || command -v cmake)
     if [ $? -ne 0 ]; then
-        >&2 echo "ERROR: could not find cmake"
+        echo >&2 "ERROR: could not find cmake"
         exit 1
     fi
-    echo ${CMAKE}
+    echo "${CMAKE}"
 }
 
-PATCH_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PATCH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATCH_DIR="${PATCH_DIR}/patches"
 CLUSTER=""
 DEPENDENCY=""
@@ -89,103 +90,108 @@ SOURCE=""
 INSTALL=""
 USE_PSM2=false
 USE_BUNDLED_PSM2=false
+NA_SM_CONF_PATH=/tmp
 
 POSITIONAL=()
-while [[ $# -gt 0 ]]
-do
-key="$1"
+while [[ $# -gt 0 ]]; do
+    key="$1"
 
-case ${key} in
-    -n|--na)
-    NA_LAYER="$2"
-    shift # past argument
-    shift # past value
-    ;;
-	-c|--cluster)
-    CLUSTER="$2"
-    shift # past argument
-    shift # past value
-    ;;
+    case ${key} in
+    -n | --na)
+        NA_LAYER="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    -c | --cluster)
+        CLUSTER="$2"
+        shift # past argument
+        shift # past value
+        ;;
     --use-psm2)
-    USE_PSM2=true
-    shift # past argument
-    ;;
+        USE_PSM2=true
+        shift # past argument
+        ;;
     --use-bundled-psm2)
-    USE_BUNDLED_PSM2=true
-    shift # past argument
-    ;;
-    -d|--dependency)
-    if [[ -z "$2" ]]; then
-        echo "Missing argument for -d/--dependency option"
+        USE_BUNDLED_PSM2=true
+        shift # past argument
+        ;;
+    --na_sm_conf_path)
+        NA_SM_CONF_PATH="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    -d | --dependency)
+        if [[ -z "$2" ]]; then
+            echo "Missing argument for -d/--dependency option"
+            exit
+        fi
+        DEPENDENCY="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    -j | --compilecores)
+        CORES="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    -t | --test)
+        PERFORM_TEST=true
+        shift
+        ;;
+    -l | --list-dependencies)
+        list_dependencies
         exit
-    fi
-    DEPENDENCY="$2"
-    shift # past argument
-    shift # past value
-    ;;
-	-j|--compilecores)
-    CORES="$2"
-    shift # past argument
-    shift # past value
-    ;;
-    -t|--test)
-    PERFORM_TEST=true
-    shift
-    ;;
-    -l|--list-dependencies)
-    list_dependencies
-    exit
-    ;;
-    -h|--help)
-    help_msg
-	exit
-    #shift # past argument
-    ;;
-    *)    # unknown option
-    POSITIONAL+=("$1") # save it in an array for later
-    shift # past argument
-    ;;
-esac
+        ;;
+    -h | --help)
+        help_msg
+        exit
+        #shift # past argument
+        ;;
+    *) # unknown option
+        POSITIONAL+=("$1") # save it in an array for later
+        shift              # past argument
+        ;;
+    esac
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
 # deal with positional arguments
-if [[ ( -z ${1+x} ) || ( -z ${2+x} ) ]]; then
+if [[ (-z ${1+x}) || (-z ${2+x}) ]]; then
     echo "Positional arguments missing."
     usage_short
     exit 1
 fi
-SOURCE="$( readlink -mn "${1}" )"
-INSTALL="$( readlink -mn "${2}" )"
+SOURCE="$(readlink -mn "${1}")"
+INSTALL="$(readlink -mn "${2}")"
 
 # deal with optional arguments
-if [ "${NA_LAYER}" == "" ]; then
-	echo "Defaulting NAPLUGIN to 'all'"
-	NA_LAYER="all"
+if [[ "${NA_LAYER}" == "" ]]; then
+    echo "Defaulting NAPLUGIN to 'all'"
+    NA_LAYER="all"
 fi
-if [ "${CORES}" == "" ]; then
-	CORES=$(grep -c ^processor /proc/cpuinfo)
-	echo "CORES = ${CORES} (default)"
+if [[ "${CORES}" == "" ]]; then
+    CORES=$(grep -c ^processor /proc/cpuinfo)
+    echo "CORES = ${CORES} (default)"
 else
-	if [ ! "${CORES}" -gt "0" ]; then
-		echo "CORES set to ${CORES} which is invalid.
+    if [[ ! "${CORES}" -gt "0" ]]; then
+        echo "CORES set to ${CORES} which is invalid.
 Input must be numeric and greater than 0."
-		usage_short
-		exit
-	else
-		echo CORES    = "${CORES}"
-	fi
+        usage_short
+        exit
+    else
+        echo CORES = "${CORES}"
+    fi
 fi
-if [ "${NA_LAYER}" == "bmi" ] || [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
-	echo NAPLUGIN = "${NA_LAYER}"
+if [[ "${NA_LAYER}" == "bmi" || "${NA_LAYER}" == "ofi" || "${NA_LAYER}" == "all" ]]; then
+    echo NAPLUGIN = "${NA_LAYER}"
 else
     echo "No valid plugin selected"
     usage_short
     exit
 fi
 if [[ "${CLUSTER}" != "" ]]; then
-	if [[ ( "${CLUSTER}" == "mogon2" ) ]]; then
-		echo CLUSTER  = "${CLUSTER}"
+    if [[ "${CLUSTER}" == "mogon2" ]]; then
+        echo CLUSTER = "${CLUSTER}"
     else
         echo "${CLUSTER} cluster configuration is invalid. Exiting ..."
         usage_short
@@ -198,13 +204,13 @@ fi
 USE_BMI="-DNA_USE_BMI:BOOL=OFF"
 USE_OFI="-DNA_USE_OFI:BOOL=OFF"
 
-CMAKE=`find_cmake`
+CMAKE=$(find_cmake)
 CMAKE="${CMAKE} -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}"
 
-echo "Source path = ${SOURCE}";
-echo "Install path = ${INSTALL}";
+echo "Source path = ${SOURCE}"
+echo "Install path = ${INSTALL}"
 
-mkdir -p ${SOURCE}
+mkdir -p "${SOURCE}"
 
 ######### From now on exits on any error ########
 set -e
@@ -213,105 +219,104 @@ export CPATH="${CPATH}:${INSTALL}/include"
 export LIBRARY_PATH="${LIBRARY_PATH}:${INSTALL}/lib:${INSTALL}/lib64"
 
 # Set cluster dependencies first
-if [[ ( "${CLUSTER}" == "mogon2" ) ]]; then
+if [[ "${CLUSTER}" == "mogon2" ]]; then
     # compile zstd
-    if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "zstd" ) ]]; then
+    if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "zstd" ]]; then
         echo "############################################################ Installing:  zstd"
         CURR=${SOURCE}/zstd/build/cmake
-        prepare_build_dir ${CURR}
-        cd ${CURR}/build
-        $CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release ..
-        make -j${CORES}
+        prepare_build_dir "${CURR}"
+        cd "${CURR}"/build
+        $CMAKE -DCMAKE_INSTALL_PREFIX="${INSTALL}" -DCMAKE_BUILD_TYPE:STRING=Release ..
+        make -j"${CORES}"
         make install
     fi
 
     # build lz4
-    if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "zstd" ) ]]; then
+    if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "zstd" ]]; then
         echo "############################################################ Installing:  zstd"
         CURR=${SOURCE}/lz4
-        cd ${CURR}
-        make -j${CORES}
-        make DESTDIR=${INSTALL} PREFIX="" install
+        cd "${CURR}"
+        make -j"${CORES}"
+        make DESTDIR="${INSTALL}" PREFIX="" install
     fi
 
     # build snappy
-    if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "snappy" ) ]]; then
+    if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "snappy" ]]; then
         echo "############################################################ Installing:  snappy"
         CURR=${SOURCE}/snappy
-        prepare_build_dir ${CURR}
-        cd ${CURR}/build
-        $CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Release ..
-        make -j${CORES}
+        prepare_build_dir "${CURR}"
+        cd "${CURR}"/build
+        $CMAKE -DCMAKE_INSTALL_PREFIX="${INSTALL}" -DCMAKE_BUILD_TYPE:STRING=Release ..
+        make -j"${CORES}"
         make install
     fi
 
     # build capstone for syscall-intercept
-    if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "capstone" ) ]]; then
-      echo "############################################################ Installing:  capstone"
-      CURR=${SOURCE}/capstone
-      prepare_build_dir ${CURR}
-      cd ${CURR}/build
-      $CMAKE -DCMAKE_INSTALL_PREFIX=/home/vef/gekkofs_deps/install -DCMAKE_BUILD_TYPE:STRING=Release ..
-      make -j${CORES} install
+    if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "capstone" ]]; then
+        echo "############################################################ Installing:  capstone"
+        CURR=${SOURCE}/capstone
+        prepare_build_dir "${CURR}"
+        cd "${CURR}"/build
+        $CMAKE -DCMAKE_INSTALL_PREFIX=/home/vef/gekkofs_deps/install -DCMAKE_BUILD_TYPE:STRING=Release ..
+        make -j"${CORES}" install
     fi
 fi
 
 # build bmi
-if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "bmi" ) ]]; then
-    if [[ ( "${NA_LAYER}" == "bmi" ) || ( "${NA_LAYER}" == "all" ) ]]; then
+if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "bmi" ]]; then
+    if [[ "${NA_LAYER}" == "bmi" || "${NA_LAYER}" == "all" ]]; then
         USE_BMI="-DNA_USE_BMI:BOOL=ON"
         echo "############################################################ Installing:  BMI"
         # BMI
         CURR=${SOURCE}/bmi
-        prepare_build_dir ${CURR}
-        cd ${CURR}
+        prepare_build_dir "${CURR}"
+        cd "${CURR}"
         ./prepare
-        cd ${CURR}/build
-        CFLAGS="${CFLAGS} -w" ../configure --prefix=${INSTALL} --enable-shared --disable-static --disable-karma --enable-bmi-only --enable-fast --disable-strict
-        make -j${CORES}
+        cd "${CURR}"/build
+        CFLAGS="${CFLAGS} -w" ../configure --prefix="${INSTALL}" --enable-shared --disable-static --disable-karma --enable-bmi-only --enable-fast --disable-strict
+        make -j"${CORES}"
         make install
     fi
 fi
 
 # build ofi
-if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "ofi" ) ]]; then
-    if [[ ( "${NA_LAYER}" == "ofi" ) || ( "${NA_LAYER}" == "all" ) ]]; then
+if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "ofi" ]]; then
+    if [[ "${NA_LAYER}" == "ofi" || "${NA_LAYER}" == "all" ]]; then
         USE_OFI="-DNA_USE_OFI:BOOL=ON"
         echo "############################################################ Installing:  LibFabric"
         #libfabric
         CURR=${SOURCE}/libfabric
-        prepare_build_dir ${CURR}
-        cd ${CURR}/build
+        prepare_build_dir "${CURR}"
+        cd "${CURR}"/build
         # decide if to build with psm2
-        if [[ ( "${CLUSTER}" == "mogon2" ) || [[ ( ${USE_PSM2} == true ) && ( ${USE_BUNDLED_PSM2} == true ) ]] ]]; then
-            ../configure --prefix=${INSTALL} --enable-tcp=yes --enable-psm2=yes --with-psm2-src=${SOURCE}/psm2
-        elif [[ ( ${USE_PSM2} == true ) && ( ${USE_BUNDLED_PSM2} == false ) ]]; then
-            ../configure --prefix=${INSTALL} --enable-tcp=yes --enable-psm2=yes
+        if [[ "${CLUSTER}" == "mogon2" || (${USE_PSM2} == true && ${USE_BUNDLED_PSM2} == true) ]]; then
+            ../configure --prefix="${INSTALL}" --enable-tcp=yes --enable-psm2=yes --with-psm2-src="${SOURCE}"/psm2
+        elif [[ ${USE_PSM2} == true && ${USE_BUNDLED_PSM2} == false ]]; then
+            ../configure --prefix="${INSTALL}" --enable-tcp=yes --enable-psm2=yes
         else
-            ../configure --prefix=${INSTALL} --enable-tcp=yes
+            ../configure --prefix="${INSTALL}" --enable-tcp=yes
         fi
-        make -j${CORES}
+        make -j"${CORES}"
         make install
         [ "${PERFORM_TEST}" ] && make check
     fi
 fi
 
-
 # Mercury
-if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "mercury" ) ]]; then
+if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "mercury" ]]; then
 
-    if [ "$NA_LAYER" == "bmi" ] || [ "$NA_LAYER" == "all" ]; then
+    if [[ "${NA_LAYER}" == "bmi" || "${NA_LAYER}" == "all" ]]; then
         USE_BMI="-DNA_USE_BMI:BOOL=ON"
     fi
 
-    if [ "$NA_LAYER" == "ofi" ] || [ "$NA_LAYER" == "all" ]; then
+    if [[ "${NA_LAYER}" == "ofi" || "${NA_LAYER}" == "all" ]]; then
         USE_OFI="-DNA_USE_OFI:BOOL=ON"
     fi
 
     echo "############################################################ Installing:  Mercury"
     CURR=${SOURCE}/mercury
-    prepare_build_dir ${CURR}
-    cd ${CURR}/build
+    prepare_build_dir "${CURR}"
+    cd "${CURR}"/build
     PKG_CONFIG_PATH=${INSTALL}/lib/pkgconfig $CMAKE \
         -DCMAKE_BUILD_TYPE:STRING=Release \
         -DBUILD_TESTING:BOOL=ON \
@@ -321,71 +326,70 @@ if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "mercury" ) ]]; then
         -DMERCURY_USE_BOOST_PP:BOOL=ON \
         -DMERCURY_USE_EAGER_BULK:BOOL=ON \
         -DBUILD_SHARED_LIBS:BOOL=ON \
-        -DNA_SM_TMP_DIRECTORY:STRING="/dev/shm" \
-        -DCMAKE_INSTALL_PREFIX=${INSTALL} \
+        -DNA_SM_TMP_DIRECTORY:STRING="${NA_SM_CONF_PATH}" \
+        -DCMAKE_INSTALL_PREFIX="${INSTALL}" \
         ${USE_BMI} ${USE_OFI} \
         ..
-    make -j${CORES}
+    make -j"${CORES}"
     make install
 fi
 
 # Argobots
-if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "argobots" ) ]]; then
+if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "argobots" ]]; then
     echo "############################################################ Installing:  Argobots"
     CURR=${SOURCE}/argobots
-    prepare_build_dir ${CURR}
-    cd ${CURR}
+    prepare_build_dir "${CURR}"
+    cd "${CURR}"
     ./autogen.sh
-    cd ${CURR}/build
-    ../configure --prefix=${INSTALL} --enable-perf-opt --disable-checks
-    make -j${CORES}
+    cd "${CURR}"/build
+    ../configure --prefix="${INSTALL}" --enable-perf-opt --disable-checks
+    make -j"${CORES}"
     make install
     [ "${PERFORM_TEST}" ] && make check
 fi
 
 # Margo
-if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "margo" ) ]]; then
+if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "margo" ]]; then
     echo "############################################################ Installing:  Margo"
     CURR=${SOURCE}/margo
-    prepare_build_dir ${CURR}
-    cd ${CURR}
+    prepare_build_dir "${CURR}"
+    cd "${CURR}"
     ./prepare.sh
-    cd ${CURR}/build
-    ../configure --prefix=${INSTALL} PKG_CONFIG_PATH=${INSTALL}/lib/pkgconfig CFLAGS="${CFLAGS} -Wall -O3"
-    make -j${CORES}
+    cd "${CURR}"/build
+    ../configure --prefix="${INSTALL}" PKG_CONFIG_PATH="${INSTALL}"/lib/pkgconfig CFLAGS="${CFLAGS} -Wall -O3"
+    make -j"${CORES}"
     make install
     [ "${PERFORM_TEST}" ] && make check
 fi
 
 # Rocksdb
-if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "rocksdb" ) ]]; then
+if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "rocksdb" ]]; then
     echo "############################################################ Installing:  Rocksdb"
     CURR=${SOURCE}/rocksdb
-    cd ${CURR}
+    cd "${CURR}"
     make clean
-    USE_RTTI=1 make -j${CORES} static_lib
-    INSTALL_PATH=${INSTALL} make install
+    USE_RTTI=1 make -j"${CORES}" static_lib
+    INSTALL_PATH="${INSTALL}" make install
 fi
 
 # syscall_intercept
-if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "syscall_intercept" ) ]]; then
+if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "syscall_intercept" ]]; then
     echo "############################################################ Installing:  Syscall_intercept"
     CURR=${SOURCE}/syscall_intercept
-    prepare_build_dir ${CURR}
-    cd ${CURR}/build
-    $CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_BUILD_TYPE:STRING=Debug -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTS:BOOK=OFF ..
+    prepare_build_dir "${CURR}"
+    cd "${CURR}"/build
+    $CMAKE -DCMAKE_INSTALL_PREFIX="${INSTALL}" -DCMAKE_BUILD_TYPE:STRING=Debug -DBUILD_EXAMPLES:BOOL=OFF -DBUILD_TESTS:BOOK=OFF ..
     make install
 fi
 
 # date
-if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "date" ) ]]; then
+if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "date" ]]; then
     echo "############################################################ Installing:  date"
     CURR=${SOURCE}/date
-    prepare_build_dir ${CURR}
-    cd ${CURR}/build
-    $CMAKE -DCMAKE_INSTALL_PREFIX=${INSTALL} -DCMAKE_CXX_STANDARD:STRING=14 -DUSE_SYSTEM_TZ_DB:BOOL=ON -DBUILD_SHARED_LIBS:BOOL=ON ..
+    prepare_build_dir "${CURR}"
+    cd "${CURR}"/build
+    $CMAKE -DCMAKE_INSTALL_PREFIX="${INSTALL}" -DCMAKE_CXX_STANDARD:STRING=14 -DUSE_SYSTEM_TZ_DB:BOOL=ON -DBUILD_SHARED_LIBS:BOOL=ON ..
     make install
 fi
-
 
 echo "Done"
