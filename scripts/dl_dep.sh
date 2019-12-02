@@ -63,11 +63,11 @@ clonedeps() {
         cd "${SOURCE}/${FOLDER}" && git fetch -q
         ACTION="Pulled"
     else
-        git clone "${COMMON_GIT_FLAGS}" "${GIT_FLAGS}" -- "${REPO}" "${SOURCE}/${FOLDER}"
+        git clone ${COMMON_GIT_FLAGS} ${GIT_FLAGS} -- "${REPO}" "${SOURCE}/${FOLDER}"
         ACTION="Cloned"
     fi
     # fix the version
-    cd "${SOURCE}/${FOLDER}" && git checkout -qf "${COMMIT}"
+    cd "${SOURCE}/${FOLDER}" && git checkout -qf ${COMMIT}
     echo "${ACTION} ${FOLDER} [$COMMIT]"
 
     # apply patch if provided
@@ -93,7 +93,7 @@ wgetdeps() {
     if [[ -f "${SOURCE}/$FILENAME" ]]; then
         rm -f "${SOURCE}/$FILENAME"
     fi
-    curl "${COMMON_CURL_FLAGS}" "$URL" || error_exit "Failed to download ${URL}" $?
+    curl ${COMMON_CURL_FLAGS} "$URL" || error_exit "Failed to download ${URL}" $?
     tar -xf "$FILENAME" --directory "${SOURCE}/${FOLDER}" --strip-components=1
     rm -f "$FILENAME"
     echo "Downloaded ${FOLDER}"
