@@ -145,20 +145,8 @@ hermes::endpoint lookup_endpoint(const std::string& uri,
 
 void load_hosts() {
     string hosts_file;
-    try {
-        hosts_file = gkfs::get_env_own("HOSTS_FILE");
-    } catch (const exception& e) {
-        char* homedir = NULL;
-        struct passwd *pw = getpwuid(getuid());
-        if (pw) {
-            homedir = pw->pw_dir;
-            hosts_file = string(homedir)+"/gkfs_hosts.txt"s;
-        }
-        CTX->log()->info("{}() Failed to get hosts file path"
-                         " from environment, using default: '{}'",
-                         __func__, DEFAULT_HOSTS_FILE);
-        hosts_file = DEFAULT_HOSTS_FILE;
-    }
+
+    hosts_file = gkfs::env::get_var(gkfs::env::HOSTS_FILE, DEFAULT_HOSTS_FILE);
 
     vector<pair<string, string>> hosts;
     try {
