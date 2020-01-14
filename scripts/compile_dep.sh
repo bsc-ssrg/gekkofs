@@ -293,6 +293,15 @@ fi
 
 # Mercury
 if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "mercury" ) ]]; then
+
+    if [ "$NA_LAYER" == "bmi" ] || [ "$NA_LAYER" == "all" ]; then
+        USE_BMI="-DNA_USE_BMI:BOOL=ON"
+    fi
+
+    if [ "$NA_LAYER" == "ofi" ] || [ "$NA_LAYER" == "all" ]; then
+        USE_OFI="-DNA_USE_OFI:BOOL=ON"
+    fi
+
     echo "############################################################ Installing:  Mercury"
     CURR=${SOURCE}/mercury
     prepare_build_dir ${CURR}

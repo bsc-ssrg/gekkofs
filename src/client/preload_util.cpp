@@ -193,6 +193,8 @@ void load_hosts() {
             CTX->local_host_id(id);
             local_host_found = true;
         }
+
+        LOG(DEBUG, "Found peer: {}", addrs[id].to_string()); 
     }
 
     if (!local_host_found) {

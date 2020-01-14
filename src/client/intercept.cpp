@@ -21,6 +21,8 @@
 #include <syscall.h>
 #include <errno.h>
 #include <boost/optional.hpp>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include <printf.h>
 
@@ -283,6 +285,67 @@ hook_internal(long syscall_number,
 
             break;
 
+        case SYS_eventfd:
+
+            *result = syscall_no_intercept(syscall_number,
+                                           static_cast<int>(arg0));
+
+            if(*result >= 0) {
+                *result = CTX->register_internal_fd(*result);
+            }
+            break;
+
+        case SYS_eventfd2:
+
+            *result = syscall_no_intercept(syscall_number,
+                                           static_cast<int>(arg0),
+                                           static_cast<int>(arg1));
+
+            if(*result >= 0) {
+                *result = CTX->register_internal_fd(*result);
+            }
+            break;
+
+        case SYS_recvmsg:
+        {
+            *result = syscall_no_intercept(syscall_number,
+                                        static_cast<int>(arg0),
+                                        reinterpret_cast<struct msghdr*>(arg1),
+                                        static_cast<int>(arg2));
+
+            // The recvmsg() syscall can receive file descriptors from another
+            // process that the kernel automatically adds to the client's fds
+            // as if dup2 had been called. Whenever that happens, we need to
+            // make sure that we register these additional fds as internal, or
+            // we could inadvertently overwrite them
+            if(*result >= 0) {
+                auto* hdr = reinterpret_cast<struct msghdr*>(arg1);
+                struct cmsghdr* cmsg = CMSG_FIRSTHDR(hdr);
+
+                for(; cmsg != NULL; cmsg = CMSG_NXTHDR(hdr, cmsg)) {
+                    if(cmsg->cmsg_type == SCM_RIGHTS) {
+
+                        size_t nfd = cmsg->cmsg_len > CMSG_LEN(0) ? 
+                            (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int) : 
+                            0;
+
+                        int* fds =
+                            reinterpret_cast<int*>(CMSG_DATA(cmsg));
+
+                        for(size_t i = 0; i < nfd; ++i) {
+                            LOG(DEBUG, "recvmsg() provided extra fd {}", fds[i]);
+
+                            // ensure we update the fds in cmsg
+                            // if they have been relocated
+                            fds[i] = CTX->register_internal_fd(fds[i]);
+                        }
+                    }
+                }
+            }
+
+            break;
+        }
+
         case SYS_accept:
             *result = syscall_no_intercept(syscall_number,
                                            static_cast<int>(arg0),
@@ -294,6 +357,18 @@ hook_internal(long syscall_number,
             }
             break;
 
+        case SYS_fcntl:
+            *result = syscall_no_intercept(syscall_number,
+                                           static_cast<int>(arg0),
+                                           static_cast<int>(arg1),
+                                           arg2);
+
+            if(*result >= 0 &&
+               (static_cast<int>(arg1) == F_DUPFD ||
+                static_cast<int>(arg1) == F_DUPFD_CLOEXEC)) {
+                *result = CTX->register_internal_fd(*result);
+            }
+            break;
 
         case SYS_close:
             *result = syscall_no_intercept(syscall_number,
