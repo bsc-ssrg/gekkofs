@@ -264,12 +264,14 @@ if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "bmi" ) ]]; then
 fi
 
 # get libfabric
-if [[ ( "${DEPENDENCY}" == "" ) || ( "${DEPENDENCY}" == "ofi" ) ]]; then
-    if [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
-        # No need to get libfabric for mogon2 as it is already installed
-        if [[ ("${CLUSTER}" != "mogon2") ]]; then
-            wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.7.2/libfabric-1.7.2.tar.gz" &
-        fi
+if [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
+    # getting specific libpsm2 version to compile into libfabric
+    if [[ ("${CLUSTER}" == "mogon2") ]]; then
+       wgetdeps "psm2" "https://github.com/intel/opa-psm2/archive/PSM2_11.2.77.tar.gz" & 
+   fi
+    # No need to get libfabric for mogon2 as it is already installed
+    if [[ ("${CLUSTER}" != "mogon2") ]]; then
+        wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.8.1rc1/libfabric-1.8.1rc1.tar.gz" 
     fi
 fi
 
