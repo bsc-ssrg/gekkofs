@@ -300,7 +300,7 @@ int main(int argc, const char* argv[]) {
             ("listen,l", po::value<string>(), "Address or interface to bind the daemon on. Default: local hostname")
             ("hosts-file,H", po::value<string>(),
                              "Shared file used by deamons to register their "
-                             "enpoints. (default './gkfs_hosts.txt')")
+                             "endpoints. (default './gkfs_hosts.txt')")
             ("version,h", "print version and exit");
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);

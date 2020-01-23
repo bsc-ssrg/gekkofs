@@ -232,8 +232,8 @@ if [[ "${CLUSTER}" == "mogon2" ]]; then
     fi
 
     # build lz4
-    if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "zstd" ]]; then
-        echo "############################################################ Installing:  zstd"
+    if [[ "${DEPENDENCY}" == "" || "${DEPENDENCY}" == "lz4" ]]; then
+        echo "############################################################ Installing:  lz4"
         CURR=${SOURCE}/lz4
         cd "${CURR}"
         make -j"${CORES}"
@@ -257,7 +257,7 @@ if [[ "${CLUSTER}" == "mogon2" ]]; then
         CURR=${SOURCE}/capstone
         prepare_build_dir "${CURR}"
         cd "${CURR}"/build
-        $CMAKE -DCMAKE_INSTALL_PREFIX=/home/vef/gekkofs_deps/install -DCMAKE_BUILD_TYPE:STRING=Release ..
+        $CMAKE -DCMAKE_INSTALL_PREFIX="${INSTALL}" -DCMAKE_BUILD_TYPE:STRING=Release ..
         make -j"${CORES}" install
     fi
 fi
