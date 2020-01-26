@@ -65,6 +65,7 @@
 #define DAEMON_ENV_PREFIX "GKFS_"
 
 // Log
+#define DEFAULT_DAEMON_PID_PATH "/tmp/gkfs_daemon"
 #define DEFAULT_CLIENT_LOG_PATH "/tmp/gkfs_client.log"
 #define DEFAULT_DAEMON_LOG_PATH "/tmp/gkfs_daemon.log"
 

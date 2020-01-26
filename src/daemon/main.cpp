@@ -13,7 +13,8 @@
 
 
 #include <daemon/main.hpp>
-#include "version.hpp"
+#include <daemon/util.hpp>
+#include <version.hpp>
 #include <global/log_util.hpp>
 #include <global/env_util.hpp>
 #include <global/rpc/rpc_types.hpp>
@@ -26,10 +27,8 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
-#include <boost/tokenizer.hpp>
 
 #include <iostream>
-#include <fstream>
 #include <csignal>
 #include <unistd.h>
 #include <condition_variable>
@@ -95,11 +94,12 @@ void init_environment() {
     } catch (const std::exception& e ) {
         throw runtime_error("Failed to write root metadentry to KV store: "s + e.what());
     }
-
+    // setup hostfile to let clients know that a daemon is running on this host
     if (!ADAFS_DATA->hosts_file().empty()) {
-        populate_hosts_file();
+        gkfs::util::populate_hosts_file();
     }
-
+    // create pid file for the gkfs launcher
+    gkfs::util::create_pid_file();
     ADAFS_DATA->spdlogger()->info("Startup successful. Daemon is ready.");
 }
 
@@ -119,7 +119,7 @@ void destroy_enviroment() {
     if (!ADAFS_DATA->hosts_file().empty()) {
         ADAFS_DATA->spdlogger()->debug("{}() Removing hosts file", __func__);
         try {
-            destroy_hosts_file();
+            gkfs::util::destroy_hosts_file();
         } catch (const bfs::filesystem_error& e) {
             ADAFS_DATA->spdlogger()->debug("{}() hosts file not found", __func__);
         }
@@ -132,6 +132,9 @@ void destroy_enviroment() {
 
     ADAFS_DATA->spdlogger()->info("{}() Closing metadata DB", __func__);
     ADAFS_DATA->close_mdb();
+
+    ADAFS_DATA->spdlogger()->info("{}() Removing pid file", __func__);
+    gkfs::util::remove_pid_file();
 }
 
 void init_io_tasklet_pool() {
@@ -235,25 +238,7 @@ void register_server_rpcs(margo_instance_id mid) {
     MARGO_REGISTER(mid, hg_tag::chunk_stat, rpc_chunk_stat_in_t, rpc_chunk_stat_out_t, rpc_srv_chunk_stat);
 }
 
-void populate_hosts_file() {
-    const auto& hosts_file = ADAFS_DATA->hosts_file();
-    ADAFS_DATA->spdlogger()->debug("{}() Populating hosts file: '{}'", __func__, hosts_file);
-    ofstream lfstream(hosts_file, ios::out | ios::app);
-    if (!lfstream) {
-        throw runtime_error(
-                fmt::format("Failed to open hosts file '{}': {}", hosts_file, strerror(errno)));
-    }
-    lfstream << fmt::format("{} {}", get_my_hostname(true), RPC_DATA->self_addr_str()) << std::endl;
-    if (!lfstream) {
-        throw runtime_error(
-                fmt::format("Failed to write on hosts file '{}': {}", hosts_file, strerror(errno)));
-    }
-    lfstream.close();
-}
 
-void destroy_hosts_file() {
-    std::remove(ADAFS_DATA->hosts_file().c_str());
-}
 
 void shutdown_handler(int dummy) {
     ADAFS_DATA->spdlogger()->info("{}() Received signal: '{}'", __func__, strsignal(dummy));
@@ -403,8 +388,8 @@ int main(int argc, const char* argv[]) {
     unique_lock<mutex> lk(mtx);
     // Wait for shutdown signal to initiate shutdown protocols
     shutdown_please.wait(lk);
-    ADAFS_DATA->spdlogger()->info("{}() Shutting down", __func__);
+    ADAFS_DATA->spdlogger()->info("{}() Shutting down...", __func__);
     destroy_enviroment();
-    ADAFS_DATA->spdlogger()->info("{}() Exiting", __func__);
+    ADAFS_DATA->spdlogger()->info("{}() Complete. Exiting...", __func__);
     return 0;
 }
