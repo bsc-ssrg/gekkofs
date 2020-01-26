@@ -13,6 +13,7 @@ MPI_HOSTS_ARGS=""
 PRETEND=false
 
 daemon_start() {
+  ORTERUN=$(command -v orterun)
   # Setup
   local MPI_ENV_ARGS="-x PSM2_MULTI_EP=1 "
   if [[ -n ${ENV_VAR} ]]; then
@@ -30,17 +31,18 @@ daemon_start() {
   # orterun --np 2 --map-by node --hostfile /home/vef/hostfile --enable-recovery -x PSM2_MULTI_EP=1 /home/vef/gekkofs/build/src/daemon/gkfs_daemon -r /tmp/rootdir -m /tmp/mountdir -H ~/vef_m2/gkfs_hostfile
   local GKFS_CMD="${DAEMON_PATH} -r ${ROOTDIR} -m ${MOUNTDIR} -H ${GKFS_HOSTFILE_PATH}"
   if [[ ${USE_MPI} == true ]]; then
-    local START_CMD="orterun -n ${NODENUM} --map-by node ${MPI_HOSTS_ARGS} ${MPI_ENV_ARGS} ${GKFS_CMD}"
+    local START_CMD="${ORTERUN} -n ${NODENUM} --map-by node ${MPI_HOSTS_ARGS} ${MPI_ENV_ARGS} ${GKFS_CMD}"
   else
     local START_CMD="srun ${GKFS_CMD}"
   fi
   # Execution
-  echo "Running: ${START_CMD}"
+  echo "[RUNNING]: ${START_CMD}"
   if [[ ${PRETEND} == true ]]; then
     echo "Just kidding."
     return
   fi
-  ${START_CMD}
+  # shellcheck disable=SC2086
+  nohup ${START_CMD} >> /tmp/gkfs_launcher.log 2>&1 &
 }
 
 daemon_status() {
@@ -162,34 +164,34 @@ if [[ ! -d $(dirname "${GKFS_HOSTFILE_PATH}") ]]; then
   exit 1
 fi
 if [[ -z ${NODES} ]]; then
-  echo "INFO: Running on 1 node"
+  echo "[INFO]: Running on 1 node"
 else
   # check if given string is path or commaseparated list
   if [[ -e ${NODES} ]]; then
     MPI_HOSTS_ARGS="--hostfile ${NODES}"
     NODES_TYPE="HOSTFILE"
     NODENUM=$(wc -l < "${NODES}")
-    echo "INFO: Running on ${NODENUM} nodes"
+    echo "[INFO]: Running on ${NODENUM} nodes"
   else
     MPI_HOSTS_ARGS="-H ${NODES}"
     NODENUM=$(( $(grep -o "," <<< "${NODES}" | wc -l) + 1))
-    echo "INFO: Running on ${NODENUM} nodes"
+    echo "[INFO]: Running on ${NODENUM} nodes"
   fi
 fi
 
 case ${CMD} in
   start)
-    func_start
+    daemon_start
     ;;
   restart)
-    func_stop
-    func_start
+    daemon_stop
+    daemon_start
     ;;
   status)
-    func_status
+    daemon_status
     ;;
   stop)
-    func_stop
+    daemon_stop
     ;;
   *)
     echo "Positional argument not valid: ${CMD}"
