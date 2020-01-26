@@ -11,8 +11,8 @@
   SPDX-License-Identifier: MIT
 */
 
-#include "global/metadata.hpp"
-#include "global/configure.hpp"
+#include <global/metadata.hpp>
+#include <config.hpp>
 
 #include <fmt/format.h>
 #include <sys/stat.h>
@@ -75,31 +75,31 @@ Metadata::Metadata(const std::string& binary_str) {
     ptr += read;
 
     // The order is important. don't change.
-    if (MDATA_USE_ATIME) {
+    if (gkfs_config::metadata::use_atime) {
         assert(*ptr == MSP);
         atime_ = static_cast<time_t>(std::stol(++ptr, &read));
         assert(read > 0);
         ptr += read;
     }
-    if (MDATA_USE_MTIME) {
+    if (gkfs_config::metadata::use_mtime) {
         assert(*ptr == MSP);
         mtime_ = static_cast<time_t>(std::stol(++ptr, &read));
         assert(read > 0);
         ptr += read;
     }
-    if (MDATA_USE_CTIME) {
+    if (gkfs_config::metadata::use_ctime) {
         assert(*ptr == MSP);
         ctime_ = static_cast<time_t>(std::stol(++ptr, &read));
         assert(read > 0);
         ptr += read;
     }
-    if (MDATA_USE_LINK_CNT) {
+    if (gkfs_config::metadata::use_link_cnt) {
         assert(*ptr == MSP);
         link_count_ = static_cast<nlink_t>(std::stoul(++ptr, &read));
         assert(read > 0);
         ptr += read;
     }
-    if (MDATA_USE_BLOCKS) { // last one will not encounter a delimiter anymore
+    if (gkfs_config::metadata::use_blocks) { // last one will not encounter a delimiter anymore
         assert(*ptr == MSP);
         blocks_ = static_cast<blkcnt_t>(std::stoul(++ptr, &read));
         assert(read > 0);
@@ -111,7 +111,7 @@ Metadata::Metadata(const std::string& binary_str) {
     assert(*ptr == MSP);
     target_path_ = ++ptr;
     // target_path should be there only if this is a link
-    assert(target_path_.size() == 0 || S_ISLNK(mode_));
+    assert(target_path_.empty() || S_ISLNK(mode_));
     ptr += target_path_.size();
 #endif
 
@@ -126,23 +126,23 @@ std::string Metadata::serialize() const
     s += fmt::format_int(mode_).c_str(); // add mandatory mode
     s += MSP;
     s += fmt::format_int(size_).c_str(); // add mandatory size
-    if (MDATA_USE_ATIME) {
+    if (gkfs_config::metadata::use_atime) {
         s += MSP;
         s += fmt::format_int(atime_).c_str();
     }
-    if (MDATA_USE_MTIME) {
+    if (gkfs_config::metadata::use_mtime) {
         s += MSP;
         s += fmt::format_int(mtime_).c_str();
     }
-    if (MDATA_USE_CTIME) {
+    if (gkfs_config::metadata::use_ctime) {
         s += MSP;
         s += fmt::format_int(ctime_).c_str();
     }
-    if (MDATA_USE_LINK_CNT) {
+    if (gkfs_config::metadata::use_link_cnt) {
         s += MSP;
         s += fmt::format_int(link_count_).c_str();
     }
-    if (MDATA_USE_BLOCKS) {
+    if (gkfs_config::metadata::use_blocks) {
         s += MSP;
         s += fmt::format_int(blocks_).c_str();
     }
@@ -180,56 +180,56 @@ time_t Metadata::atime() const {
     return atime_;
 }
 
-void Metadata::atime(time_t atime_) {
-    Metadata::atime_ = atime_;
+void Metadata::atime(time_t atime) {
+    Metadata::atime_ = atime;
 }
 
 time_t Metadata::mtime() const {
     return mtime_;
 }
 
-void Metadata::mtime(time_t mtime_) {
-    Metadata::mtime_ = mtime_;
+void Metadata::mtime(time_t mtime) {
+    Metadata::mtime_ = mtime;
 }
 
 time_t Metadata::ctime() const {
     return ctime_;
 }
 
-void Metadata::ctime(time_t ctime_) {
-    Metadata::ctime_ = ctime_;
+void Metadata::ctime(time_t ctime) {
+    Metadata::ctime_ = ctime;
 }
 
 mode_t Metadata::mode() const {
     return mode_;
 }
 
-void Metadata::mode(mode_t mode_) {
-    Metadata::mode_ = mode_;
+void Metadata::mode(mode_t mode) {
+    Metadata::mode_ = mode;
 }
 
 nlink_t Metadata::link_count() const {
     return link_count_;
 }
 
-void Metadata::link_count(nlink_t link_count_) {
-    Metadata::link_count_ = link_count_;
+void Metadata::link_count(nlink_t link_count) {
+    Metadata::link_count_ = link_count;
 }
 
 size_t Metadata::size() const {
     return size_;
 }
 
-void Metadata::size(size_t size_) {
-    Metadata::size_ = size_;
+void Metadata::size(size_t size) {
+    Metadata::size_ = size;
 }
 
 blkcnt_t Metadata::blocks() const {
     return blocks_;
 }
 
-void Metadata::blocks(blkcnt_t blocks_) {
-    Metadata::blocks_ = blocks_;
+void Metadata::blocks(blkcnt_t blocks) {
+    Metadata::blocks_ = blocks;
 }
 
 #ifdef HAS_SYMLINKS

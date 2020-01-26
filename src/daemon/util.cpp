@@ -104,9 +104,9 @@ string gkfs::util::get_pid_file_path() {
         auto port_idx = RPC_DATA->self_addr_str().find(':', sockets_idx + protocol_substr.length()) + 1;
         auto port = RPC_DATA->self_addr_str().substr(port_idx, RPC_DATA->self_addr_str().length() - port_idx);
         // get port from self addr
-        pid_path = fmt::format("{}_{}_{}.pid", DEFAULT_DAEMON_PID_PATH, used_interf, port);
+        pid_path = fmt::format("{}_{}_{}.pid", gkfs_config::daemon_pid_path, used_interf, port);
     } else
-        pid_path = fmt::format("{}_{}.pid", DEFAULT_DAEMON_PID_PATH, used_interf);
+        pid_path = fmt::format("{}_{}.pid", gkfs_config::daemon_pid_path, used_interf);
 
     return pid_path;
 }

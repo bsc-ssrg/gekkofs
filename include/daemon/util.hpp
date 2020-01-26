@@ -11,8 +11,8 @@
   SPDX-License-Identifier: MIT
 */
 
-#ifndef GEKKOFS_UTIL_HPP
-#define GEKKOFS_UTIL_HPP
+#ifndef GEKKOFS_DAEMON_UTIL_HPP
+#define GEKKOFS_DAEMON_UTIL_HPP
 
 #include <string>
 #include <vector>
@@ -33,4 +33,4 @@ namespace gkfs {
     }
 }
 
-#endif //GEKKOFS_UTIL_HPP
+#endif //GEKKOFS_DAEMON_UTIL_HPP

@@ -19,7 +19,6 @@
 #include <libsyscall_intercept_hook_point.h>
 
 #include "global/path_util.hpp"
-#include "global/configure.hpp"
 #include "client/preload.hpp"
 #include "client/logging.hpp"
 #include "client/env.hpp"

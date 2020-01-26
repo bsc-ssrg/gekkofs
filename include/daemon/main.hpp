@@ -18,7 +18,7 @@
 #include <string>
 #include <spdlog/spdlog.h>
 
-#include <global/configure.hpp>
+#include <config.hpp>
 #include <global/global_defs.hpp>
 // margo
 extern "C" {

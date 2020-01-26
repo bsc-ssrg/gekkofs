@@ -25,15 +25,17 @@
 #include <client/resolve.hpp>
 
 #include <global/path_util.hpp>
+#include <config.hpp>
+
 #include <cassert>
 #include <cstdio>
 
-decltype(PreloadContext::MIN_INTERNAL_FD) constexpr 
-PreloadContext::MIN_INTERNAL_FD;
-decltype(PreloadContext::MAX_USER_FDS) constexpr 
-PreloadContext::MAX_USER_FDS;
+decltype(PreloadContext::MIN_INTERNAL_FD) constexpr
+        PreloadContext::MIN_INTERNAL_FD;
+decltype(PreloadContext::MAX_USER_FDS) constexpr
+        PreloadContext::MAX_USER_FDS;
 
-PreloadContext::PreloadContext():
+PreloadContext::PreloadContext() :
     ofm_(std::make_shared<OpenFileMap>()),
     fs_conf_(std::make_shared<FsConfig>()) {
 
@@ -44,11 +46,11 @@ PreloadContext::PreloadContext():
 void 
 PreloadContext::init_logging() {
 
-    const std::string log_opts = 
-        gkfs::env::get_var(gkfs::env::LOG, DEFAULT_CLIENT_LOG_LEVEL);
+    const std::string log_opts =
+            gkfs::env::get_var(gkfs::env::LOG, gkfs_config::logging::client_log_level);
 
-    const std::string log_output = 
-        gkfs::env::get_var(gkfs::env::LOG_OUTPUT, DEFAULT_CLIENT_LOG_PATH);
+    const std::string log_output =
+            gkfs::env::get_var(gkfs::env::LOG_OUTPUT, gkfs_config::logging::client_log_path);
 
 #ifdef GKFS_DEBUG_BUILD
     // atoi returns 0 if no int conversion can be performed, which works

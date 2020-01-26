@@ -17,7 +17,9 @@
 #include <global/rpc/distributor.hpp>
 #include <global/rpc/rpc_utils.hpp>
 #include <global/env_util.hpp>
-#include "global/ofi_utils.hpp"
+#include <global/ofi_utils.hpp>
+#include <global/global_defs.hpp>
+
 #include <hermes.hpp>
 
 #include <fstream>
@@ -26,7 +28,6 @@
 #include <csignal>
 #include <random>
 #include <sys/sysmacros.h>
-#include <global/global_defs.hpp>
 
 using namespace std;
 
@@ -37,7 +38,7 @@ using namespace std;
  * @param attr
  * @return
  */
-int metadata_to_stat(const std::string& path, const Metadata& md, struct stat& attr) {
+int gkfs::client::metadata_to_stat(const std::string& path, const Metadata& md, struct stat& attr) {
 
     /* Populate default values */
     attr.st_dev = makedev(0, 0);
@@ -46,7 +47,7 @@ int metadata_to_stat(const std::string& path, const Metadata& md, struct stat& a
     attr.st_uid = CTX->fs_conf()->uid;
     attr.st_gid = CTX->fs_conf()->gid;
     attr.st_rdev = 0;
-    attr.st_blksize = CHUNKSIZE;
+    attr.st_blksize = gkfs_config::rpc::chunksize;
     attr.st_blocks = 0;
 
     memset(&attr.st_atim, 0, sizeof(timespec));
@@ -80,14 +81,14 @@ int metadata_to_stat(const std::string& path, const Metadata& md, struct stat& a
     return 0;
 }
 
-vector<pair<string, string>> load_hosts_file(const std::string& lfpath) {
+vector<pair<string, string>> gkfs::client::load_hostfile(const std::string& lfpath) {
 
     LOG(DEBUG, "Loading hosts file: \"{}\"", lfpath);
 
     ifstream lf(lfpath);
     if (!lf) {
         throw runtime_error(fmt::format("Failed to open hosts file '{}': {}",
-                            lfpath, strerror(errno)));
+                                        lfpath, strerror(errno)));
     }
     vector<pair<string, string>> hosts;
     const regex line_re("^(\\S+)\\s+(\\S+)$",
@@ -112,7 +113,7 @@ vector<pair<string, string>> load_hosts_file(const std::string& lfpath) {
     return hosts;
 }
 
-hermes::endpoint lookup_endpoint(const std::string& uri, 
+hermes::endpoint lookup_endpoint(const std::string& uri,
                                  std::size_t max_retries = 3) {
 
     LOG(DEBUG, "Looking up address \"{}\"", uri);
@@ -143,21 +144,21 @@ hermes::endpoint lookup_endpoint(const std::string& uri,
                         uri, error_msg));
 }
 
-void load_hosts() {
-    string hosts_file;
+void gkfs::client::load_hosts() {
+    string hostfile;
 
-    hosts_file = gkfs::env::get_var(gkfs::env::HOSTS_FILE, DEFAULT_HOSTS_FILE);
+    hostfile = gkfs::env::get_var(gkfs::env::HOSTS_FILE, gkfs_config::hostfile_path);
 
     vector<pair<string, string>> hosts;
     try {
-        hosts = load_hosts_file(hosts_file);
+        hosts = gkfs::client::load_hostfile(hostfile);
     } catch (const exception& e) {
         auto emsg = fmt::format("Failed to load hosts file: {}", e.what());
         throw runtime_error(emsg);
     }
 
     if (hosts.size() == 0) {
-        throw runtime_error(fmt::format("Host file empty: '{}'", hosts_file));
+        throw runtime_error(fmt::format("Hostfile empty: '{}'", hostfile));
     }
 
     LOG(INFO, "Hosts pool size: {}", hosts.size());
@@ -200,7 +201,7 @@ void load_hosts() {
                 uri.erase(0, pos);
         }
 #endif
-        if (string(RPC_PROTOCOL) == rpc_protocol::ofi_psm2) {
+        if (string(RPC_PROTOCOL) == gkfs::rpc::protocol::ofi_psm2) {
             // convert ip address to native psm2 address that is required for the Mercury lookup address
             LOG(INFO, "Looking up native address for host '{}'", hostname);
             auto uri_tmp = hostname + "-opa";

@@ -29,7 +29,7 @@ MetadataDB::MetadataDB(const std::string& path): path(path) {
     options.create_if_missing = true;
     options.merge_operator.reset(new MetadataMergeOperator);
     MetadataDB::optimize_rocksdb_options(options);
-    write_opts.disableWAL = !(KV_WOL);
+    write_opts.disableWAL = !(gkfs_config::rocksdb::use_write_ahead_log);
     rdb::DB * rdb_ptr;
     auto s = rocksdb::DB::Open(options, path, &rdb_ptr);
     if (!s.ok()) {
@@ -187,13 +187,4 @@ void MetadataDB::iterate_all() {
 
 void MetadataDB::optimize_rocksdb_options(rdb::Options& options) {
     options.max_successive_merges = 128;
-
-#if defined(KV_WRITE_BUFFER)
-    // write_buffer_size is multiplied by the write_buffer_number to get the amount of data hold in memory.
-    // at min_write_buffer_number_to_merge rocksdb starts to flush entries out to disk
-    options.write_buffer_size = KV_WRITE_BUFFER << 20;
-    // XXX experimental values. We only want one buffer, which is held in memory
-    options.max_write_buffer_number = 1;
-    options.min_write_buffer_number_to_merge = 1;
-#endif
 }

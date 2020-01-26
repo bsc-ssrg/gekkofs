@@ -17,10 +17,11 @@
 
 #include <client/preload.hpp>
 #include <global/metadata.hpp>
-// third party libs
+
 #include <string>
 #include <iostream>
 #include <map>
+#include <type_traits>
 
 struct MetadentryUpdateFlags {
     bool atime = false;
@@ -60,14 +61,19 @@ extern hg_id_t rpc_mk_symlink_id;
 #endif
 
 // function definitions
+namespace gkfs {
+    namespace client {
+        template<typename E>
+        constexpr typename std::underlying_type<E>::type to_underlying(E e) {
+            return static_cast<typename std::underlying_type<E>::type>(e);
+        }
 
-int metadata_to_stat(const std::string& path, const Metadata& md, struct stat& attr);
+        int metadata_to_stat(const std::string& path, const Metadata& md, struct stat& attr);
 
-std::vector<std::pair<std::string, std::string>> load_hosts_file(const std::string& lfpath);
+        std::vector<std::pair<std::string, std::string>> load_hostfile(const std::string& lfpath);
 
-hg_addr_t get_local_addr();
-
-void load_hosts();
-bool lookup_all_hosts();
+        void load_hosts();
+    }
+}
 
 #endif //IFS_PRELOAD_UTIL_HPP

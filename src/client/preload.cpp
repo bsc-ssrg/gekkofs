@@ -12,9 +12,6 @@
 */
 
 #include <global/env_util.hpp>
-#include <global/path_util.hpp>
-#include <global/global_defs.hpp>
-#include <global/configure.hpp>
 #include <client/preload.hpp>
 #include <client/resolve.hpp>
 #include <global/rpc/distributor.hpp>
@@ -131,7 +128,7 @@ void init_ld_environment_() {
 
     try {
         LOG(INFO, "Loading peer addresses...");
-        load_hosts();
+        gkfs::client::load_hosts();
     } catch (const std::exception& e) {
         exit_error_msg(EXIT_FAILURE, "Failed to load hosts addresses: "s + e.what());
     }

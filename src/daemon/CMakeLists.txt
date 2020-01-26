@@ -14,8 +14,9 @@ set(DAEMON_SRC
     handler/h_preload.cpp
     )
 set(DAEMON_HEADERS
+    ../../include/config.hpp
     ../../include/version.hpp
-    ../../include/global/configure.hpp
+    ../../include/global/cmake_configure.hpp
     ../../include/global/exceptions.hpp
     ../../include/global/global_defs.hpp
     ../../include/global/rpc/rpc_types.hpp

@@ -16,7 +16,7 @@
 #pragma once
 
 
-#include "global/configure.hpp"
+#include "config.hpp"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string>

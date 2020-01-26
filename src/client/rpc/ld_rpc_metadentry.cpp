@@ -11,7 +11,6 @@
   SPDX-License-Identifier: MIT
 */
 
-#include <global/configure.hpp>
 #include <client/rpc/ld_rpc_metadentry.hpp>
 #include "client/preload.hpp"
 #include "client/logging.hpp"
@@ -166,7 +165,7 @@ int rm_node(const std::string& path, const bool remove_metadentry_only, const ss
     std::vector<hermes::rpc_handle<gkfs::rpc::remove>> handles;
 
 	// Small files
-    if(static_cast<std::size_t>(size / CHUNKSIZE) < CTX->hosts().size()) {
+    if (static_cast<std::size_t>(size / gkfs_config::rpc::chunksize) < CTX->hosts().size()) {
 
         auto endp = CTX->hosts().at(
                 CTX->distributor()->locate_file_metadata(path));
@@ -175,10 +174,10 @@ int rm_node(const std::string& path, const bool remove_metadentry_only, const ss
             LOG(DEBUG, "Sending RPC to host: {}", endp.to_string());
             gkfs::rpc::remove::input in(path);
             handles.emplace_back(
-                    ld_network_service->post<gkfs::rpc::remove>(endp,in));
+                    ld_network_service->post<gkfs::rpc::remove>(endp, in));
 
             uint64_t chnk_start = 0;
-            uint64_t chnk_end = size/CHUNKSIZE;
+            uint64_t chnk_end = size / gkfs_config::rpc::chunksize;
 
             for (uint64_t chnk_id = chnk_start; chnk_id <= chnk_end; chnk_id++) {
                 const auto target = CTX->hosts().at(
@@ -378,28 +377,28 @@ void get_dirents(OpenDir& open_dir){
     auto const targets = 
         CTX->distributor()->locate_directory_metadata(root_dir);
 
-    /* preallocate receiving buffer. The actual size is not known yet.
-     *
-     * On C++14 make_unique function also zeroes the newly allocated buffer.
-     * It turns out that this operation is increadibly slow for such a big
-     * buffer. Moreover we don't need a zeroed buffer here.
-     */
-    auto large_buffer = 
-        std::unique_ptr<char[]>(new char[RPC_DIRENTS_BUFF_SIZE]);
+        /* preallocate receiving buffer. The actual size is not known yet.
+         *
+         * On C++14 make_unique function also zeroes the newly allocated buffer.
+         * It turns out that this operation is increadibly slow for such a big
+         * buffer. Moreover we don't need a zeroed buffer here.
+         */
+        auto large_buffer =
+                std::unique_ptr<char[]>(new char[gkfs_config::rpc::dirents_buff_size]);
 
-    //XXX there is a rounding error here depending on the number of targets...
-    const std::size_t per_host_buff_size = 
-        RPC_DIRENTS_BUFF_SIZE / targets.size();
+        //XXX there is a rounding error here depending on the number of targets...
+        const std::size_t per_host_buff_size =
+                gkfs_config::rpc::dirents_buff_size / targets.size();
 
-    // expose local buffers for RMA from servers
-    std::vector<hermes::exposed_memory> exposed_buffers;
-    exposed_buffers.reserve(targets.size());
+        // expose local buffers for RMA from servers
+        std::vector<hermes::exposed_memory> exposed_buffers;
+        exposed_buffers.reserve(targets.size());
 
-    for(std::size_t i = 0; i < targets.size(); ++i) {
-        try {
-            exposed_buffers.emplace_back(
-                ld_network_service->expose(
-                    std::vector<hermes::mutable_buffer>{
+        for (std::size_t i = 0; i < targets.size(); ++i) {
+            try {
+                exposed_buffers.emplace_back(
+                        ld_network_service->expose(
+                                std::vector<hermes::mutable_buffer>{
                         hermes::mutable_buffer{
                             large_buffer.get() + (i * per_host_buff_size),
                             per_host_buff_size

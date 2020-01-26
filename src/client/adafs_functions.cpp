@@ -14,7 +14,7 @@
 #include <sys/statfs.h>
 #include <sys/statvfs.h>
 
-#include <global/configure.hpp>
+#include <config.hpp>
 #include <global/path_util.hpp>
 #include <client/preload.hpp>
 #include "client/preload_util.hpp"
@@ -210,7 +210,7 @@ int adafs_stat(const string& path, struct stat* buf, bool follow_links) {
     if (!md) {
         return -1;
     }
-    metadata_to_stat(path, *md, *buf);
+    gkfs::client::metadata_to_stat(path, *md, *buf);
     return 0;
 }
 
@@ -465,9 +465,9 @@ ssize_t adafs_pread(std::shared_ptr<OpenFile> file, char * buf, size_t count, of
     }
 
     // Zeroing buffer before read is only relevant for sparse files. Otherwise sparse regions contain invalid data.
-#if defined(ZERO_BUFFER_BEFORE_READ)
-    memset(buf, 0, sizeof(char)*count);
-#endif
+    if (gkfs_config::io::zero_buffer_before_read) {
+        memset(buf, 0, sizeof(char) * count);
+    }
     auto ret = rpc_send::read(file->path(), buf, offset, count);
     if (ret < 0) {
         LOG(WARNING, "rpc_send::read() failed with ret {}", ret);

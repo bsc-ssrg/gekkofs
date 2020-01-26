@@ -11,24 +11,10 @@
   SPDX-License-Identifier: MIT
 */
 
-#ifndef GKFS_DAEMON_ENV
-#define GKFS_DAEMON_ENV
+#ifndef GKFS_CMAKE_CONFIGURE_HPP
+#define GKFS_CMAKE_CONFIGURE_HPP
 
-#include <config.hpp>
+#define RPC_PROTOCOL "@RPC_PROTOCOL@"
+#cmakedefine01 USE_SHM
 
-#define ADD_PREFIX(str) DAEMON_ENV_PREFIX str
-
-/* Environment variables for the GekkoFS daemon */
-namespace gkfs {
-namespace env {
-
-static constexpr auto HOSTS_FILE = ADD_PREFIX("HOSTS_FILE");
-
-} // namespace env
-} // namespace gkfs
-
-#undef ADD_PREFIX
-
-#endif // GKFS_DAEMON_ENV
-
-
+#endif //FS_CMAKE_CONFIGURE_H

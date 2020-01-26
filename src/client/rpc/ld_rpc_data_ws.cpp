@@ -11,10 +11,8 @@
   SPDX-License-Identifier: MIT
 */
 
-#include <global/configure.hpp>
 #include <client/preload_util.hpp>
 #include <client/rpc/ld_rpc_data_ws.hpp>
-#include "global/rpc/rpc_types.hpp"
 #include <global/rpc/distributor.hpp>
 #include <global/chunk_calc_util.hpp>
 #include <client/rpc/hg_rpcs.hpp>
@@ -37,26 +35,26 @@ ssize_t write(const string& path, const void* buf, const bool append_flag,
               const off64_t in_offset, const size_t write_size, 
               const int64_t updated_metadentry_size) {
 
-    assert(write_size > 0);
+        assert(write_size > 0);
 
-    // Calculate chunkid boundaries and numbers so that daemons know in 
-    // which interval to look for chunks
-    off64_t offset = append_flag ? 
-                        in_offset : 
-                        (updated_metadentry_size - write_size);
+        // Calculate chunkid boundaries and numbers so that daemons know in
+        // which interval to look for chunks
+        off64_t offset = append_flag ?
+                         in_offset :
+                         (updated_metadentry_size - write_size);
 
-    auto chnk_start = chnk_id_for_offset(offset, CHUNKSIZE);
-    auto chnk_end = chnk_id_for_offset((offset + write_size) - 1, CHUNKSIZE);
+        auto chnk_start = chnk_id_for_offset(offset, gkfs_config::rpc::chunksize);
+        auto chnk_end = chnk_id_for_offset((offset + write_size) - 1, gkfs_config::rpc::chunksize);
 
-    // Collect all chunk ids within count that have the same destination so 
-    // that those are send in one rpc bulk transfer
-    std::map<uint64_t, std::vector<uint64_t>> target_chnks{};
-    // contains the target ids, used to access the target_chnks map. 
-    // First idx is chunk with potential offset
-    std::vector<uint64_t> targets{};
+        // Collect all chunk ids within count that have the same destination so
+        // that those are send in one rpc bulk transfer
+        std::map<uint64_t, std::vector<uint64_t>> target_chnks{};
+        // contains the target ids, used to access the target_chnks map.
+        // First idx is chunk with potential offset
+        std::vector<uint64_t> targets{};
 
-    // targets for the first and last chunk as they need special treatment
-    uint64_t chnk_start_target = 0;
+        // targets for the first and last chunk as they need special treatment
+        uint64_t chnk_start_target = 0;
     uint64_t chnk_end_target = 0;
 
     for (uint64_t chnk_id = chnk_start; chnk_id <= chnk_end; chnk_id++) {
@@ -109,16 +107,16 @@ ssize_t write(const string& path, const void* buf, const bool append_flag,
     for(const auto& target : targets) {
 
         // total chunk_size for target
-        auto total_chunk_size = target_chnks[target].size() * CHUNKSIZE;
+        auto total_chunk_size = target_chnks[target].size() * gkfs_config::rpc::chunksize;
 
         // receiver of first chunk must subtract the offset from first chunk
         if (target == chnk_start_target) {
-            total_chunk_size -= chnk_lpad(offset, CHUNKSIZE);
+            total_chunk_size -= chnk_lpad(offset, gkfs_config::rpc::chunksize);
         }
 
         // receiver of last chunk must subtract
         if (target == chnk_end_target) {
-            total_chunk_size -= chnk_rpad(offset + write_size, CHUNKSIZE);
+            total_chunk_size -= chnk_rpad(offset + write_size, gkfs_config::rpc::chunksize);
         }
 
         auto endp = CTX->hosts().at(target);
@@ -128,20 +126,20 @@ ssize_t write(const string& path, const void* buf, const bool append_flag,
             LOG(DEBUG, "Sending RPC ...");
 
             gkfs::rpc::write_data::input in(
-                path,
-                // first offset in targets is the chunk with 
-                // a potential offset
-                chnk_lpad(offset, CHUNKSIZE),
-                target,
-                CTX->hosts().size(),
-                // number of chunks handled by that destination
-                target_chnks[target].size(),
-                // chunk start id of this write
-                chnk_start,
-                // chunk end id of this write
-                chnk_end,
-                // total size to write
-                total_chunk_size,
+                    path,
+                    // first offset in targets is the chunk with
+                    // a potential offset
+                    chnk_lpad(offset, gkfs_config::rpc::chunksize),
+                    target,
+                    CTX->hosts().size(),
+                    // number of chunks handled by that destination
+                    target_chnks[target].size(),
+                    // chunk start id of this write
+                    chnk_start,
+                    // chunk end id of this write
+                    chnk_end,
+                    // total size to write
+                    total_chunk_size,
                 local_buffers);
 
             // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that
@@ -202,20 +200,20 @@ ssize_t write(const string& path, const void* buf, const bool append_flag,
  */
 ssize_t read(const string& path, void* buf, const off64_t offset, const size_t read_size) {
 
-    // Calculate chunkid boundaries and numbers so that daemons know in which
-    // interval to look for chunks
-    auto chnk_start = chnk_id_for_offset(offset, CHUNKSIZE);
-    auto chnk_end = chnk_id_for_offset((offset + read_size - 1), CHUNKSIZE);
+        // Calculate chunkid boundaries and numbers so that daemons know in which
+        // interval to look for chunks
+        auto chnk_start = chnk_id_for_offset(offset, gkfs_config::rpc::chunksize);
+        auto chnk_end = chnk_id_for_offset((offset + read_size - 1), gkfs_config::rpc::chunksize);
 
-    // Collect all chunk ids within count that have the same destination so 
-    // that those are send in one rpc bulk transfer
-    std::map<uint64_t, std::vector<uint64_t>> target_chnks{};
-    // contains the recipient ids, used to access the target_chnks map. 
-    // First idx is chunk with potential offset
-    std::vector<uint64_t> targets{};
+        // Collect all chunk ids within count that have the same destination so
+        // that those are send in one rpc bulk transfer
+        std::map<uint64_t, std::vector<uint64_t>> target_chnks{};
+        // contains the recipient ids, used to access the target_chnks map.
+        // First idx is chunk with potential offset
+        std::vector<uint64_t> targets{};
 
-    // targets for the first and last chunk as they need special treatment
-    uint64_t chnk_start_target = 0;
+        // targets for the first and last chunk as they need special treatment
+        uint64_t chnk_start_target = 0;
     uint64_t chnk_end_target = 0;
 
     for (uint64_t chnk_id = chnk_start; chnk_id <= chnk_end; chnk_id++) {
@@ -268,16 +266,16 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
     for(const auto& target : targets) {
 
         // total chunk_size for target
-        auto total_chunk_size = target_chnks[target].size() * CHUNKSIZE;
+        auto total_chunk_size = target_chnks[target].size() * gkfs_config::rpc::chunksize;
 
         // receiver of first chunk must subtract the offset from first chunk
         if (target == chnk_start_target) {
-            total_chunk_size -= chnk_lpad(offset, CHUNKSIZE);
+            total_chunk_size -= chnk_lpad(offset, gkfs_config::rpc::chunksize);
         }
 
         // receiver of last chunk must subtract
         if (target == chnk_end_target) {
-            total_chunk_size -= chnk_rpad(offset + read_size, CHUNKSIZE);
+            total_chunk_size -= chnk_rpad(offset + read_size, gkfs_config::rpc::chunksize);
         }
 
         auto endp = CTX->hosts().at(target);
@@ -287,20 +285,20 @@ ssize_t read(const string& path, void* buf, const off64_t offset, const size_t r
             LOG(DEBUG, "Sending RPC ...");
 
             gkfs::rpc::read_data::input in(
-                path,
-                // first offset in targets is the chunk with 
-                // a potential offset
-                chnk_lpad(offset, CHUNKSIZE),
-                target,
-                CTX->hosts().size(),
-                // number of chunks handled by that destination
-                target_chnks[target].size(),
-                // chunk start id of this write
-                chnk_start,
-                // chunk end id of this write
-                chnk_end,
-                // total size to write
-                total_chunk_size,
+                    path,
+                    // first offset in targets is the chunk with
+                    // a potential offset
+                    chnk_lpad(offset, gkfs_config::rpc::chunksize),
+                    target,
+                    CTX->hosts().size(),
+                    // number of chunks handled by that destination
+                    target_chnks[target].size(),
+                    // chunk start id of this write
+                    chnk_start,
+                    // chunk end id of this write
+                    chnk_end,
+                    // total size to write
+                    total_chunk_size,
                 local_buffers);
 
             // TODO(amiranda): add a post() with RPC_TIMEOUT to hermes so that
@@ -363,9 +361,9 @@ int trunc_data(const std::string& path, size_t current_size, size_t new_size) {
 
     // Find out which data servers need to delete data chunks in order to 
     // contact only them
-    const unsigned int chunk_start = chnk_id_for_offset(new_size, CHUNKSIZE);
-    const unsigned int chunk_end = 
-        chnk_id_for_offset(current_size - new_size - 1, CHUNKSIZE);
+    const unsigned int chunk_start = chnk_id_for_offset(new_size, gkfs_config::rpc::chunksize);
+    const unsigned int chunk_end =
+            chnk_id_for_offset(current_size - new_size - 1, gkfs_config::rpc::chunksize);
 
     std::unordered_set<unsigned int> hosts;
     for(unsigned int chunk_id = chunk_start; chunk_id <= chunk_end; ++chunk_id) {
@@ -450,7 +448,7 @@ ChunkStat chunk_stat() {
         }
     }
 
-    unsigned long chunk_size = CHUNKSIZE;
+    unsigned long chunk_size = gkfs_config::rpc::chunksize;
     unsigned long chunk_total = 0;
     unsigned long chunk_free = 0;
 

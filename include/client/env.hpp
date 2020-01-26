@@ -14,7 +14,7 @@
 #ifndef GKFS_CLIENT_ENV
 #define GKFS_CLIENT_ENV
 
-#include <global/configure.hpp>
+#include <config.hpp>
 
 #define ADD_PREFIX(str) CLIENT_ENV_PREFIX str
 
