@@ -12,18 +12,19 @@
 */
 
 
-#ifndef IFS_PRELOAD_C_DATA_WS_HPP
-#define IFS_PRELOAD_C_DATA_WS_HPP
+#ifndef GEKKOFS_PRELOAD_C_DATA_WS_HPP
+#define GEKKOFS_PRELOAD_C_DATA_WS_HPP
 
 
 namespace rpc_send {
 
-ssize_t write(const std::string& path, const void* buf, const bool append_flag, const off64_t in_offset,
-                       const size_t write_size, const int64_t updated_metadentry_size);
-struct ChunkStat {
-    unsigned long chunk_size;
-    unsigned long chunk_total;
-    unsigned long chunk_free;
+    ssize_t write(const std::string& path, const void* buf, const bool append_flag, const off64_t in_offset,
+                  const size_t write_size, const int64_t updated_metadentry_size);
+
+    struct ChunkStat {
+        unsigned long chunk_size;
+        unsigned long chunk_total;
+        unsigned long chunk_free;
 };
 
 ssize_t read(const std::string& path, void* buf, const off64_t offset, const size_t read_size);
@@ -35,4 +36,4 @@ ChunkStat chunk_stat();
 }
 
 
-#endif //IFS_PRELOAD_C_DATA_WS_HPP
+#endif //GEKKOFS_PRELOAD_C_DATA_WS_HPP

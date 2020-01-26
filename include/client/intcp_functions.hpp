@@ -11,8 +11,8 @@
   SPDX-License-Identifier: MIT
 */
 
-#ifndef IFS_INTCP_FUNCTIONS_HPP
-#define IFS_INTCP_FUNCTIONS_HPP
+#ifndef GEKKOFS_INTCP_FUNCTIONS_HPP
+#define GEKKOFS_INTCP_FUNCTIONS_HPP
 
 #include <dirent.h>
 
@@ -75,6 +75,6 @@ strong_alias(intcp_statvfs, statvfs)
 int intcp_fstatvfs(int fd, struct statvfs *buf) noexcept;
 strong_alias(intcp_fstatvfs, fstatvfs)
 
-#endif // IFS_INTCP_FUNCTIONS_HPP
+#endif // GEKKOFS_INTCP_FUNCTIONS_HPP
 
 } // extern C

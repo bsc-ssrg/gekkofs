@@ -12,8 +12,8 @@
 */
 
 
-#ifndef IFS_OPEN_FILE_MAP_HPP
-#define IFS_OPEN_FILE_MAP_HPP
+#ifndef GEKKOFS_OPEN_FILE_MAP_HPP
+#define GEKKOFS_OPEN_FILE_MAP_HPP
 
 #include <map>
 #include <mutex>
@@ -115,4 +115,4 @@ public:
 };
 
 
-#endif //IFS_OPEN_FILE_MAP_HPP
+#endif //GEKKOFS_OPEN_FILE_MAP_HPP

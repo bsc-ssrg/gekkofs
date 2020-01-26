@@ -11,8 +11,8 @@
   SPDX-License-Identifier: MIT
 */
 
-#ifndef IFS_CHUNK_STORAGE_HPP
-#define IFS_CHUNK_STORAGE_HPP
+#ifndef GEKKOFS_CHUNK_STORAGE_HPP
+#define GEKKOFS_CHUNK_STORAGE_HPP
 
 #include <abt.h>
 #include <limits.h>
@@ -60,4 +60,4 @@ class ChunkStorage {
         ChunkStat chunk_stat() const;
 };
 
-#endif //IFS_CHUNK_STORAGE_HPP
+#endif //GEKKOFS_CHUNK_STORAGE_HPP

@@ -11,8 +11,8 @@
   SPDX-License-Identifier: MIT
 */
 
-#ifndef IFS_HOOKS_HPP
-#define IFS_HOOKS_HPP
+#ifndef GEKKOFS_HOOKS_HPP
+#define GEKKOFS_HOOKS_HPP
 
 #include <sys/types.h>
 #include <fcntl.h>
@@ -20,10 +20,14 @@
 
 int hook_openat(int dirfd, const char *cpath, int flags, mode_t mode);
 int hook_close(int fd);
+
 int hook_stat(const char* path, struct stat* buf);
+
 int hook_lstat(const char* path, struct stat* buf);
+
 int hook_fstat(unsigned int fd, struct stat* buf);
-int hook_fstatat(int dirfd, const char * cpath, struct stat * buf, int flags);
+
+int hook_fstatat(int dirfd, const char* cpath, struct stat* buf, int flags);
 int hook_read(unsigned int fd, void* buf, size_t count);
 int hook_pread(unsigned int fd, char * buf, size_t count, loff_t pos);
 int hook_write(unsigned int fd, const char * buf, size_t count);

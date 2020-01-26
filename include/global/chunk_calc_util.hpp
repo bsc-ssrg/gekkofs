@@ -11,15 +11,15 @@
   SPDX-License-Identifier: MIT
 */
 
-#ifndef IFS_CHNK_CALC_UTIL_HPP
-#define IFS_CHNK_CALC_UTIL_HPP
+#ifndef GEKKOFS_CHNK_CALC_UTIL_HPP
+#define GEKKOFS_CHNK_CALC_UTIL_HPP
 
 #include <cassert>
 
 /**
  * Compute the base2 logarithm for 64 bit integers
  */
-inline int log2(uint64_t n){
+inline int log2(uint64_t n) {
 
     /* see http://stackoverflow.com/questions/11376288/fast-computing-of-log2-for-64-bit-integers */
     static const int table[64] = {

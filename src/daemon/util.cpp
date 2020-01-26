@@ -30,8 +30,8 @@ using namespace std;
 namespace bfs = boost::filesystem;
 
 void gkfs::util::populate_hosts_file() {
-    const auto& hosts_file = ADAFS_DATA->hosts_file();
-    ADAFS_DATA->spdlogger()->debug("{}() Populating hosts file: '{}'", __func__, hosts_file);
+    const auto& hosts_file = GKFS_DATA->hosts_file();
+    GKFS_DATA->spdlogger()->debug("{}() Populating hosts file: '{}'", __func__, hosts_file);
     ofstream lfstream(hosts_file, ios::out | ios::app);
     if (!lfstream) {
         throw runtime_error(
@@ -46,7 +46,7 @@ void gkfs::util::populate_hosts_file() {
 }
 
 void gkfs::util::destroy_hosts_file() {
-    std::remove(ADAFS_DATA->hosts_file().c_str());
+    std::remove(GKFS_DATA->hosts_file().c_str());
 }
 
 /**
@@ -130,10 +130,11 @@ vector<pair<string, string>> gkfs::util::get_interf_ips() {
     auto addr = addrs_raw_ptr;
     while(addr) {
         if (addr->ifa_addr && addr->ifa_addr->sa_family == AF_INET) {
-            auto sa = reinterpret_cast<struct sockaddr_in *>(addr->ifa_addr);
+            auto sa = reinterpret_cast<struct sockaddr_in*>(addr->ifa_addr);
             auto ip_str = inet_ntoa(sa->sin_addr);
             interfaces.emplace_back(pair<string, string>(addr->ifa_name, ip_str));
-            ADAFS_DATA->spdlogger()->debug("{}() Found network interface and IP: '{}' -> '{}'", __func__, addr->ifa_name, ip_str);
+            GKFS_DATA->spdlogger()->debug("{}() Found network interface and IP: '{}' -> '{}'", __func__, addr->ifa_name,
+                                          ip_str);
         }
         addr = addr->ifa_next;
     }

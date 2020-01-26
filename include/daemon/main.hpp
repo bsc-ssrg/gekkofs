@@ -29,7 +29,7 @@ extern "C" {
 #include <daemon/classes/fs_data.hpp>
 #include <daemon/classes/rpc_data.hpp>
 
-#define ADAFS_DATA (static_cast<FsData*>(FsData::getInstance()))
+#define GKFS_DATA (static_cast<FsData*>(FsData::getInstance()))
 #define RPC_DATA (static_cast<RPCData*>(RPCData::getInstance()))
 
 void init_environment();

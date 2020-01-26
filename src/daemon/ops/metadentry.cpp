@@ -26,22 +26,22 @@ using namespace std;
 void create_metadentry(const std::string& path, Metadata& md) {
 
     // update metadata object based on what metadata is needed
-    if (ADAFS_DATA->atime_state() || ADAFS_DATA->mtime_state() || ADAFS_DATA->ctime_state()) {
+    if (GKFS_DATA->atime_state() || GKFS_DATA->mtime_state() || GKFS_DATA->ctime_state()) {
         std::time_t time;
         std::time(&time);
         auto time_s = fmt::format_int(time).str();
-        if (ADAFS_DATA->atime_state())
+        if (GKFS_DATA->atime_state())
             md.atime(time);
-        if (ADAFS_DATA->mtime_state())
+        if (GKFS_DATA->mtime_state())
             md.mtime(time);
-        if (ADAFS_DATA->ctime_state())
+        if (GKFS_DATA->ctime_state())
             md.ctime(time);
     }
-    ADAFS_DATA->mdb()->put(path, md.serialize());
+    GKFS_DATA->mdb()->put(path, md.serialize());
 }
 
 std::string get_metadentry_str(const std::string& path) {
-        return ADAFS_DATA->mdb()->get(path);
+    return GKFS_DATA->mdb()->get(path);
 }
 
 /**
@@ -60,8 +60,8 @@ Metadata get_metadentry(const std::string& path) {
  * @return
  */
 void remove_node(const string& path) {
-    ADAFS_DATA->mdb()->remove(path); // remove metadentry
-    ADAFS_DATA->storage()->destroy_chunk_space(path); // destroys all chunks for the path on this node
+    GKFS_DATA->mdb()->remove(path); // remove metadentry
+    GKFS_DATA->storage()->destroy_chunk_space(path); // destroys all chunks for the path on this node
 }
 
 /**
@@ -81,13 +81,13 @@ size_t get_metadentry_size(const string& path) {
  * @return the updated size
  */
 void update_metadentry_size(const string& path, size_t io_size, off64_t offset, bool append) {
-    ADAFS_DATA->mdb()->increase_size(path, io_size + offset, append);
+    GKFS_DATA->mdb()->increase_size(path, io_size + offset, append);
 }
 
 void update_metadentry(const string& path, Metadata& md) {
-    ADAFS_DATA->mdb()->update(path, path, md.serialize());
+    GKFS_DATA->mdb()->update(path, path, md.serialize());
 }
 
 std::vector<std::pair<std::string, bool>> get_dirents(const std::string& dir){
-    return ADAFS_DATA->mdb()->get_dirents(dir);
+    return GKFS_DATA->mdb()->get_dirents(dir);
 }

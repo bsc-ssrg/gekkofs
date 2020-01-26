@@ -12,8 +12,8 @@
 */
 
 
-#ifndef IFS_PRELOAD_UTIL_HPP
-#define IFS_PRELOAD_UTIL_HPP
+#ifndef GEKKOFS_PRELOAD_UTIL_HPP
+#define GEKKOFS_PRELOAD_UTIL_HPP
 
 #include <client/preload.hpp>
 #include <global/metadata.hpp>
@@ -76,4 +76,4 @@ namespace gkfs {
     }
 }
 
-#endif //IFS_PRELOAD_UTIL_HPP
+#endif //GEKKOFS_PRELOAD_UTIL_HPP

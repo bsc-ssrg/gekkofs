@@ -86,7 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Intercept I/O syscalls instead of GlibC function using [syscall intercept library](https://github.com/pmem/syscall_intercept)
 
 ## [0.4.0] - 2019-04-18
-First GekkoFS pubblic release
+First GekkoFS public release
 
 This version provides a client library that uses GLibC I/O function interception.
 

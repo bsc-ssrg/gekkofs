@@ -27,22 +27,22 @@ static hg_return_t rpc_srv_mk_node(hg_handle_t handle) {
 
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS)
-        ADAFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
     assert(ret == HG_SUCCESS);
-    ADAFS_DATA->spdlogger()->debug("{}() Got RPC with path '{}'", __func__, in.path);
+    GKFS_DATA->spdlogger()->debug("{}() Got RPC with path '{}'", __func__, in.path);
     Metadata md(in.mode);
     try {
         // create metadentry
         create_metadentry(in.path, md);
         out.err = 0;
     } catch (const std::exception& e) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to create metadentry: {}",  __func__, e.what());
+        GKFS_DATA->spdlogger()->error("{}() Failed to create metadentry: '{}'", __func__, e.what());
         out.err = -1;
     }
-    ADAFS_DATA->spdlogger()->debug("{}() Sending output err {}", __func__, out.err);
+    GKFS_DATA->spdlogger()->debug("{}() Sending output err '{}'", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
     }
 
     // Destroy handle when finished
@@ -58,9 +58,9 @@ static hg_return_t rpc_srv_stat(hg_handle_t handle) {
     rpc_stat_out_t out{};
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS)
-        ADAFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
     assert(ret == HG_SUCCESS);
-    ADAFS_DATA->spdlogger()->debug("{}() path: '{}'", __func__, in.path);
+    GKFS_DATA->spdlogger()->debug("{}() path: '{}'", __func__, in.path);
     std::string val;
 
     try {
@@ -68,18 +68,18 @@ static hg_return_t rpc_srv_stat(hg_handle_t handle) {
         val = get_metadentry_str(in.path);
         out.db_val = val.c_str();
         out.err = 0;
-        ADAFS_DATA->spdlogger()->debug("{}() Sending output mode '{}'", __func__, out.db_val);
+        GKFS_DATA->spdlogger()->debug("{}() Sending output mode '{}'", __func__, out.db_val);
     } catch (const NotFoundException& e) {
-        ADAFS_DATA->spdlogger()->debug("{}() Entry not found: '{}'", __func__, in.path);
+        GKFS_DATA->spdlogger()->debug("{}() Entry not found: '{}'", __func__, in.path);
         out.err = ENOENT;
     } catch (const std::exception& e) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to get metadentry from DB: '{}'", __func__, e.what());
+        GKFS_DATA->spdlogger()->error("{}() Failed to get metadentry from DB: '{}'", __func__, e.what());
         out.err = EBUSY;
     }
 
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
     }
 
     // Destroy handle when finished
@@ -96,24 +96,24 @@ static hg_return_t rpc_srv_decr_size(hg_handle_t handle) {
 
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
         throw runtime_error("Failed to retrieve input from handle");
     }
 
-    ADAFS_DATA->spdlogger()->debug("{}() path: '{}', length: {}", __func__, in.path, in.length);
+    GKFS_DATA->spdlogger()->debug("{}() path: '{}', length: {}", __func__, in.path, in.length);
 
     try {
-        ADAFS_DATA->mdb()->decrease_size(in.path, in.length);
+        GKFS_DATA->mdb()->decrease_size(in.path, in.length);
         out.err = 0;
     } catch (const std::exception& e) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to decrease size: {}", __func__, e.what());
+        GKFS_DATA->spdlogger()->error("{}() Failed to decrease size: {}", __func__, e.what());
         out.err = EIO;
     }
 
-    ADAFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
+    GKFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
         throw runtime_error("Failed to respond");
     }
     // Destroy handle when finished
@@ -130,9 +130,9 @@ static hg_return_t rpc_srv_rm_node(hg_handle_t handle) {
 
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS)
-        ADAFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
     assert(ret == HG_SUCCESS);
-    ADAFS_DATA->spdlogger()->debug("{}() Got remove node RPC with path '{}'", __func__, in.path);
+    GKFS_DATA->spdlogger()->debug("{}() Got remove node RPC with path '{}'", __func__, in.path);
 
     try {
         // Remove metadentry if exists on the node
@@ -149,14 +149,14 @@ static hg_return_t rpc_srv_rm_node(hg_handle_t handle) {
          */
         out.err = 0;
     } catch (const std::exception& e) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to remove node: {}", __func__, e.what());
+        GKFS_DATA->spdlogger()->error("{}() Failed to remove node: {}", __func__, e.what());
         out.err = EBUSY;
     }
 
-    ADAFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
+    GKFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
     }
     // Destroy handle when finished
     margo_free_input(handle, &in);
@@ -174,9 +174,9 @@ static hg_return_t rpc_srv_update_metadentry(hg_handle_t handle) {
 
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS)
-        ADAFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
     assert(ret == HG_SUCCESS);
-    ADAFS_DATA->spdlogger()->debug("{}() Got update metadentry RPC with path '{}'", __func__, in.path);
+    GKFS_DATA->spdlogger()->debug("{}() Got update metadentry RPC with path '{}'", __func__, in.path);
 
     // do update
     try {
@@ -195,16 +195,16 @@ static hg_return_t rpc_srv_update_metadentry(hg_handle_t handle) {
             md.ctime(in.ctime);
         update_metadentry(in.path, md);
         out.err = 0;
-    } catch (const std::exception& e){
+    } catch (const std::exception& e) {
         //TODO handle NotFoundException
-        ADAFS_DATA->spdlogger()->error("{}() Failed to update entry", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to update entry", __func__);
         out.err = 1;
     }
 
-    ADAFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
+    GKFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
     }
 
     // Destroy handle when finished
@@ -222,9 +222,10 @@ static hg_return_t rpc_srv_update_metadentry_size(hg_handle_t handle) {
 
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS)
-        ADAFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
     assert(ret == HG_SUCCESS);
-    ADAFS_DATA->spdlogger()->debug("{}() path: {}, size: {}, offset: {}, append: {}", __func__, in.path, in.size, in.offset, in.append);
+    GKFS_DATA->spdlogger()->debug("{}() path: {}, size: {}, offset: {}, append: {}", __func__, in.path, in.size,
+                                  in.offset, in.append);
 
     try {
         update_metadentry_size(in.path, in.size, in.offset, (in.append == HG_TRUE));
@@ -233,17 +234,17 @@ static hg_return_t rpc_srv_update_metadentry_size(hg_handle_t handle) {
         // do to concurrency on size
         out.ret_size = in.size + in.offset;
     } catch (const NotFoundException& e) {
-        ADAFS_DATA->spdlogger()->debug("{}() Entry not found: '{}'", __func__, in.path);
+        GKFS_DATA->spdlogger()->debug("{}() Entry not found: '{}'", __func__, in.path);
         out.err = ENOENT;
     } catch (const std::exception& e) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to update metadentry size on DB: {}", __func__, e.what());
+        GKFS_DATA->spdlogger()->error("{}() Failed to update metadentry size on DB: '{}'", __func__, e.what());
         out.err = EBUSY;
     }
 
-    ADAFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
+    GKFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
     }
 
     // Destroy handle when finished
@@ -261,26 +262,26 @@ static hg_return_t rpc_srv_get_metadentry_size(hg_handle_t handle) {
 
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS)
-        ADAFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
     assert(ret == HG_SUCCESS);
-    ADAFS_DATA->spdlogger()->debug("{}() Got update metadentry size RPC with path {}", __func__, in.path);
+    GKFS_DATA->spdlogger()->debug("{}() Got update metadentry size RPC with path '{}'", __func__, in.path);
 
     // do update
     try {
         out.ret_size = get_metadentry_size(in.path);
         out.err = 0;
     } catch (const NotFoundException& e) {
-        ADAFS_DATA->spdlogger()->debug("{}() Entry not found: {}", __func__, in.path);
+        GKFS_DATA->spdlogger()->debug("{}() Entry not found: '{}'", __func__, in.path);
         out.err = ENOENT;
     } catch (const std::exception& e) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to get metadentry size from DB: {}", __func__, e.what());
+        GKFS_DATA->spdlogger()->error("{}() Failed to get metadentry size from DB: '{}'", __func__, e.what());
         out.err = EBUSY;
     }
 
-    ADAFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
+    GKFS_DATA->spdlogger()->debug("{}() Sending output '{}'", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
     }
 
     // Destroy handle when finished
@@ -299,7 +300,7 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
     // Get input parmeters
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error(
+        GKFS_DATA->spdlogger()->error(
                 "{}() Could not get RPC input data with err {}", __func__, ret);
         return ret;
     }
@@ -307,7 +308,7 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
     // Retrieve size of source buffer
     auto hgi = margo_get_info(handle);
     auto mid = margo_hg_info_get_instance(hgi);
-    ADAFS_DATA->spdlogger()->debug(
+    GKFS_DATA->spdlogger()->debug(
             "{}() Got dirents RPC with path {}", __func__, in.path);
     auto bulk_size = margo_bulk_get_size(in.bulk_handle);
 
@@ -316,7 +317,7 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
 
     out.dirents_size = entries.size();
 
-    if(entries.size() == 0){
+    if (entries.size() == 0) {
         out.err = 0;
         return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
     }
@@ -329,9 +330,9 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
     }
 
     size_t out_size = tot_names_size + entries.size() * ( sizeof(bool) + sizeof(char) );
-    if(bulk_size < out_size){
+    if(bulk_size < out_size) {
         //Source buffer is smaller than total output size
-        ADAFS_DATA->spdlogger()->error("{}() Entries do not fit source buffer", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Entries do not fit source buffer", __func__);
         out.err = ENOBUFS;
         return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
     }
@@ -353,7 +354,7 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
 
     ret = margo_bulk_create(mid, 1, reinterpret_cast<void**>(&out_buff_ptr), &out_size, HG_BULK_READ_ONLY, &bulk_handle);
     if (ret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to create bulk handle", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to create bulk handle", __func__);
         out.err = EBUSY;
         return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
     }
@@ -363,16 +364,16 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
                               bulk_handle, 0,
                               out_size);
     if (ret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error(
+        GKFS_DATA->spdlogger()->error(
                 "{}() Failed push dirents on path {} to client",
                 __func__, in.path
-                );
+        );
         return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
     }
 
     out.dirents_size = entries.size();
     out.err = 0;
-    ADAFS_DATA->spdlogger()->debug(
+    GKFS_DATA->spdlogger()->debug(
             "{}() Sending output response", __func__);
     return rpc_cleanup_respond(&handle, &in, &out, &bulk_handle);
 }
@@ -387,9 +388,9 @@ static hg_return_t rpc_srv_mk_symlink(hg_handle_t handle) {
 
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
     }
-    ADAFS_DATA->spdlogger()->debug("{}() Got RPC with path '{}'", __func__, in.path);
+    GKFS_DATA->spdlogger()->debug("{}() Got RPC with path '{}'", __func__, in.path);
 
     try {
         Metadata md = {LINK_MODE, in.target_path};
@@ -397,13 +398,13 @@ static hg_return_t rpc_srv_mk_symlink(hg_handle_t handle) {
         create_metadentry(in.path, md);
         out.err = 0;
     } catch (const std::exception& e) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to create metadentry: {}",  __func__, e.what());
+        GKFS_DATA->spdlogger()->error("{}() Failed to create metadentry: {}", __func__, e.what());
         out.err = -1;
     }
-    ADAFS_DATA->spdlogger()->debug("{}() Sending output err {}", __func__, out.err);
+    GKFS_DATA->spdlogger()->debug("{}() Sending output err {}", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
-        ADAFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
+        GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
     }
 
     // Destroy handle when finished

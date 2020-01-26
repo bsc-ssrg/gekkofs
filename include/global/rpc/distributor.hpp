@@ -11,8 +11,8 @@
   SPDX-License-Identifier: MIT
 */
 
-#ifndef IFS_RPC_DISTRIBUTOR_HPP
-#define IFS_RPC_DISTRIBUTOR_HPP
+#ifndef GEKKOFS_RPC_DISTRIBUTOR_HPP
+#define GEKKOFS_RPC_DISTRIBUTOR_HPP
 
 #include <vector>
 #include <string>
@@ -56,4 +56,4 @@ class LocalOnlyDistributor : public Distributor {
         std::vector<Host> locate_directory_metadata(const std::string& path) const override;
 };
 
-#endif //IFS_RPC_LOCATOR_HPP
+#endif //GEKKOFS_RPC_LOCATOR_HPP

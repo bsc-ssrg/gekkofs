@@ -1,5 +1,5 @@
 set(PRELOAD_SRC
-    adafs_functions.cpp
+    gkfs_functions.cpp
     hooks.cpp
     intercept.cpp
     logging.cpp
@@ -18,7 +18,7 @@ set(PRELOAD_SRC
     syscalls/detail/syscall_info.c
     )
 set(PRELOAD_HEADERS
-    ../../include/client/adafs_functions.hpp
+    ../../include/client/gkfs_functions.hpp
     ../../include/config.hpp
     ../../include/client/env.hpp
     ../../include/client/hooks.hpp

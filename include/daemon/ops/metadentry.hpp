@@ -12,8 +12,8 @@
 */
 
 
-#ifndef IFS_METADENTRY_HPP
-#define IFS_METADENTRY_HPP
+#ifndef GEKKOFS_METADENTRY_HPP
+#define GEKKOFS_METADENTRY_HPP
 
 #include <daemon/main.hpp>
 #include <global/metadata.hpp>
@@ -36,4 +36,4 @@ void update_metadentry(const std::string& path, Metadata& md);
 
 std::vector<std::pair<std::string, bool>> get_dirents(const std::string& dir);
 
-#endif //IFS_METADENTRY_HPP
+#endif //GEKKOFS_METADENTRY_HPP

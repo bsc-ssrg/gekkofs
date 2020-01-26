@@ -11,8 +11,8 @@
   SPDX-License-Identifier: MIT
 */
 
-#ifndef IFS_METADATA_DB_HPP
-#define IFS_METADATA_DB_HPP
+#ifndef GEKKOFS_METADATA_DB_HPP
+#define GEKKOFS_METADATA_DB_HPP
 
 #include <memory>
 #include "rocksdb/db.h"
@@ -21,8 +21,8 @@
 namespace rdb = rocksdb;
 
 class MetadataDB {
-    private:
-        std::unique_ptr<rdb::DB> db;
+private:
+    std::unique_ptr<rdb::DB> db;
         rdb::Options options;
         rdb::WriteOptions write_opts;
         std::string path;
@@ -44,4 +44,4 @@ class MetadataDB {
         void iterate_all();
 };
 
-#endif //IFS_METADATA_DB_HPP
+#endif //GEKKOFS_METADATA_DB_HPP

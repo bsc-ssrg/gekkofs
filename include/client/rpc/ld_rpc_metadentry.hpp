@@ -12,14 +12,16 @@
 */
 
 
-#ifndef IFS_PRELOAD_C_METADENTRY_HPP
-#define IFS_PRELOAD_C_METADENTRY_HPP
+#ifndef GEKKOFS_PRELOAD_C_METADENTRY_HPP
+#define GEKKOFS_PRELOAD_C_METADENTRY_HPP
 
 #include <string>
 
 /* Forward declaration */
 struct MetadentryUpdateFlags;
+
 class OpenDir;
+
 class Metadata;
 
 namespace rpc_send {
@@ -49,4 +51,4 @@ int mk_symlink(const std::string& path, const std::string& target_path);
 
 } // end namespace rpc_send
 
-#endif //IFS_PRELOAD_C_METADENTRY_HPP
+#endif //GEKKOFS_PRELOAD_C_METADENTRY_HPP

@@ -12,8 +12,8 @@
 */
 
 
-#ifndef IFS_OPEN_DIR_HPP
-#define IFS_OPEN_DIR_HPP
+#ifndef GEKKOFS_OPEN_DIR_HPP
+#define GEKKOFS_OPEN_DIR_HPP
 
 #include <string>
 #include <vector>
@@ -46,4 +46,4 @@ class OpenDir: public OpenFile {
 };
 
 
-#endif //IFS_OPEN_DIR_HPP
+#endif //GEKKOFS_OPEN_DIR_HPP

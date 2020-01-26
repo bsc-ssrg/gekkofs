@@ -11,8 +11,8 @@
   SPDX-License-Identifier: MIT
 */
 
-#ifndef IFS_PRELOAD_CTX_HPP
-#define IFS_PRELOAD_CTX_HPP
+#ifndef GEKKOFS_PRELOAD_CTX_HPP
+#define GEKKOFS_PRELOAD_CTX_HPP
 
 #include <hermes.hpp>
 #include <map>
@@ -130,5 +130,5 @@ class PreloadContext {
 };
 
 
-#endif //IFS_PRELOAD_CTX_HPP
+#endif //GEKKOFS_PRELOAD_CTX_HPP
 
