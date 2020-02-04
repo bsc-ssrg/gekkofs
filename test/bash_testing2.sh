@@ -4,8 +4,7 @@ ROOT=${1}
 echo Creating a file from a echo with content foo
 echo "foo" > $ROOT/a.out
 
-if [ -f $ROOT/a.out ]; 
-     then
+if [ -f $ROOT/a.out ]; then
      echo File exists
      echo is the content correct?
      if grep -Fxq "foo" $ROOT/a.out
@@ -15,9 +14,11 @@ if [ -f $ROOT/a.out ];
             echo "String not found"
             exit 1
      fi
-     else
-        echo File does not exists
-        exit 1
+else
+     echo File does not exists
+     exit 1
 fi
+
+echo all test done
 
 exit 0
