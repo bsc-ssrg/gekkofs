@@ -139,7 +139,6 @@ test rm rmdir mkdir:
     - mkdir -p "${LOG_PATH}"
     - ${INSTALL_PATH}/bin/gkfs_daemon --mount /tmp/mountdir --root /tmp/root &
     - sleep 4
-    - chmod a+x ${TESTS_BASH}/bash_testing.sh
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BASH}/bash_testing.sh /tmp/mountdir
   artifacts:
     paths:
@@ -151,8 +150,19 @@ test bash file creation:
     - mkdir -p "${LOG_PATH}"
     - ${INSTALL_PATH}/bin/gkfs_daemon --mount /tmp/mountdir --root /tmp/root &
     - sleep 4
-    - chmod a+x ${TESTS_BASH}/bash_testing2.sh
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BASH}/bash_testing2.sh /tmp/mountdir
   artifacts:
     paths:
      - "${LOG_PATH}"
+
+test bash testing concatenate
+  stage: test
+  script:
+    - mkdir -p "${LOG_PATH}"
+    - ${INSTALL_PATH}/bin/gkfs_daemon --mount /tmp/mountdir --root /tmp/root &
+    - sleep 4
+    - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BASH}/bash_testing_concatenate.sh /tmp/mountdir
+  artifacts:
+    paths:
+     - "${LOG_PATH}"
+
