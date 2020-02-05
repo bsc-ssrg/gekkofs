@@ -1,15 +1,18 @@
 #!/bin/bash
+set -x
+
 ROOT=${1}
 
-echo Creating a file from a echo with content foo
-echo "foo" > $ROOT/a.out
+echo "Creating a file from with content foo" in ${ROOT}
+
+echo "foo" > ${ROOT}/a.out
 
 echo "Testing if file exists"
 
-if [ -f $ROOT/a.out ]; then
+if [ -f ${ROOT}/a.out ]; then
      echo "File exists"
      echo "Testing if the content is correct"
-     if grep -Fxq "foo" $ROOT/a.out
+     if grep -Fxq "foo" ${ROOT}/a.out
      then
             echo "String found"
      else
