@@ -11,6 +11,7 @@ variables:
   BUILD_PATH:        "${CI_PROJECT_DIR}/gkfs/build"
   INSTALL_PATH:      "${CI_PROJECT_DIR}/gkfs/install"
   TESTS_BUILD_PATH:  "${CI_PROJECT_DIR}/test/build"
+  TESTS_BASH:        "${CI_PROJECT_DIR}/test"
   LOG_PATH:          "${CI_PROJECT_DIR}/logs"
   LD_LIBRARY_PATH:   "${CI_PROJECT_DIR}/deps/install/lib;${CI_PROJECT_DIR}/deps/install/lib64"
   # Configuration variables
