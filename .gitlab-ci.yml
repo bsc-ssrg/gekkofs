@@ -155,7 +155,7 @@ test bash file creation:
     paths:
      - "${LOG_PATH}"
 
-test bash testing concatenate
+test bash testing concatenate:
   stage: test
   script:
     - mkdir -p "${LOG_PATH}"
