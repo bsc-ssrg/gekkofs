@@ -313,7 +313,7 @@ int main(int argc, const char* argv[]) {
 #else
         cout << "Create check parents: OFF" << endl;
 #endif
-        cout << "Chunk size: " << CHUNKSIZE << " bytes" << endl;
+        cout << "Chunk size: " << gkfs_config::rpc::chunksize << " bytes" << endl;
         return 0;
     }
 

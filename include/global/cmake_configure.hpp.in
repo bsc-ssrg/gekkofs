@@ -16,5 +16,7 @@
 
 #define RPC_PROTOCOL "@RPC_PROTOCOL@"
 #cmakedefine01 USE_SHM
+#cmakedefine01 CREATE_CHECK_PARENTS
+#cmakedefine01 LOG_SYSCALLS
 
 #endif //FS_CMAKE_CONFIGURE_H

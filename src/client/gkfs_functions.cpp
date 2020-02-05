@@ -89,7 +89,7 @@ int gkfs_open(const std::string& path, mode_t mode, int flags) {
 
         // no access check required here. If one is using our FS they have the permissions.
         if (gkfs_mk_node(path, mode | S_IFREG)) {
-            LOG(ERROR, "Error creating non-existent file");
+            LOG(ERROR, "Error creating non-existent file: '{}'", strerror(errno));
             return -1;
         }
     } else {
@@ -131,6 +131,27 @@ int gkfs_open(const std::string& path, mode_t mode, int flags) {
     return CTX->file_map()->add(std::make_shared<OpenFile>(path, flags));
 }
 
+int check_parent_dir(const std::string& path) {
+#if CREATE_CHECK_PARENTS
+    auto p_comp = dirname(path);
+    auto md = gkfs_metadata(p_comp);
+    if (!md) {
+        if (errno == ENOENT) {
+            LOG(DEBUG, "Parent component does not exist: '{}'", p_comp);
+        } else {
+            LOG(ERROR, "Failed to get metadata for parent component '{}': {}", path, strerror(errno));
+        }
+        return -1;
+    }
+    if (!S_ISDIR(md->mode())) {
+        LOG(DEBUG, "Parent component is not a directory: '{}'", p_comp);
+        errno = ENOTDIR;
+        return -1;
+    }
+#endif // CREATE_CHECK_PARENTS
+    return 0;
+}
+
 int gkfs_mk_node(const std::string& path, mode_t mode) {
 
     //file type must be set
@@ -154,16 +175,7 @@ int gkfs_mk_node(const std::string& path, mode_t mode) {
             return -1;
     }
 
-    auto p_comp = dirname(path);
-    auto md = gkfs_metadata(p_comp);
-    if (!md) {
-        LOG(DEBUG, "Parent component does not exist: '{}'", p_comp);
-        errno = ENOENT;
-        return -1;
-    }
-    if (!S_ISDIR(md->mode())) {
-        LOG(DEBUG, "Parent component is not a directory: '{}'", p_comp);
-        errno = ENOTDIR;
+    if (check_parent_dir(path)) {
         return -1;
     }
     return rpc_send::mk_node(path, mode);
@@ -605,8 +617,6 @@ int getdents64(unsigned int fd,
         current_dirp->d_reclen = total_size;
         current_dirp->d_type =  ((de.type() == FileType::regular)? DT_REG : DT_DIR);
 
-        
-
         LOG(DEBUG, "name {}: {}", pos, de.name());
         std::strcpy(&(current_dirp->d_name[0]), de.name().c_str());
         ++pos;
@@ -643,22 +653,13 @@ int gkfs_mk_symlink(const std::string& path, const std::string& target_path) {
         }
     }
 
-    auto p_comp = dirname(path);
-    auto md = gkfs_metadata(p_comp, false);
-    if (md == nullptr) {
-        LOG(DEBUG, "Parent component does not exist: '{}'", p_comp);
-        errno = ENOENT;
-        return -1;
-    }
-    if (!S_ISDIR(md->mode())) {
-        LOG(DEBUG, "Parent component is not a directory: '{}'", p_comp);
-        errno = ENOTDIR;
+    if (check_parent_dir(path)) {
         return -1;
     }
 
     auto link_md = gkfs_metadata(path, false);
     if (link_md != nullptr) {
-        LOG(DEBUG, "Link exists: '{}'", p_comp);
+        LOG(DEBUG, "Link exists: '{}'", path);
         errno = EEXIST;
         return -1;
     }

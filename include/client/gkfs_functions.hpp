@@ -19,6 +19,8 @@
 
 std::shared_ptr<Metadata> gkfs_metadata(const std::string& path, bool follow_links = false);
 
+int check_parent_dir(const std::string& path);
+
 int gkfs_open(const std::string& path, mode_t mode, int flags);
 
 int gkfs_mk_node(const std::string& path, mode_t mode);
