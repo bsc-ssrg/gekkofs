@@ -5,7 +5,7 @@ ROOT=${1}
 
 echo "Creating a file from with content foo" in ${ROOT}
 
-echo "foo" > ${ROOT}/a.out
+echo foo > ${ROOT}/a.out
 
 echo "Testing if file exists"
 
