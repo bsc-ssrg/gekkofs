@@ -11,7 +11,6 @@ variables:
   BUILD_PATH:        "${CI_PROJECT_DIR}/gkfs/build"
   INSTALL_PATH:      "${CI_PROJECT_DIR}/gkfs/install"
   TESTS_BUILD_PATH:  "${CI_PROJECT_DIR}/test/build"
-  TESTS_BASH:        "${CI_PROJECT_DIR}/test"
   LOG_PATH:          "${CI_PROJECT_DIR}/logs"
   LD_LIBRARY_PATH:   "${CI_PROJECT_DIR}/deps/install/lib;${CI_PROJECT_DIR}/deps/install/lib64"
   # Configuration variables
@@ -26,7 +25,7 @@ image: gekkofs/gekkofs:build_env
 compile dependencies:
   stage: build deps
   cache:
-    key: ${CI_COMMIT_REF_SLUG}
+    key: deps-cache
     paths:
      - ${DEPS_INSTALL_PATH}/
   script:
@@ -51,8 +50,7 @@ compile GekkoFS:
     - cmake
       -Wdev
       -Wdeprecate
-      -DCMAKE_BUILD_TYPE=Debug 
-      -DUSE_SHM:BOOL=OFF
+      -DCMAKE_BUILD_TYPE=Debug
       -DRPC_PROTOCOL="ofi+sockets"
       -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_PATH}
       -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}
