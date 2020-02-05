@@ -20,9 +20,10 @@
 #include <boost/optional.hpp>
 #include <client/make_array.hpp>
 #include <client/syscalls.hpp>
-#include <fmt/fmt.h>
-#include <fmt/ostr.h>
+#include <fmt/format.h>
+#include <fmt/ostream.h>
 #include <date/tz.h>
+#include <hermes.hpp>
 
 #ifdef GKFS_DEBUG_BUILD
 #include <bitset>
@@ -38,14 +39,15 @@ enum class log_level : short {
     print_critical       = 1 << 3,
     print_errors         = 1 << 4,
     print_warnings       = 1 << 5,
-    print_mercury        = 1 << 6,
-    print_debug          = 1 << 7,
+    print_hermes         = 1 << 6,
+    print_mercury        = 1 << 7,
+    print_debug          = 1 << 8,
 
     // for internal use
     print_none           = 0,
     print_all            = print_syscalls | print_syscalls_entry | print_info |
                            print_critical | print_errors | print_warnings |
-                           print_mercury | print_debug,
+                           print_hermes | print_mercury | print_debug,
     print_most           = print_all & ~print_syscalls_entry,
     print_help           = 1 << 10
 };
@@ -100,6 +102,7 @@ static const auto constexpr info             = log_level::print_info;
 static const auto constexpr critical         = log_level::print_critical;
 static const auto constexpr error            = log_level::print_errors;
 static const auto constexpr warning          = log_level::print_warnings;
+static const auto constexpr hermes           = log_level::print_hermes;
 static const auto constexpr mercury          = log_level::print_mercury;
 static const auto constexpr debug            = log_level::print_debug;
 static const auto constexpr none             = log_level::print_none;
@@ -115,6 +118,7 @@ static const auto constexpr level_names =
         "critical",
         "error",
         "warning",
+        "hermes",
         "mercury",
         "debug"
 );
@@ -268,9 +272,11 @@ struct logger {
 
     logger(const std::string& opts, 
            const std::string& path, 
-           bool trunc,
+           bool trunc
 #ifdef GKFS_DEBUG_BUILD
-           const std::string& filter
+           ,
+           const std::string& filter,
+           int verbosity
 #endif
            );
 
@@ -408,6 +414,7 @@ struct logger {
 
 #ifdef GKFS_DEBUG_BUILD
     std::bitset<512> filtered_syscalls_;
+    int debug_verbosity_;
 #endif
 
     const date::time_zone * const timezone_;
@@ -461,16 +468,18 @@ static_buffer::grow(std::size_t size) {
 
 #define LOG(XXX, ...) LOG_##XXX(__VA_ARGS__)
 
-#ifdef GKFS_DISABLE_LOGGING
+#ifndef GKFS_ENABLE_LOGGING
 
 #define LOG_INFO(...) do {} while(0);
 #define LOG_WARNING(...) do {} while(0);
 #define LOG_ERROR(...) do {} while(0);
 #define LOG_CRITICAL(...) do {} while(0);
+#define LOG_HERMES(...)  do {} while(0);
+#define LOG_MERCURY(...) do {} while(0);
 #define LOG_SYSCALL(...) do {} while(0);
 #define LOG_DEBUG(...) do {} while(0);
 
-#else // !GKFS_DISABLE_LOGGING
+#else // !GKFS_ENABLE_LOGGING
 
 #define LOG_INFO(...) do {                                              \
     if(gkfs::log::get_global_logger()) {                                \
@@ -500,6 +509,20 @@ static_buffer::grow(std::size_t size) {
     }                                                                   \
 } while(0);
 
+#define LOG_HERMES(...) do { \
+    if(gkfs::log::get_global_logger()) {                                \
+        gkfs::log::get_global_logger()->log(                            \
+                gkfs::log::hermes, __func__, __LINE__, __VA_ARGS__);    \
+    }                                                                   \
+} while(0);
+
+#define LOG_MERCURY(...) do { \
+    if(gkfs::log::get_global_logger()) {                                \
+        gkfs::log::get_global_logger()->log(                            \
+                gkfs::log::mercury, __func__, __LINE__, __VA_ARGS__);   \
+    }                                                                   \
+} while(0);
+
 #ifdef GKFS_DEBUG_BUILD
 
 #define LOG_SYSCALL(...) do {                                           \
@@ -521,6 +544,6 @@ if(gkfs::log::get_global_logger()) {                                    \
 #define LOG_DEBUG(...) do {} while(0);
 
 #endif // ! GKFS_DEBUG_BUILD
-#endif // !GKFS_DISABLE_LOGGING
+#endif // !GKFS_ENABLE_LOGGING
 
 #endif // LIBGKFS_LOGGING_HPP

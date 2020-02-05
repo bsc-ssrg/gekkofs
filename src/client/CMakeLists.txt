@@ -60,7 +60,7 @@ target_link_libraries(gkfs_intercept
     dl
     mercury
     hermes
-    fmt
+    fmt::fmt
     Boost::boost # needed for tokenizer header
     Threads::Threads
     Date::TZ

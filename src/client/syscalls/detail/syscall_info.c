@@ -394,9 +394,9 @@ const struct syscall_info syscall_table[] = {
 #ifdef SYS_mlock2
     SYSCALL(mlock2,                  3,  S_RET(rdec),    S_NARG(ptr, "addr"),           S_NARG(dec, "length"),           S_NARG(arg, "flags")),
 #endif // SYS_mlock2
-
+#ifdef SYS_copy_file_range
     SYSCALL(copy_file_range,         6,  S_RET(rdec),    S_NARG(fd, "fd_in"),           S_NARG(ptr, "off_in"),           S_NARG(fd, "fd_out"),             S_NARG(ptr, "off_out"),      S_NARG(dec, "length"),       S_NARG(arg, "flags")),
-
+#endif
 #ifdef SYS_preadv2
     SYSCALL(preadv2,                 6,  S_RET(rdec),    S_UARG(fd),                    S_NARG(ptr, "iov"),              S_NARG(arg, "vlen"),              S_NARG(arg, "pos_l"),        S_NARG(arg, "pos_h"),          S_NARG(arg, "flags")),
 #endif // SYS_preadv2
@@ -404,11 +404,11 @@ const struct syscall_info syscall_table[] = {
 #ifdef SYS_pwritev2
     SYSCALL(pwritev2,                6,  S_RET(rdec),    S_UARG(fd),                    S_NARG(ptr, "iov"),              S_NARG(arg, "vlen"),              S_NARG(arg, "pos_l"),        S_NARG(arg, "pos_h"),          S_NARG(arg, "flags")),
 #endif // SYS_pwritev2
-
+#ifdef SYS_pkey_mprotect
     SYSCALL(pkey_mprotect,           4,  S_RET(rdec),    S_NARG(ptr, "addr"),           S_NARG(dec, "length"),           S_NARG(mmap_prot, "prot"),        S_NARG(dec, "pkey")),
     SYSCALL(pkey_alloc,              2,  S_RET(rdec),    S_NARG(arg, "flags"),          S_NARG(arg, "init_val")),
     SYSCALL(pkey_free,               1,  S_RET(rdec),    S_NARG(dec, "pkey")),
-
+#endif
 #ifdef SYS_statx
     SYSCALL(statx,                   5,  S_RET(rdec),    S_NARG(atfd, "dfd"),           S_NARG(cstr, "pathname"),        S_NARG(arg, "flags"),             S_NARG(arg, "mask"),         S_NARG(ptr, "buffer")),
 #endif // SYS_statx
@@ -553,7 +553,9 @@ const struct named_syscall_entry syscalls_by_name[] = {
     SYSCALL_BY_NAME(clone),
     SYSCALL_BY_NAME(close),
     SYSCALL_BY_NAME(connect),
+#ifdef SYS_copy_file_range
     SYSCALL_BY_NAME(copy_file_range),
+#endif // SYS_copy_file_range
     SYSCALL_BY_NAME(creat),
     SYSCALL_BY_NAME(create_module),
     SYSCALL_BY_NAME(delete_module),
@@ -725,9 +727,15 @@ const struct named_syscall_entry syscalls_by_name[] = {
 #ifdef SYS_preadv2
     SYSCALL_BY_NAME(preadv2),
 #endif // SYS_preadv2
+#ifdef SYS_pkey_mprotect
     SYSCALL_BY_NAME(pkey_mprotect),
+#endif // SYS_pkey_mprotect
+#ifdef SYS_pkey_alloc
     SYSCALL_BY_NAME(pkey_alloc),
+#endif // SYS_pkey_alloc
+#ifdef SYS_pkey_free
     SYSCALL_BY_NAME(pkey_free),
+#endif // SYS_pkey_free
     SYSCALL_BY_NAME(prlimit64),
     SYSCALL_BY_NAME(process_vm_readv),
     SYSCALL_BY_NAME(process_vm_writev),

@@ -16,7 +16,11 @@
 #include <client/make_array.hpp>
 #include <boost/algorithm/string.hpp>
 #include <date/tz.h>
-#include <fmt/ostr.h>
+#include <fmt/ostream.h>
+
+#ifdef GKFS_ENABLE_LOGGING
+#include <hermes/logging.hpp>
+#endif
 
 namespace gkfs {
 namespace log {
@@ -118,22 +122,21 @@ static const auto constexpr max_help_text_rows =
 log_level
 process_log_options(const std::string gkfs_debug) {
 
-#ifdef GKFS_DISABLE_LOGGING
+#ifndef GKFS_ENABLE_LOGGING
 
     (void) gkfs_debug;
     logger::log_message(stdout, "warning: logging options ignored: "
                         "logging support was disabled in this build");
     return log::none;
 
-#endif // ! GKFS_DISABLE_LOGGING
+#endif // ! GKFS_ENABLE_LOGGING
 
     log_level dm = log::none;
 
     std::vector<std::string> tokens;
 
     // skip separating white spaces and commas
-    boost::split(tokens, gkfs_debug, 
-            [](char c) { return c == ' ' || c == ','; });
+    boost::split(tokens, gkfs_debug, boost::is_any_of(" ,"));
 
     for(const auto& t : tokens) {
 
@@ -225,9 +228,11 @@ process_log_filter(const std::string& log_filter) {
 
 logger::logger(const std::string& opts, 
                const std::string& path, 
-               bool trunc,
+               bool trunc
 #ifdef GKFS_DEBUG_BUILD
-               const std::string& filter
+               ,
+               const std::string& filter,
+               int verbosity
 #endif
                ) :
     timezone_(date::current_zone()) {
@@ -238,6 +243,7 @@ logger::logger(const std::string& opts,
 
 #ifdef GKFS_DEBUG_BUILD
     filtered_syscalls_ = process_log_filter(filter);
+    debug_verbosity_ = verbosity;
 #endif
 
     if(!path.empty()) {
@@ -262,7 +268,85 @@ logger::logger(const std::string& opts,
         log_fd_ = fd;
     }
 
-#if !defined(GKFS_DISABLE_LOGGING) && defined(GKFS_DEBUG_BUILD)
+#ifdef GKFS_ENABLE_LOGGING
+    const auto log_hermes_message = 
+        [](const std::string& msg, hermes::log::level l, int severity, 
+           const std::string& file, const std::string& func, int lineno) {
+
+        const auto name = [](hermes::log::level l, int severity) {
+            using namespace std::string_literals;
+
+            switch(l) {
+                case hermes::log::info:
+                    return "info"s;
+                case hermes::log::warning:
+                    return "warning"s;
+                case hermes::log::error:
+                    return "error"s;
+                case hermes::log::fatal:
+                    return "fatal"s;
+                case hermes::log::mercury:
+                    return "mercury"s;
+                default:
+                    return "unknown"s;
+            }
+        };
+
+        LOG(HERMES, "[{}] {}", name(l, severity), msg);
+    };
+
+#ifdef GKFS_DEBUG_BUILD
+    const auto log_hermes_debug_message = 
+        [this](const std::string& msg, hermes::log::level l, 
+               int severity, const std::string& file, 
+               const std::string& func, int lineno) {
+
+        if(severity > debug_verbosity_) {
+            return;
+        }
+
+        LOG(HERMES, "[debug{}] <{}():{}> {}", 
+                (severity == 0 ? "" : std::to_string(severity + 1)), 
+                func, lineno, msg);
+    };
+#endif // GKFS_DEBUG_BUILD
+
+    const auto log_hg_message = 
+        [](const std::string& msg, hermes::log::level l, int severity, 
+           const std::string& file, const std::string& func, int lineno) {
+
+        (void) l;
+
+        // mercury message might contain one or more sub-messages 
+        // separated by '\n'
+        std::vector<std::string> sub_msgs;
+        boost::split(sub_msgs, msg, boost::is_any_of("\n"), boost::token_compress_on);
+
+        for(const auto& m : sub_msgs) {
+            if(!m.empty()) {
+                LOG(MERCURY, "{}", m);
+            }
+        }
+    };
+
+    // register log callbacks into hermes so that we can manage 
+    // both its and mercury's log messages 
+    hermes::log::logger::register_callback(
+            hermes::log::info, log_hermes_message);
+    hermes::log::logger::register_callback(
+            hermes::log::warning, log_hermes_message);
+    hermes::log::logger::register_callback(
+            hermes::log::error, log_hermes_message);
+    hermes::log::logger::register_callback(
+            hermes::log::fatal, log_hermes_message);
+#ifdef GKFS_DEBUG_BUILD
+    hermes::log::logger::register_callback(
+            hermes::log::debug, log_hermes_debug_message);
+#endif
+    hermes::log::logger::register_callback(
+            hermes::log::mercury, log_hg_message);
+
+#ifdef GKFS_DEBUG_BUILD
     // Finding the current timezone implies accessing OS files (i.e. syscalls),
     // but current_zone() doesn't actually retrieve the time zone but rather
     // provides a descriptor to it that is **atomically initialized** upon its 
@@ -281,7 +365,8 @@ logger::logger(const std::string& opts,
     // be removed if the date API ends up providing this functionality.
     using namespace date;
     timezone_->get_info(date::sys_days{January/1/1970});
-#endif
+#endif // GKFS_DEBUG_BUILD
+#endif // GKFS_ENABLE_LOGGING
 }
 
 logger::~logger() {

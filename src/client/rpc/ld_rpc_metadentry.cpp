@@ -44,6 +44,11 @@ int mk_node(const std::string& path, const mode_t mode) {
         err = out.err();
         LOG(DEBUG, "Got response success: {}", err);
 
+        if(out.err()) {
+            errno = out.err();
+            return -1;
+        }
+
     } catch(const std::exception& ex) {
         LOG(ERROR, "while getting rpc output");
         errno = EBUSY;

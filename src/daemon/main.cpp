@@ -323,6 +323,11 @@ int main(int argc, const char* argv[]) {
 #else
         cout << "Shared-memory comm: OFF" << endl;
 #endif
+#if CREATE_CHECK_PARENTS
+        cout << "Create check parents: ON" << endl;
+#else
+        cout << "Create check parents: OFF" << endl;
+#endif
         cout << "Chunk size: " << CHUNKSIZE << " bytes" << endl;
         return 0;
     }

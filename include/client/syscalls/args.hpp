@@ -23,7 +23,7 @@
 #include <unistd.h>
 
 #include <type_traits>
-#include <fmt/fmt.h>
+#include <fmt/format.h>
 #include <client/syscalls/detail/syscall_info.h>
 
 namespace gkfs {

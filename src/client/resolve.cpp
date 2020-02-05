@@ -24,6 +24,7 @@
 #include "client/logging.hpp"
 #include "client/env.hpp"
 
+static const std::string excluded_paths[2] = {"sys/", "proc/"};
 
 /* Match components in path
  *
@@ -83,6 +84,16 @@ unsigned int path_match_components(const std::string& path, unsigned int &path_c
     LOG(DEBUG, "path: \"{}\", resolved: \"{}\", resolve_last_link: {}", 
         path, resolved, resolve_last_link);
 
+    assert(is_absolute_path(path));
+
+    for (auto& excl_path: excluded_paths) {
+        if (path.compare(1, excl_path.length(), excl_path) == 0) {
+            LOG(DEBUG, "Skipping: '{}'", path);
+            resolved = path;
+            return false;
+        }
+    }
+
     struct stat st;
     const std::vector<std::string>& mnt_components = CTX->mountdir_components();
     unsigned int matched_components = 0; // matched number of component in mountdir
@@ -93,9 +104,6 @@ unsigned int path_match_components(const std::string& path, unsigned int &path_c
     std::string::size_type last_slash_pos = 0; // index of last slash in resolved path
     resolved.clear();
     resolved.reserve(path.size());
-
-    //Process first slash
-    assert(is_absolute_path(path));
 
     while (++end < path.size()) {
         start = end;

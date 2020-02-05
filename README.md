@@ -102,15 +102,17 @@ optional arguments:
 
 ## Compile GekkoFS
 You need to decide what Mercury NA plugin you want to use. The following NA plugins are available, although only BMI is considered stable at the moment.
- - `ofi+tcp` for using the libfabric plugin with TCP
+ - `ofi+sockets` for using the libfabric plugin with TCP
+ - `ofi+tcp` for using the libfabric plugin with TCP (new version)
  - `ofi+verbs` for using the libfabric plugin with Infiniband verbs (not threadsafe. Do not use.)
  - `ofi+psm2` for using the libfabric plugin with Intel Omni-Path
  - `bmi+tcp` for using the bmi plugin with the tcp protocol 
 
 ```bash
 mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake -DCMAKE_BUILD_TYPE=Release -DRPC_PROTOCOL='ofi+sockets' ..
 make
+make install
 ```
 
 ## Run GekkoFS
@@ -121,7 +123,7 @@ parallel-ssh) with python2.
 
 ### Start and shut down daemon directly
 
-`./build/bin/gkfs_daemon -r <fs_data_path> -m <pseudo_mount_dir_path> --hosts <hosts_comma_separated>`
+`./build/bin/gkfs_daemon -r <fs_data_path> -m <pseudo_mount_dir_path>`
  
 Shut it down by gracefully killing the process.
  
@@ -134,7 +136,7 @@ The scripts are located in `scripts/{startup_gkfs.py, shutdown_gkfs.py}`. Use th
 Metadata and actual data will be stored at the `<fs_data_path>`. The path where the application works on is set with
 `<pseudo_mount_dir_path>`
  
-Run the application with the preload library: `LD_PRELOAD=<path>/build/lib/libiointer.so ./application`. In the case of
+Run the application with the preload library: `LD_PRELOAD=<path>/build/lib/libgkfs_intercept.so ./application`. In the case of
 an MPI application use the `{mpirun, mpiexec} -x` argument.
  
 ### Logging

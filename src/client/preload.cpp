@@ -69,24 +69,6 @@ static inline void exit_error_msg(int errcode, const string& msg) {
     ::exit(errcode);
 }
 
-int 
-hg_log_function(FILE *stream, const char *fmt, ...) {
-
-#ifdef GKFS_DISABLE_LOGGING
-    (void) stream;
-    (void) fmt;
-
-    return 0;
-#endif // GKFS_DISABLE_LOGGING
-
-    va_list ap;
-    ::va_start(ap, fmt);
-    int n = gkfs::log::get_global_logger()->log(gkfs::log::mercury, fmt, ap);
-    ::va_end(ap);
-
-    return n;
-}
-
 /**
  * Initializes the Hermes client for a given transport prefix
  * @param transport_prefix
@@ -105,9 +87,6 @@ bool init_hermes_client(const std::string& transport_prefix) {
         ld_network_service = 
             std::make_unique<hermes::async_engine>(
                     hermes::get_transport_type(transport_prefix), opts);
-
-        ld_network_service->set_mercury_log_function(::hg_log_function);
-
         ld_network_service->run();
     } catch (const std::exception& ex) {
         fmt::print(stderr, "Failed to initialize Hermes RPC client {}\n", 

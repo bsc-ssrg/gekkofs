@@ -14,7 +14,7 @@
 #ifndef GKFS_SYSCALLS_RETS_HPP
 #define GKFS_SYSCALLS_RETS_HPP
 
-#include <fmt/fmt.h>
+#include <fmt/format.h>
 #include <type_traits>
 #include <client/syscalls/detail/syscall_info.h>
 

@@ -22,16 +22,17 @@
 namespace gkfs {
 namespace env {
 
-static constexpr auto LOG                = ADD_PREFIX("LOG");
+static constexpr auto LOG                 = ADD_PREFIX("LOG");
 
 #ifdef GKFS_DEBUG_BUILD
-static constexpr auto LOG_SYSCALL_FILTER = ADD_PREFIX("LOG_SYSCALL_FILTER");
+static constexpr auto LOG_DEBUG_VERBOSITY = ADD_PREFIX("LOG_DEBUG_VERBOSITY");
+static constexpr auto LOG_SYSCALL_FILTER  = ADD_PREFIX("LOG_SYSCALL_FILTER");
 #endif
 
-static constexpr auto LOG_OUTPUT         = ADD_PREFIX("LOG_OUTPUT");
-static constexpr auto LOG_OUTPUT_TRUNC   = ADD_PREFIX("LOG_OUTPUT_TRUNC");
-static constexpr auto CWD                = ADD_PREFIX("CWD");
-static constexpr auto HOSTS_FILE         = ADD_PREFIX("HOSTS_FILE");
+static constexpr auto LOG_OUTPUT          = ADD_PREFIX("LOG_OUTPUT");
+static constexpr auto LOG_OUTPUT_TRUNC    = ADD_PREFIX("LOG_OUTPUT_TRUNC");
+static constexpr auto CWD                 = ADD_PREFIX("CWD");
+static constexpr auto HOSTS_FILE          = ADD_PREFIX("HOSTS_FILE");
 
 } // namespace env
 } // namespace gkfs

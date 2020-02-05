@@ -17,6 +17,7 @@
 
 #define RPC_PROTOCOL "@RPC_PROTOCOL@"
 #cmakedefine01 USE_SHM
+#cmakedefine01 CREATE_CHECK_PARENTS
 
 #define CHUNKSIZE 524288 // in bytes 512KB
 
@@ -69,5 +70,7 @@
 
 #define DEFAULT_CLIENT_LOG_LEVEL "info,errors,critical,mercury"
 #define DEFAULT_DAEMON_LOG_LEVEL 4 // info
+
+#cmakedefine01 LOG_SYSCALLS
 
 #endif //FS_CONFIGURE_H
