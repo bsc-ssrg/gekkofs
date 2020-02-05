@@ -24,7 +24,7 @@ if [ $retval -ne 0 ]; then
 fi
 stat ${ROOT}/large_file_02
 
-if [ $retval -ne 0]; then
+if [ $retval -ne 0 ]; then
 	echo "File is not copied"
 	exit 1
 fi
