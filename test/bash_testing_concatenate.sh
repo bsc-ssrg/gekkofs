@@ -31,6 +31,13 @@ fi
 
 echo Concatenating two gekko files
 cat ${ROOT}/large_file_01 >> ${ROOT}/large_file_02
+retval=$?
+
+if [ $retval -ne 0 ]; then
+	echo Something wrong on concatenation
+        exit 1
+fi
+
 
 stat ${ROOT}/large_file_02
 
