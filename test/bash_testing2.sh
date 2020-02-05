@@ -4,9 +4,11 @@ ROOT=${1}
 echo Creating a file from a echo with content foo
 echo "foo" > $ROOT/a.out
 
+echo "Testing if file exists"
+
 if [ -f $ROOT/a.out ]; then
-     echo File exists
-     echo is the content correct?
+     echo "File exists"
+     echo "Testing if the content is correct"
      if grep -Fxq "foo" $ROOT/a.out
      then
             echo "String found"
@@ -15,10 +17,10 @@ if [ -f $ROOT/a.out ]; then
             exit 1
      fi
 else
-     echo File does not exists
+     echo "File does not exists"
      exit 1
 fi
 
-echo all test done
+echo "all test done"
 
 exit 0
