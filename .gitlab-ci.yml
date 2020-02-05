@@ -15,7 +15,7 @@ variables:
   LOG_PATH:          "${CI_PROJECT_DIR}/logs"
   LD_LIBRARY_PATH:   "${CI_PROJECT_DIR}/deps/install/lib;${CI_PROJECT_DIR}/deps/install/lib64"
   # Configuration variables
-  GKFS_LOG_LEVEL:   "1"
+  GKFS_LOG_LEVEL:   "100"
   GKFS_DAEMON_LOG_PATH:  "${CI_PROJECT_DIR}/logs/daemon.log"
   LIBGKFS_LOG:           "all"
   LIBGKFS_LOG_OUTPUT:    "${CI_PROJECT_DIR}/logs/gkfs_client.log"
