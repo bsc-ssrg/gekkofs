@@ -81,8 +81,13 @@ static const auto constexpr debug_opts = utils::make_array(
               "[ default: on  ]"}, 
              log::warning},
 
+    opt_info{STR_AND_LEN("hermes"),
+             {"Print messages from Hermes (GekkoFS high-level RPC library)",
+              "[ default: on ]"},
+             log::hermes},
+
     opt_info{STR_AND_LEN("mercury"), 
-             {"Print Mercury messages",
+             {"Print messages from Mercury (GekkoFS low-level RPC library)",
               "[ default: on ]"},
              log::mercury},
 

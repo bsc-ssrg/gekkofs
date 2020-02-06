@@ -6,6 +6,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2020-02-05
+## Added
+ - Adedd support for `eventfd()`and `eventfd2()` system calls.
+## Changed
+ - Replaced Margo with Mercury in the client library in order to increase
+   application compatibility: the Argobots ULTs used by Margo to send and
+   process RPCs clashed at times with applications using pthreads.
+ - Renamed environment variables to better distinguish which variables affect
+   the client library (`LIBGKFS_*`) and which affect the daemon
+   (`GKFS_DAEMON_*`).
+ - Replaced spdlog in the client with a bespoke logging infrastructure:
+   spdlog's internal threads and exception management often had issues with the
+   system call interception infrastructure. The current logging infrastructure
+   is designed around the syscall interception mechanism, and is therefore more
+   stable.
+ - Due to the new logging infrastructure, there have been significant changes
+   to the environment variables controlling logging output. The desired log
+   module is now set with `LIBGKFS_LOG`, while the desired output channel is
+   controlled with `LIBGKFS_LOG_OUTPUT`. Additional options such as
+   `LIBGKFS_LOG_OUTPUT_TRUNC`, `LOG_SYSCALL_FILTER` and `LOG_DEBUG_VERBOSITY`
+   can be used to further control messages. Run the client with
+   `LIBGKFS_LOG=help` for more details.
+ - Improved dependency management in CMake.
+## Fixed
+ - Relocate internal file descriptors to a private range to avoid interfering
+   with client application file descriptors.
+ - Handle internal file descriptors created by `fcntl()`.
+ - Handle internal file descriptors passed to processes using `CMSG_DATA` in
+   `recvmsg()`.
+
 ## [0.6.2] - 2019-10-07
 ## Added
  - Paths inside kernel pseudo filesystems (`/sys`, `/proc`) are forwarded directly to the kernel and internal path resolution will be skipped. Be aware that also paths  like  `/sys/../tmp/gkfs_mountpoint/asd` will be forwarded to the kernel
