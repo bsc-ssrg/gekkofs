@@ -74,7 +74,7 @@ compile GekkoFS_Release:
       -Wdeprecate
       -DCMAKE_BUILD_TYPE=Release
       -DRPC_PROTOCOL="ofi+sockets"
-      -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_R_PATH}
+      -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_PATH}
       -DCMAKE_INSTALL_PREFIX=${INSTALL_R_PATH}
       ${CI_PROJECT_DIR}
     - make -j$(nproc) install
