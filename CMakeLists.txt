@@ -83,6 +83,7 @@ find_package(Snappy REQUIRED)
 find_package(ZStd REQUIRED)
 find_package(JeMalloc) # required if rocksdb has been build with jemalloc
 find_package(RocksDB REQUIRED)
+find_package(AGIOS REQUIRED)
 # margo dependencies
 find_package(Mercury REQUIRED)
 find_package(Abt REQUIRED)
@@ -140,6 +141,18 @@ if(ENABLE_CLIENT_LOG)
     add_definitions(-DGKFS_ENABLE_LOGGING)
 endif()
 message(STATUS "[gekkofs] Client logging output: ${ENABLE_CLIENT_LOG}")
+
+option(ENABLE_FORWARDING "Enable forwarding mode" OFF)
+if(ENABLE_FORWARDING)
+    add_definitions(-DGKFS_ENABLE_FORWARDING)
+endif()
+message(STATUS "[gekkofs] Forwarding mode: ${ENABLE_FORWARDING}")
+
+option(ENABLE_AGIOS "Enable AGIOS scheduling library" OFF)
+if(ENABLE_AGIOS)
+    add_definitions(-DGKFS_ENABLE_AGIOS)
+endif()
+message(STATUS "[gekkofs] AGIOS scheduling: ${ENABLE_AGIOS_SCHEDULER}")
 
 set(CLIENT_LOG_MESSAGE_SIZE 1024 CACHE STRING "Maximum size of a log message in the client library")
 add_definitions(-DLIBGKFS_LOG_MESSAGE_SIZE=${CLIENT_LOG_MESSAGE_SIZE})

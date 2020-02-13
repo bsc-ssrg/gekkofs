@@ -20,7 +20,8 @@ variables:
   LIBGKFS_LOG_OUTPUT:    "${CI_PROJECT_DIR}/logs/gkfs_client.log"
   GIT_SUBMODULE_STRATEGY: recursive
 
-image: gekkofs/gekkofs:build_env
+#image: gekkofs/gekkofs:build_env
+image: jeanbez/gekkofs-forwarding:latest
 
 compile dependencies:
   stage: build deps
@@ -76,6 +77,8 @@ test wr:
   stage: test
   script:
     - mkdir -p "${LOG_PATH}"
+    - cp agios/* /tmp
+    - echo "`hostname` 0" > gkfs_forwarding.map
     - ${INSTALL_PATH}/bin/gkfs_daemon --mount /tmp/mountdir --root /tmp/root &
     - sleep 4
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BUILD_PATH}/gkfs_test_wr
@@ -88,6 +91,8 @@ test directories:
   stage: test
   script:
     - mkdir -p "${LOG_PATH}"
+    - cp agios/* /tmp
+    - echo "`hostname` 0" > gkfs_forwarding.map
     - ${INSTALL_PATH}/bin/gkfs_daemon --mount /tmp/mountdir --root /tmp/root &
     - sleep 4
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BUILD_PATH}/gkfs_test_dir
@@ -100,6 +105,8 @@ test truncate:
   stage: test
   script:
     - mkdir -p "${LOG_PATH}"
+    - cp agios/* /tmp
+    - echo "`hostname` 0" > gkfs_forwarding.map
     - ${INSTALL_PATH}/bin/gkfs_daemon --mount /tmp/mountdir --root /tmp/root &
     - sleep 4
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BUILD_PATH}/gkfs_test_truncate
@@ -112,6 +119,8 @@ test path resolution:
   stage: test
   script:
     - mkdir -p "${LOG_PATH}"
+    - cp agios/* /tmp
+    - echo "`hostname` 0" > gkfs_forwarding.map
     - ${INSTALL_PATH}/bin/gkfs_daemon --mount /tmp/mountdir --root /tmp/root &
     - sleep 4
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BUILD_PATH}/gkfs_test_path_resolution
@@ -124,6 +133,8 @@ test lseek:
   stage: test
   script:
     - mkdir -p "${LOG_PATH}"
+    - cp agios/* /tmp
+    - echo "`hostname` 0" > gkfs_forwarding.map
     - ${INSTALL_PATH}/bin/gkfs_daemon --mount /tmp/mountdir --root /tmp/root &
     - sleep 4
     - LD_PRELOAD=${INSTALL_PATH}/lib/libgkfs_intercept.so ${TESTS_BUILD_PATH}/gkfs_test_lseek

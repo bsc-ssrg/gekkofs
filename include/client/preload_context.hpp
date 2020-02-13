@@ -72,6 +72,7 @@ class PreloadContext {
 
     std::vector<hermes::endpoint> hosts_;
     uint64_t local_host_id_;
+    uint64_t fwd_host_id_;
 
     bool interception_enabled_;
 
@@ -105,6 +106,8 @@ class PreloadContext {
     uint64_t local_host_id() const;
     void local_host_id(uint64_t id);
 
+    uint64_t fwd_host_id() const;
+    void fwd_host_id(uint64_t id);
     RelativizeStatus relativize_fd_path(int dirfd,
                                         const char * raw_path,
                                         std::string& relative_path,

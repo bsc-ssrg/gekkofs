@@ -23,6 +23,9 @@ namespace gkfs {
 namespace env {
 
 static constexpr auto HOSTS_FILE = ADD_PREFIX("HOSTS_FILE");
+#ifdef GKFS_ENABLE_FORWARDING
+static constexpr auto FORWARDING_MAP_FILE = ADD_PREFIX("FORWARDING_MAP_FILE");
+#endif
 
 } // namespace env
 } // namespace gkfs

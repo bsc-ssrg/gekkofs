@@ -116,6 +116,14 @@ void PreloadContext::local_host_id(uint64_t id) {
     local_host_id_ = id;
 }
 
+uint64_t PreloadContext::fwd_host_id() const {
+    return fwd_host_id_;
+}
+
+void PreloadContext::fwd_host_id(uint64_t id) {
+    fwd_host_id_ = id;
+}
+
 RelativizeStatus PreloadContext::relativize_fd_path(int dirfd,
                                                     const char * raw_path,
                                                     std::string& relative_path,

@@ -64,10 +64,12 @@ extern hg_id_t rpc_mk_symlink_id;
 int metadata_to_stat(const std::string& path, const Metadata& md, struct stat& attr);
 
 std::vector<std::pair<std::string, std::string>> load_hosts_file(const std::string& lfpath);
+std::map<std::string, uint64_t> load_forwarding_map_file(const std::string& lfpath);
 
 hg_addr_t get_local_addr();
 
 void load_hosts();
 bool lookup_all_hosts();
+void load_forwarding_map();
 
 #endif //IFS_PRELOAD_UTIL_HPP

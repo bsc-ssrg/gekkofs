@@ -66,3 +66,29 @@ std::vector<Host> LocalOnlyDistributor::
 locate_directory_metadata(const std::string& path) const {
     return {localhost_};
 }
+ForwarderDistributor::
+ForwarderDistributor(Host fwhost, unsigned int hosts_size) : 
+    fwhost_(fwhost),
+    hosts_size_(hosts_size)
+{}
+
+Host ForwarderDistributor::
+localhost() const {
+    return fwhost_;
+}
+
+Host ForwarderDistributor::
+locate_data(const std::string& path, const ChunkID& chnk_id) const {
+    //std::cout << path << " " << chnk_id << " " << " ---> " << localhost_ << std::endl;
+    return fwhost_;
+}
+
+Host ForwarderDistributor::
+locate_file_metadata(const std::string& path) const {
+    return str_hash(path) % hosts_size_;
+}
+
+std::vector<Host> ForwarderDistributor::
+locate_directory_metadata(const std::string& path) const {
+    return {fwhost_};
+}

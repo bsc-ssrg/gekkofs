@@ -137,8 +137,21 @@ void init_ld_environment_() {
     }
 
     /* Setup distributor */
+    #ifdef GKFS_ENABLE_FORWARDING
+    try {
+        load_forwarding_map();
+
+        LOG(INFO, "{}() Forward to {}", __func__, CTX->fwd_host_id());
+    } catch (std::exception& e){
+        exit_error_msg(EXIT_FAILURE, fmt::format("Unable set the forwarding host '{}'", e.what()));
+    }
+    
+    auto forwarder_dist = std::make_shared<ForwarderDistributor>(CTX->fwd_host_id(), CTX->hosts().size());
+    CTX->distributor(forwarder_dist);
+    #else
     auto simple_hash_dist = std::make_shared<SimpleHashDistributor>(CTX->local_host_id(), CTX->hosts().size());
     CTX->distributor(simple_hash_dist);
+    #endif
 
     LOG(INFO, "Retrieving file system configuration...");
 

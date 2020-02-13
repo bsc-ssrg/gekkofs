@@ -23,6 +23,9 @@
 #include <daemon/ops/metadentry.hpp>
 #include <daemon/backend/metadata/db.hpp>
 #include <daemon/backend/data/chunk_storage.hpp>
+#ifdef GKFS_ENABLE_AGIOS
+#include <daemon/scheduler/agios.hpp>
+#endif
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -51,6 +54,21 @@ void init_environment() {
         ADAFS_DATA->spdlogger()->error("{}() Failed to initialize metadata DB: {}", __func__, e.what());
         throw;
     }
+
+    #ifdef GKFS_ENABLE_FORWARDING
+    ADAFS_DATA->spdlogger()->debug("{}() Enable I/O forwarding mode", __func__);
+    #endif
+
+    #ifdef GKFS_ENABLE_AGIOS
+    // Initialize AGIOS scheduler
+    ADAFS_DATA->spdlogger()->debug("{}() Initializing AGIOS scheduler: '{}'", __func__, "/tmp/agios.conf");
+    try {
+        agios_initialize();    
+    } catch (const std::exception & e) {
+        ADAFS_DATA->spdlogger()->error("{}() Failed to initialize AGIOS scheduler: {}", __func__, e.what());
+        throw;
+    }
+    #endif
 
     // Initialize data backend
     std::string chunk_storage_path = ADAFS_DATA->rootdir() + "/data/chunks"s;
@@ -132,7 +150,25 @@ void destroy_enviroment() {
 
     ADAFS_DATA->spdlogger()->info("{}() Closing metadata DB", __func__);
     ADAFS_DATA->close_mdb();
+
+    #ifdef GKFS_ENABLE_AGIOS
+    agios_exit();
+    #endif
 }
+
+#ifdef GKFS_ENABLE_AGIOS
+void agios_initialize() {
+    char configuration[] = "/tmp/agios.conf";
+    
+    if (!agios_init(agios_callback, agios_callback_aggregated, configuration, 0)) {
+        ADAFS_DATA->spdlogger()->error("{}() Failed to initialize AGIOS scheduler: '{}'", __func__, configuration);   
+
+        agios_exit();
+
+        throw;
+    }
+}
+#endif
 
 void init_io_tasklet_pool() {
     assert(DAEMON_IO_XSTREAMS >= 0);

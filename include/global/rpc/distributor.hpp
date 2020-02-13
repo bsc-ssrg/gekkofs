@@ -56,4 +56,16 @@ class LocalOnlyDistributor : public Distributor {
         std::vector<Host> locate_directory_metadata(const std::string& path) const override;
 };
 
+class ForwarderDistributor : public Distributor {
+    private:
+        Host fwhost_;
+        unsigned int hosts_size_;
+        std::hash<std::string> str_hash;
+    public:
+        ForwarderDistributor(Host fwhost, unsigned int hosts_size);
+        Host localhost() const override;
+        Host locate_data(const std::string& path, const ChunkID& chnk_id) const override;
+        Host locate_file_metadata(const std::string& path) const override;
+        std::vector<Host> locate_directory_metadata(const std::string& path) const override;
+};
 #endif //IFS_RPC_LOCATOR_HPP

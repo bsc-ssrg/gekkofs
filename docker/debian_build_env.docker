@@ -19,6 +19,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 		cmake \
 		gcc \
 		g++ \
+		# AGIOS dependencies
+		libconfig-dev \
 		# Mercury dependencies
 		libltdl-dev \
 		lbzip2 \
