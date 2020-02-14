@@ -160,7 +160,7 @@ void destroy_enviroment() {
 void agios_initialize() {
     char configuration[] = "/tmp/agios.conf";
     
-    if (!agios_init(agios_callback, agios_callback_aggregated, configuration, 0)) {
+    if (!agios_init(NULL, NULL, configuration, 0)) {
         ADAFS_DATA->spdlogger()->error("{}() Failed to initialize AGIOS scheduler: '{}'", __func__, configuration);   
 
         agios_exit();

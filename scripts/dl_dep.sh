@@ -341,7 +341,7 @@ fi
 
 # get AGIOS
 if check_dependency "agios" "${DEP_CONFIG[@]}"; then
-clonedeps "agios" "https://github.com/francielizanon/agios.git" "-b development" &
+clonedeps "agios" "https://github.com/jeanbez/agios.git" "" "-b gekkofs" &
 fi
 
 # get date
