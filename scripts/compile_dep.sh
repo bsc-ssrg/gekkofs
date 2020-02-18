@@ -290,7 +290,7 @@ if check_dependency "capstone" "${DEP_CONFIG[@]}"; then
     CURR=${SOURCE}/capstone
     prepare_build_dir "${CURR}"
     cd "${CURR}"/build
-    $CMAKE -DCMAKE_INSTALL_PREFIX=/home/vef/gekkofs_deps/install -DCMAKE_BUILD_TYPE:STRING=Release ..
+    $CMAKE -DCMAKE_INSTALL_PREFIX="${INSTALL}" -DCMAKE_BUILD_TYPE:STRING=Release ..
     make -j"${CORES}" install
 fi
 
