@@ -1,0 +1,9 @@
+#import pytest
+from harness.cli import add_cli_options
+from pathlib import Path
+
+def pytest_addoption(parser):
+    """
+    Adds extra options from the GKFS harness to the py.test CLI.
+    """
+    add_cli_options(parser)

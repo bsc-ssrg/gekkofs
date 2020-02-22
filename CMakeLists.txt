@@ -5,6 +5,7 @@ project(
     VERSION 0.7.0
 )
 
+enable_testing()
 
 if(NOT CMAKE_COMPILER_IS_GNUCC)
     message(FATAL_ERROR "The choosen C compiler is not gcc and is not supported")
@@ -209,3 +210,10 @@ add_subdirectory(src/global)
 add_subdirectory(src/daemon)
 # Client library
 add_subdirectory(src/client)
+
+option(GKFS_BUILD_TESTS "Build GekkoFS self tests" ON)
+
+if(GKFS_BUILD_TESTS)
+    message(STATUS "[gekkofs] Preparing tests...")
+    add_subdirectory(tests)
+endif()
