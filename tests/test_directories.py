@@ -2,7 +2,6 @@ import harness
 from pathlib import Path
 import errno
 import stat
-from harness import glibc_syscalls
 import os
 from pprint import pprint
 import ctypes

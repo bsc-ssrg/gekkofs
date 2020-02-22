@@ -72,6 +72,15 @@ compile tests:
     paths:
      - ${TESTS_BUILD_PATH}
 
+integration tests:
+  stage: test
+  script:
+    - make test
+  artifacts:
+    when: on_failure
+    paths:
+      - "${BUILD_PATH}/tests/pytest.log"
+
 test wr:
   stage: test
   script:
