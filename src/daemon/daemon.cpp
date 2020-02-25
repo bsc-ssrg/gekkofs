@@ -329,7 +329,7 @@ int main(int argc, const char* argv[]) {
     if (vm.count("listen")) {
         addr = vm["listen"].as<string>();
     } else {
-        addr = get_my_hostname(true);
+        addr = gkfs::rpc::get_my_hostname(true);
     }
 
     GKFS_DATA->bind_addr(fmt::format("{}://{}", RPC_PROTOCOL, addr));

@@ -7,10 +7,11 @@ set(DAEMON_SRC
     daemon.cpp
     util.cpp
     ops/metadentry.cpp
+    ops/data.cpp
     classes/fs_data.cpp
     classes/rpc_data.cpp
-    handler/srv_metadata.cpp
     handler/srv_data.cpp
+    handler/srv_metadata.cpp
     handler/srv_management.cpp
     )
 set(DAEMON_HEADERS
@@ -23,6 +24,7 @@ set(DAEMON_HEADERS
     ../../include/global/path_util.hpp
     ../../include/daemon/daemon.hpp
     ../../include/daemon/util.hpp
+    ../../include/daemon/ops/data.hpp
     ../../include/daemon/ops/metadentry.hpp
     ../../include/daemon/classes/fs_data.hpp
     ../../include/daemon/classes/rpc_data.hpp

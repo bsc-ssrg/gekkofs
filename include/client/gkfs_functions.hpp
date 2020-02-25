@@ -37,8 +37,6 @@ int gkfs_stat(const std::string& path, struct stat* buf, bool follow_links = tru
 
 int gkfs_statfs(struct statfs* buf);
 
-int gkfs_statvfs(struct statvfs* buf);
-
 off64_t gkfs_lseek(unsigned int fd, off64_t offset, unsigned int whence);
 
 off64_t gkfs_lseek(std::shared_ptr<gkfs::filemap::OpenFile> gkfs_fd, off64_t offset, unsigned int whence);

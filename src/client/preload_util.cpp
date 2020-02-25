@@ -195,7 +195,7 @@ void load_hosts() {
 
     LOG(INFO, "Hosts pool size: {}", hosts.size());
 
-    auto local_hostname = get_my_hostname(true);
+    auto local_hostname = gkfs::rpc::get_my_hostname(true);
     bool local_host_found = false;
 
     std::vector<hermes::endpoint> addrs;

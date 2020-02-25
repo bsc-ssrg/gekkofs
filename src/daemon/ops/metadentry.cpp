@@ -104,9 +104,16 @@ void update_size(const string& path, size_t io_size, off64_t offset, bool append
  * Remove metadentry if exists and try to remove all chunks for path
  * @param path
  * @return
+ * @throws gkfs::metadata::DBException, gkfs::data::ChunkStorageException
  */
-void remove_node(const string& path) {
-    GKFS_DATA->mdb()->remove(path); // remove metadentry
+void remove(const string& path) {
+    /*
+     * try to remove metadata from kv store but catch NotFoundException which is not an error in this case
+     * because removes can be broadcast to catch all data chunks but only one node will hold the kv store entry.
+     */
+    try {
+        GKFS_DATA->mdb()->remove(path); // remove metadata from KV store
+    } catch (const NotFoundException& e) {}
     GKFS_DATA->storage()->destroy_chunk_space(path); // destroys all chunks for the path on this node
 }
 

@@ -415,6 +415,11 @@ int forward_truncate(const std::string& path, size_t current_size, size_t new_si
     return error ? -1 : 0;
 }
 
+/**
+ * Performs a chunk stat RPC to all hosts
+ * @return rpc::ChunkStat
+ * @throws std::runtime_error
+ */
 ChunkStat forward_get_chunk_stat() {
 
     std::vector<hermes::rpc_handle<gkfs::rpc::chunk_stat>> handles;
@@ -444,24 +449,36 @@ ChunkStat forward_get_chunk_stat() {
     unsigned long chunk_total = 0;
     unsigned long chunk_free = 0;
 
+    int error = 0;
+
     // wait for RPC responses
     for (std::size_t i = 0; i < handles.size(); ++i) {
 
-        gkfs::rpc::chunk_stat::output out;
+        gkfs::rpc::chunk_stat::output out{};
 
         try {
             // XXX We might need a timeout here to not wait forever for an
             // output that never comes?
             out = handles[i].get().at(0);
 
+            if (out.err() != 0) {
+                error = out.err();
+                LOG(ERROR, "Host '{}' reported err code '{}' during stat chunk.", CTX->hosts().at(i).to_string(),
+                    error);
+                // we don't break here to ensure all responses are processed
+                continue;
+            }
             assert(out.chunk_size() == chunk_size);
             chunk_total += out.chunk_total();
             chunk_free += out.chunk_free();
-
         } catch (const std::exception& ex) {
-            throw std::runtime_error(
-                    fmt::format("Failed to get rpc output for target host: {}]", i));
+            errno = EBUSY;
+            throw std::runtime_error(fmt::format("Failed to get RPC output from host: {}", i));
         }
+    }
+    if (error != 0) {
+        errno = error;
+        throw std::runtime_error("chunk stat failed on one host");
     }
 
     return {chunk_size, chunk_total, chunk_free};

@@ -15,6 +15,8 @@
 #include <global/path_util.hpp>
 
 #include <cerrno>
+#include <utility>
+
 #include <boost/filesystem.hpp>
 #include <spdlog/spdlog.h>
 
@@ -28,22 +30,11 @@ using namespace std;
 namespace gkfs {
 namespace data {
 
+// private functions
+
 string ChunkStorage::absolute(const string& internal_path) const {
     assert(gkfs::path::is_relative(internal_path));
-    return root_path + '/' + internal_path;
-}
-
-ChunkStorage::ChunkStorage(const string& path, const size_t chunksize) :
-        root_path(path),
-        chunksize(chunksize) {
-    //TODO check path: absolute, exists, permission to write etc...
-    assert(gkfs::path::is_absolute(root_path));
-
-    /* Initialize logger */
-    log = spdlog::get(LOGGER_NAME);
-    assert(log);
-
-    log->debug("Chunk storage initialized with path: '{}'", root_path);
+    return fmt::format("{}/{}", root_path_, internal_path);
 }
 
 string ChunkStorage::get_chunks_dir(const string& file_path) {
@@ -53,169 +44,256 @@ string ChunkStorage::get_chunks_dir(const string& file_path) {
     return chunk_dir;
 }
 
-string ChunkStorage::get_chunk_path(const string& file_path, unsigned int chunk_id) {
-    return get_chunks_dir(file_path) + '/' + ::to_string(chunk_id);
+string ChunkStorage::get_chunk_path(const string& file_path, gkfs::types::rpc_chnk_id_t chunk_id) {
+    return fmt::format("{}/{}", get_chunks_dir(file_path), chunk_id);
 }
 
-void ChunkStorage::destroy_chunk_space(const string& file_path) const {
-    auto chunk_dir = absolute(get_chunks_dir(file_path));
-    try {
-        bfs::remove_all(chunk_dir);
-    } catch (const bfs::filesystem_error& e) {
-        log->error("Failed to remove chunk directory. Path: '{}', Error: '{}'", chunk_dir, e.what());
-    }
-}
-
+/**
+ * Creates a chunk directories are all chunk files are placed in.
+ * The path to the real file will be used as the directory name
+ * @param file_path
+ * @returns 0 on success or errno on failure
+ */
 void ChunkStorage::init_chunk_space(const string& file_path) const {
     auto chunk_dir = absolute(get_chunks_dir(file_path));
     auto err = mkdir(chunk_dir.c_str(), 0750);
     if (err == -1 && errno != EEXIST) {
-        log->error("Failed to create chunk dir. Path: '{}', Error: '{}'", chunk_dir, ::strerror(errno));
-        throw ::system_error(errno, ::system_category(), "Failed to create chunk directory");
+        auto err_str = fmt::format("{}() Failed to create chunk directory. File: '{}', Error: '{}'", __func__,
+                                   file_path, errno);
+        throw ChunkStorageException(errno, err_str);
     }
 }
 
-/* Delete all chunks stored on this node that falls in the gap [chunk_start, chunk_end]
+// public functions
+
+/**
  *
- * This is pretty slow method because it cycle over all the chunks sapce for this file.
+ * @param path
+ * @param chunksize
+ * @throws ChunkStorageException
  */
-void ChunkStorage::trim_chunk_space(const string& file_path,
-                                    unsigned int chunk_start, unsigned int chunk_end) {
+ChunkStorage::ChunkStorage(string path, const size_t chunksize) :
+        root_path_(std::move(path)),
+        chunksize_(chunksize) {
+    /* Initialize logger */
+    log_ = spdlog::get(LOGGER_NAME);
+    assert(log_);
+    assert(gkfs::path::is_absolute(root_path_));
+    // Verify that we have sufficient write access
+    // This will throw on error, canceling daemon initialization
+    auto test_file_path = "/.__chunk_dir_test"s;
+    init_chunk_space(test_file_path);
+    destroy_chunk_space(test_file_path);
+    log_->debug("{}() Chunk storage initialized with path: '{}'", __func__, root_path_);
+}
 
+/**
+ * Removes chunk directory with all its files
+ * @param file_path
+ * @throws ChunkStorageException
+ */
+void ChunkStorage::destroy_chunk_space(const string& file_path) const {
     auto chunk_dir = absolute(get_chunks_dir(file_path));
-    const bfs::directory_iterator end;
-
-    for (bfs::directory_iterator chunk_file(chunk_dir); chunk_file != end; ++chunk_file) {
-        auto chunk_path = chunk_file->path();
-        auto chunk_id = ::stoul(chunk_path.filename().c_str());
-        if (chunk_id >= chunk_start && chunk_id <= chunk_end) {
-            int ret = unlink(chunk_path.c_str());
-            if (ret == -1) {
-                log->error("Failed to remove chunk file. File: '{}', Error: '{}'", chunk_path.native(),
-                           ::strerror(errno));
-                throw ::system_error(errno, ::system_category(), "Failed to remove chunk file");
-            }
-        }
+    try {
+        // Note: remove_all does not throw an error when path doesn't exist.
+        auto n = bfs::remove_all(chunk_dir);
+        log_->debug("{}() Removed '{}' files from '{}'", __func__, n, chunk_dir);
+    } catch (const bfs::filesystem_error& e) {
+        auto err_str = fmt::format("{}() Failed to remove chunk directory. Path: '{}', Error: '{}'", __func__,
+                                   chunk_dir, e.what());
+        throw ChunkStorageException(e.code().value(), err_str);
     }
 }
 
-void ChunkStorage::delete_chunk(const string& file_path, unsigned int chunk_id) {
-    auto chunk_path = absolute(get_chunk_path(file_path, chunk_id));
-    int ret = unlink(chunk_path.c_str());
-    if (ret == -1) {
-        log->error("Failed to remove chunk file. File: '{}', Error: '{}'", chunk_path, ::strerror(errno));
-        throw ::system_error(errno, ::system_category(), "Failed to remove chunk file");
-    }
-}
+/**
+ * Writes a chunk file.
+ * On failure returns a negative error code corresponding to `-errno`.
+ *
+ * Refer to https://www.gnu.org/software/libc/manual/html_node/I_002fO-Primitives.html for pwrite behavior
+ *
+ * @param file_path
+ * @param chunk_id
+ * @param buff
+ * @param size
+ * @param offset
+ * @param eventual
+ * @throws ChunkStorageException (caller will handle eventual signalling)
+ */
+ssize_t
+ChunkStorage::write_chunk(const string& file_path, gkfs::types::rpc_chnk_id_t chunk_id, const char* buff, size_t size,
+                          off64_t offset) const {
 
-void ChunkStorage::truncate_chunk(const string& file_path, unsigned int chunk_id, off_t length) {
-    auto chunk_path = absolute(get_chunk_path(file_path, chunk_id));
-    assert(length > 0 && (unsigned int) length <= chunksize);
-    int ret = truncate(chunk_path.c_str(), length);
-    if (ret == -1) {
-        log->error("Failed to truncate chunk file. File: '{}', Error: '{}'", chunk_path, ::strerror(errno));
-        throw ::system_error(errno, ::system_category(), "Failed to truncate chunk file");
-    }
-}
-
-void ChunkStorage::write_chunk(const string& file_path, unsigned int chunk_id,
-                               const char* buff, size_t size, off64_t offset, ABT_eventual& eventual) const {
-
-    assert((offset + size) <= chunksize);
-
+    assert((offset + size) <= chunksize_);
+    // may throw ChunkStorageException on failure
     init_chunk_space(file_path);
 
     auto chunk_path = absolute(get_chunk_path(file_path, chunk_id));
     int fd = open(chunk_path.c_str(), O_WRONLY | O_CREAT, 0640);
     if (fd < 0) {
-        log->error("Failed to open chunk file for write. File: '{}', Error: '{}'", chunk_path, ::strerror(errno));
-        throw ::system_error(errno, ::system_category(), "Failed to open chunk file for write");
+        auto err_str = fmt::format("Failed to open chunk file for write. File: '{}', Error: '{}'", chunk_path,
+                                   ::strerror(errno));
+        throw ChunkStorageException(errno, err_str);
     }
 
     auto wrote = pwrite(fd, buff, size, offset);
     if (wrote < 0) {
-        log->error("Failed to write chunk file. File: '{}', size: '{}', offset: '{}', Error: '{}'",
-                   chunk_path, size, offset, ::strerror(errno));
-        throw ::system_error(errno, ::system_category(), "Failed to write chunk file");
+        auto err_str = fmt::format("Failed to write chunk file. File: '{}', size: '{}', offset: '{}', Error: '{}'",
+                                   chunk_path, size, offset, ::strerror(errno));
+        throw ChunkStorageException(errno, err_str);
     }
 
-    ABT_eventual_set(eventual, &wrote, sizeof(size_t));
-
-    auto err = close(fd);
-    if (err < 0) {
-        log->error("Failed to close chunk file after write. File: '{}', Error: '{}'",
+    // if close fails we just write an entry into the log erroring out
+    if (close(fd) < 0) {
+        log_->warn("Failed to close chunk file after write. File: '{}', Error: '{}'",
                    chunk_path, ::strerror(errno));
-        //throw ::system_error(errno, ::system_category(), "Failed to close chunk file");
     }
+    return wrote;
 }
 
-void ChunkStorage::read_chunk(const string& file_path, unsigned int chunk_id,
-                              char* buff, size_t size, off64_t offset, ABT_eventual& eventual) const {
-    assert((offset + size) <= chunksize);
+/**
+ * Read from a chunk file.
+ * On failure returns a negative error code corresponding to `-errno`.
+ *
+ * Refer to https://www.gnu.org/software/libc/manual/html_node/I_002fO-Primitives.html for pread behavior
+ * @param file_path
+ * @param chunk_id
+ * @param buf
+ * @param size
+ * @param offset
+ * @param eventual
+ */
+ssize_t
+ChunkStorage::read_chunk(const string& file_path, gkfs::types::rpc_chnk_id_t chunk_id, char* buf, size_t size,
+                         off64_t offset) const {
+    assert((offset + size) <= chunksize_);
     auto chunk_path = absolute(get_chunk_path(file_path, chunk_id));
     int fd = open(chunk_path.c_str(), O_RDONLY);
     if (fd < 0) {
-        log->error("Failed to open chunk file for read. File: '{}', Error: '{}'", chunk_path, ::strerror(errno));
-        throw ::system_error(errno, ::system_category(), "Failed to open chunk file for read");
+        auto err_str = fmt::format("Failed to open chunk file for read. File: '{}', Error: '{}'", chunk_path,
+                                   ::strerror(errno));
+        throw ChunkStorageException(errno, err_str);
     }
     size_t tot_read = 0;
     ssize_t read = 0;
 
     do {
         read = pread64(fd,
-                       buff + tot_read,
+                       buf + tot_read,
                        size - tot_read,
                        offset + tot_read);
         if (read == 0) {
+            /*
+             * A value of zero indicates end-of-file (except if the value of the size argument is also zero).
+             * This is not considered an error. If you keep calling read while at end-of-file,
+             * it will keep returning zero and doing nothing else.
+             * Hence, we break here.
+             */
             break;
         }
 
         if (read < 0) {
-            log->error("Failed to read chunk file. File: '{}', size: '{}', offset: '{}', Error: '{}'",
-                       chunk_path, size, offset, ::strerror(errno));
-            throw ::system_error(errno, ::system_category(), "Failed to read chunk file");
+            auto err_str = fmt::format("Failed to read chunk file. File: '{}', size: '{}', offset: '{}', Error: '{}'",
+                                       chunk_path, size, offset, ::strerror(errno));
+            throw ChunkStorageException(errno, err_str);
         }
 
 #ifndef NDEBUG
         if (tot_read + read < size) {
-            log->warn("Read less bytes than requested: '{}'/{}. Total read was '{}'", read, size - tot_read, size);
+            log_->debug("Read less bytes than requested: '{}'/{}. Total read was '{}'. This is not an error!", read,
+                        size - tot_read, size);
         }
 #endif
         assert(read > 0);
         tot_read += read;
-
-
     } while (tot_read != size);
 
-    ABT_eventual_set(eventual, &tot_read, sizeof(size_t));
 
-    auto err = close(fd);
-    if (err < 0) {
-        log->error("Failed to close chunk file after read. File: '{}', Error: '{}'",
+    // if close fails we just write an entry into the log erroring out
+    if (close(fd) < 0) {
+        log_->warn("Failed to close chunk file after read. File: '{}', Error: '{}'",
                    chunk_path, ::strerror(errno));
-        //throw ::system_error(errno, ::system_category(), "Failed to close chunk file");
+    }
+    return tot_read;
+}
+
+/**
+ * Delete all chunks starting with chunk a chunk id.
+ * Note eventual consistency here: While chunks are removed, there is no lock that prevents
+ * other processes from modifying anything in that directory.
+ * It is the application's responsibility to stop modifying the file while truncate is executed
+ *
+ * If an error is encountered when removing a chunk file, the function will still remove all files and
+ * report the error afterwards with ChunkStorageException.
+ *
+ * @param file_path
+ * @param chunk_start
+ * @param chunk_end
+ * @throws ChunkStorageException
+ */
+void ChunkStorage::trim_chunk_space(const string& file_path, gkfs::types::rpc_chnk_id_t chunk_start) {
+
+    auto chunk_dir = absolute(get_chunks_dir(file_path));
+    const bfs::directory_iterator end;
+    auto err_flag = false;
+    for (bfs::directory_iterator chunk_file(chunk_dir); chunk_file != end; ++chunk_file) {
+        auto chunk_path = chunk_file->path();
+        auto chunk_id = ::stoul(chunk_path.filename().c_str());
+        if (chunk_id >= chunk_start) {
+            auto err = unlink(chunk_path.c_str());
+            if (err == -1 && errno != ENOENT) {
+                err_flag = true;
+                log_->warn("{}() Failed to remove chunk file. File: '{}', Error: '{}'", __func__, chunk_path.native(),
+                           ::strerror(errno));
+            }
+        }
+    }
+    if (err_flag)
+        throw ChunkStorageException(EIO, fmt::format("{}() One or more errors occurred when truncating '{}'", __func__,
+                                                     file_path));
+}
+
+/**
+ * Truncates a single chunk file to a given length
+ * @param file_path
+ * @param chunk_id
+ * @param length
+ * @throws ChunkStorageException
+ */
+void ChunkStorage::truncate_chunk_file(const string& file_path, gkfs::types::rpc_chnk_id_t chunk_id, off_t length) {
+    auto chunk_path = absolute(get_chunk_path(file_path, chunk_id));
+    assert(length > 0 && static_cast<gkfs::types::rpc_chnk_id_t>(length) <= chunksize_);
+    int ret = truncate64(chunk_path.c_str(), length);
+    if (ret == -1) {
+        auto err_str = fmt::format("Failed to truncate chunk file. File: '{}', Error: '{}'", chunk_path,
+                                   ::strerror(errno));
+        throw ChunkStorageException(errno, err_str);
     }
 }
 
+/**
+ * Calls statfs on the chunk directory to get statistic on its used and free size left
+ * @return ChunkStat
+ * @throws ChunkStorageException
+ */
 ChunkStat ChunkStorage::chunk_stat() const {
     struct statfs sfs{};
-    if (statfs(root_path.c_str(), &sfs) != 0) {
-        log->error("Failed to get filesystem statistic for chunk directory."
-                   " Error: '{}'", ::strerror(errno));
-        throw ::system_error(errno, ::system_category(),
-                             "statfs() failed on chunk directory");
+
+    if (statfs(root_path_.c_str(), &sfs) != 0) {
+        auto err_str = fmt::format("Failed to get filesystem statistic for chunk directory. Error: '{}'",
+                                   ::strerror(errno));
+        throw ChunkStorageException(errno, err_str);
     }
 
-    log->debug("Chunksize '{}', total '{}', free '{}'", sfs.f_bsize, sfs.f_blocks, sfs.f_bavail);
+    log_->debug("Chunksize '{}', total '{}', free '{}'", sfs.f_bsize, sfs.f_blocks, sfs.f_bavail);
     auto bytes_total =
             static_cast<unsigned long long>(sfs.f_bsize) *
             static_cast<unsigned long long>(sfs.f_blocks);
     auto bytes_free =
             static_cast<unsigned long long>(sfs.f_bsize) *
             static_cast<unsigned long long>(sfs.f_bavail);
-    return {chunksize,
-            bytes_total / chunksize,
-            bytes_free / chunksize};
+    return {chunksize_,
+            bytes_total / chunksize_,
+            bytes_free / chunksize_};
 }
 
 } // namespace data

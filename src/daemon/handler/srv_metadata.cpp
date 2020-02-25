@@ -18,6 +18,7 @@
 #include <daemon/ops/metadentry.hpp>
 
 #include <global/rpc/rpc_types.hpp>
+#include <daemon/backend/data/chunk_storage.hpp>
 
 using namespace std;
 
@@ -69,7 +70,7 @@ static hg_return_t rpc_srv_stat(hg_handle_t handle) {
         out.db_val = val.c_str();
         out.err = 0;
         GKFS_DATA->spdlogger()->debug("{}() Sending output mode '{}'", __func__, out.db_val);
-    } catch (const NotFoundException& e) {
+    } catch (const gkfs::metadata::NotFoundException& e) {
         GKFS_DATA->spdlogger()->debug("{}() Entry not found: '{}'", __func__, in.path);
         out.err = ENOENT;
     } catch (const std::exception& e) {
@@ -100,17 +101,17 @@ static hg_return_t rpc_srv_decr_size(hg_handle_t handle) {
         throw runtime_error("Failed to retrieve input from handle");
     }
 
-    GKFS_DATA->spdlogger()->debug("{}() path: '{}', length: {}", __func__, in.path, in.length);
+    GKFS_DATA->spdlogger()->debug("{}() path: '{}', length: '{}'", __func__, in.path, in.length);
 
     try {
         GKFS_DATA->mdb()->decrease_size(in.path, in.length);
         out.err = 0;
     } catch (const std::exception& e) {
-        GKFS_DATA->spdlogger()->error("{}() Failed to decrease size: {}", __func__, e.what());
+        GKFS_DATA->spdlogger()->error("{}() Failed to decrease size: '{}'", __func__, e.what());
         out.err = EIO;
     }
 
-    GKFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
+    GKFS_DATA->spdlogger()->debug("{}() Sending output '{}'", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
         GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
@@ -134,26 +135,23 @@ static hg_return_t rpc_srv_remove(hg_handle_t handle) {
     assert(ret == HG_SUCCESS);
     GKFS_DATA->spdlogger()->debug("{}() Got remove node RPC with path '{}'", __func__, in.path);
 
+    // Remove metadentry if exists on the node and remove all chunks for that file
     try {
-        // Remove metadentry if exists on the node
-        // and remove all chunks for that file
-        gkfs::metadata::remove_node(in.path);
+        gkfs::metadata::remove(in.path);
         out.err = 0;
-    } catch (const NotFoundException& e) {
-        /* The metadentry was not found on this node,
-         * this is not an error. At least one node involved in this
-         * broadcast operation will find and delete the entry on its local
-         * MetadataDB.
-         * TODO: send the metadentry remove only to the node that actually
-         * has it.
-         */
-        out.err = 0;
+    } catch (const gkfs::metadata::DBException& e) {
+        GKFS_DATA->spdlogger()->error("{}(): path '{}' message '{}'", __func__, in.path, e.what());
+        out.err = EIO;
+    } catch (const gkfs::data::ChunkStorageException& e) {
+        GKFS_DATA->spdlogger()->error("{}(): path '{}' errcode '{}' message '{}'", __func__, in.path, e.code().value(),
+                                      e.what());
+        out.err = e.code().value();
     } catch (const std::exception& e) {
-        GKFS_DATA->spdlogger()->error("{}() Failed to remove node: {}", __func__, e.what());
+        GKFS_DATA->spdlogger()->error("{}() path '{}' message '{}'", __func__, in.path, e.what());
         out.err = EBUSY;
     }
 
-    GKFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
+    GKFS_DATA->spdlogger()->debug("{}() Sending output '{}'", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
         GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
@@ -201,7 +199,7 @@ static hg_return_t rpc_srv_update_metadentry(hg_handle_t handle) {
         out.err = 1;
     }
 
-    GKFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
+    GKFS_DATA->spdlogger()->debug("{}() Sending output '{}'", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
         GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
@@ -224,7 +222,7 @@ static hg_return_t rpc_srv_update_metadentry_size(hg_handle_t handle) {
     if (ret != HG_SUCCESS)
         GKFS_DATA->spdlogger()->error("{}() Failed to retrieve input from handle", __func__);
     assert(ret == HG_SUCCESS);
-    GKFS_DATA->spdlogger()->debug("{}() path: {}, size: {}, offset: {}, append: {}", __func__, in.path, in.size,
+    GKFS_DATA->spdlogger()->debug("{}() path: '{}', size: '{}', offset: '{}', append: '{}'", __func__, in.path, in.size,
                                   in.offset, in.append);
 
     try {
@@ -233,7 +231,7 @@ static hg_return_t rpc_srv_update_metadentry_size(hg_handle_t handle) {
         //TODO the actual size of the file could be different after the size update
         // do to concurrency on size
         out.ret_size = in.size + in.offset;
-    } catch (const NotFoundException& e) {
+    } catch (const gkfs::metadata::NotFoundException& e) {
         GKFS_DATA->spdlogger()->debug("{}() Entry not found: '{}'", __func__, in.path);
         out.err = ENOENT;
     } catch (const std::exception& e) {
@@ -241,7 +239,7 @@ static hg_return_t rpc_srv_update_metadentry_size(hg_handle_t handle) {
         out.err = EBUSY;
     }
 
-    GKFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
+    GKFS_DATA->spdlogger()->debug("{}() Sending output '{}'", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
         GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
@@ -270,7 +268,7 @@ static hg_return_t rpc_srv_get_metadentry_size(hg_handle_t handle) {
     try {
         out.ret_size = gkfs::metadata::get_size(in.path);
         out.err = 0;
-    } catch (const NotFoundException& e) {
+    } catch (const gkfs::metadata::NotFoundException& e) {
         GKFS_DATA->spdlogger()->debug("{}() Entry not found: '{}'", __func__, in.path);
         out.err = ENOENT;
     } catch (const std::exception& e) {
@@ -301,7 +299,7 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS) {
         GKFS_DATA->spdlogger()->error(
-                "{}() Could not get RPC input data with err {}", __func__, ret);
+                "{}() Could not get RPC input data with err '{}'", __func__, ret);
         return ret;
     }
 
@@ -309,7 +307,7 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
     auto hgi = margo_get_info(handle);
     auto mid = margo_hg_info_get_instance(hgi);
     GKFS_DATA->spdlogger()->debug(
-            "{}() Got dirents RPC with path {}", __func__, in.path);
+            "{}() Got dirents RPC with path '{}'", __func__, in.path);
     auto bulk_size = margo_bulk_get_size(in.bulk_handle);
 
     //Get directory entries from local DB
@@ -366,7 +364,7 @@ static hg_return_t rpc_srv_get_dirents(hg_handle_t handle) {
                               out_size);
     if (ret != HG_SUCCESS) {
         GKFS_DATA->spdlogger()->error(
-                "{}() Failed push dirents on path {} to client",
+                "{}() Failed push dirents on path '{}' to client",
                 __func__, in.path
         );
         return gkfs::rpc::cleanup_respond(&handle, &in, &out, &bulk_handle);
@@ -399,10 +397,10 @@ static hg_return_t rpc_srv_mk_symlink(hg_handle_t handle) {
         gkfs::metadata::create(in.path, md);
         out.err = 0;
     } catch (const std::exception& e) {
-        GKFS_DATA->spdlogger()->error("{}() Failed to create metadentry: {}", __func__, e.what());
+        GKFS_DATA->spdlogger()->error("{}() Failed to create metadentry: '{}'", __func__, e.what());
         out.err = -1;
     }
-    GKFS_DATA->spdlogger()->debug("{}() Sending output err {}", __func__, out.err);
+    GKFS_DATA->spdlogger()->debug("{}() Sending output err '{}'", __func__, out.err);
     auto hret = margo_respond(handle, &out);
     if (hret != HG_SUCCESS) {
         GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);

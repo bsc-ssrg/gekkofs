@@ -16,111 +16,19 @@
 #include <daemon/handler/rpc_defs.hpp>
 #include <daemon/handler/rpc_util.hpp>
 #include <daemon/backend/data/chunk_storage.hpp>
+#include <daemon/ops/data.hpp>
 
 #include <global/rpc/rpc_types.hpp>
 #include <global/rpc/distributor.hpp>
 #include <global/chunk_calc_util.hpp>
 
-
 using namespace std;
 
-struct write_chunk_args {
-    const std::string* path;
-    const char* buf;
-    gkfs::types::rpc_chnk_id_t chnk_id;
-    size_t size;
-    off64_t off;
-    ABT_eventual eventual;
-};
-
 /**
- * Used by an argobots threads. Argument args has the following fields:
- * const std::string* path;
-   const char* buf;
-   const gkfs::types::rpc_chnk_id_t* chnk_id;
-   size_t size;
-   off64_t off;
-   ABT_eventual* eventual;
- * This function is driven by the IO pool. so there is a maximum allowed number of concurrent IO operations per daemon.
- * This function is called by tasklets, as this function cannot be allowed to block.
- * @return written_size<ssize_t> is put into eventual and returned that way
- */
-void write_file_abt(void* _arg) {
-    // Unpack args
-    auto* arg = static_cast<struct write_chunk_args*>(_arg);
-    const std::string& path = *(arg->path);
-
-    try {
-        GKFS_DATA->storage()->write_chunk(path, arg->chnk_id,
-                                          arg->buf, arg->size, arg->off, arg->eventual);
-    } catch (const std::system_error& serr) {
-        GKFS_DATA->spdlogger()->error("{}() Error writing chunk {} of file {}", __func__, arg->chnk_id, path);
-        ssize_t wrote = -(serr.code().value());
-        ABT_eventual_set(arg->eventual, &wrote, sizeof(ssize_t));
-    }
-
-}
-
-struct read_chunk_args {
-    const std::string* path;
-    char* buf;
-    gkfs::types::rpc_chnk_id_t chnk_id;
-    size_t size;
-    off64_t off;
-    ABT_eventual eventual;
-};
-
-/**
- * Used by an argobots threads. Argument args has the following fields:
- * const std::string* path;
-   char* buf;
-   const gkfs::types::rpc_chnk_id_t* chnk_id;
-   size_t size;
-   off64_t off;
-   ABT_eventual* eventual;
- * This function is driven by the IO pool. so there is a maximum allowed number of concurrent IO operations per daemon.
- * This function is called by tasklets, as this function cannot be allowed to block.
- * @return read_size<ssize_t> is put into eventual and returned that way
- */
-void read_file_abt(void* _arg) {
-    //unpack args
-    auto* arg = static_cast<struct read_chunk_args*>(_arg);
-    const std::string& path = *(arg->path);
-
-    try {
-        GKFS_DATA->storage()->read_chunk(path, arg->chnk_id,
-                                         arg->buf, arg->size, arg->off, arg->eventual);
-    } catch (const std::system_error& serr) {
-        GKFS_DATA->spdlogger()->error("{}() Error reading chunk {} of file {}", __func__, arg->chnk_id, path);
-        ssize_t read = -(serr.code().value());
-        ABT_eventual_set(arg->eventual, &read, sizeof(ssize_t));
-    }
-}
-
-/**
- * Free Argobots tasks and eventual constructs in a given vector until max_idx.
- * Nothing is done for a vector if nullptr is given
- * @param abt_tasks
- * @param abt_eventuals
- * @param max_idx
+ * RPC handler for an incoming write RPC
+ * @param handle
  * @return
  */
-void cancel_abt_io(vector<ABT_task>* abt_tasks, vector<ABT_eventual>* abt_eventuals, uint64_t max_idx) {
-    if (abt_tasks != nullptr) {
-        for (uint64_t i = 0; i < max_idx; i++) {
-            ABT_task_cancel(abt_tasks->at(i));
-            ABT_task_free(&abt_tasks->at(i));
-        }
-    }
-    if (abt_eventuals != nullptr) {
-        for (uint64_t i = 0; i < max_idx; i++) {
-            ABT_eventual_reset(abt_eventuals->at(i));
-            ABT_eventual_free(&abt_eventuals->at(i));
-        }
-    }
-}
-
-
 static hg_return_t rpc_srv_write(hg_handle_t handle) {
     /*
      * 1. Setup
@@ -165,7 +73,6 @@ static hg_return_t rpc_srv_write(hg_handle_t handle) {
     auto const host_size = in.host_size;
     gkfs::rpc::SimpleHashDistributor distributor(host_id, host_size);
 
-    auto path = make_shared<string>(in.path);
     // chnk_ids used by this host
     vector<uint64_t> chnk_ids_host(in.chunk_n);
     // counter to track how many chunks have been assigned
@@ -189,10 +96,8 @@ static hg_return_t rpc_srv_write(hg_handle_t handle) {
     auto transfer_size = (bulk_size <= gkfs::config::rpc::chunksize) ? bulk_size : gkfs::config::rpc::chunksize;
     uint64_t origin_offset;
     uint64_t local_offset;
-    // task structures for async writing
-    vector<ABT_task> abt_tasks(in.chunk_n);
-    vector<ABT_eventual> task_eventuals(in.chunk_n);
-    vector<struct write_chunk_args> task_args(in.chunk_n);
+    // object for asynchronous disk IO
+    gkfs::data::ChunkWriteOperation chunk_op{in.path, in.chunk_n};
     /*
      * 3. Calculate chunk sizes that correspond to this host, transfer data, and start tasks to write to disk
      */
@@ -205,16 +110,18 @@ static hg_return_t rpc_srv_write(hg_handle_t handle) {
         // offset case. Only relevant in the first iteration of the loop and if the chunk hashes to this host
         if (chnk_id_file == in.chunk_start && in.offset > 0) {
             // if only 1 destination and 1 chunk (small write) the transfer_size == bulk_size
-            auto offset_transfer_size = (in.offset + bulk_size <= gkfs::config::rpc::chunksize) ? bulk_size
-                                                                                                : static_cast<size_t>(
-                                                gkfs::config::rpc::chunksize - in.offset);
+            size_t offset_transfer_size = 0;
+            if (in.offset + bulk_size <= gkfs::config::rpc::chunksize)
+                offset_transfer_size = bulk_size;
+            else
+                offset_transfer_size = static_cast<size_t>(gkfs::config::rpc::chunksize - in.offset);
             ret = margo_bulk_transfer(mid, HG_BULK_PULL, hgi->addr, in.bulk_handle, 0,
                                       bulk_handle, 0, offset_transfer_size);
             if (ret != HG_SUCCESS) {
                 GKFS_DATA->spdlogger()->error(
                         "{}() Failed to pull data from client for chunk {} (startchunk {}; endchunk {}", __func__,
                         chnk_id_file, in.chunk_start, in.chunk_end - 1);
-                cancel_abt_io(&abt_tasks, &task_eventuals, chnk_id_curr);
+                out.err = EBUSY;
                 return gkfs::rpc::cleanup_respond(&handle, &in, &out, &bulk_handle);
             }
             bulk_buf_ptrs[chnk_id_curr] = chnk_ptr;
@@ -233,7 +140,7 @@ static hg_return_t rpc_srv_write(hg_handle_t handle) {
             if (chnk_id_curr == in.chunk_n - 1)
                 transfer_size = chnk_size_left_host;
             GKFS_DATA->spdlogger()->trace(
-                    "{}() BULK_TRANSFER hostid {} file {} chnkid {} total_Csize {} Csize_left {} origin offset {} local offset {} transfersize {}",
+                    "{}() BULK_TRANSFER_PULL hostid {} file {} chnkid {} total_Csize {} Csize_left {} origin offset {} local offset {} transfersize {}",
                     __func__, host_id, in.path, chnk_id_file, in.total_chunk_size, chnk_size_left_host,
                     origin_offset, local_offset, transfer_size);
             // RDMA the data to here
@@ -242,8 +149,8 @@ static hg_return_t rpc_srv_write(hg_handle_t handle) {
             if (ret != HG_SUCCESS) {
                 GKFS_DATA->spdlogger()->error(
                         "{}() Failed to pull data from client. file {} chunk {} (startchunk {}; endchunk {})", __func__,
-                        *path, chnk_id_file, in.chunk_start, (in.chunk_end - 1));
-                cancel_abt_io(&abt_tasks, &task_eventuals, chnk_id_curr);
+                        in.path, chnk_id_file, in.chunk_start, (in.chunk_end - 1));
+                out.err = EBUSY;
                 return gkfs::rpc::cleanup_respond(&handle, &in, &out, &bulk_handle);
             }
             bulk_buf_ptrs[chnk_id_curr] = chnk_ptr;
@@ -251,22 +158,13 @@ static hg_return_t rpc_srv_write(hg_handle_t handle) {
             chnk_ptr += transfer_size;
             chnk_size_left_host -= transfer_size;
         }
-        // Delegate chunk I/O operation to local FS to an I/O dedicated ABT pool
-        // Starting tasklets for parallel I/O
-        ABT_eventual_create(sizeof(ssize_t), &task_eventuals[chnk_id_curr]); // written file return value
-        auto& task_arg = task_args[chnk_id_curr];
-        task_arg.path = path.get();
-        task_arg.buf = bulk_buf_ptrs[chnk_id_curr];
-        task_arg.chnk_id = chnk_ids_host[chnk_id_curr];
-        task_arg.size = chnk_sizes[chnk_id_curr];
-        // only the first chunk gets the offset. the chunks are sorted on the client side
-        task_arg.off = (chnk_id_file == in.chunk_start) ? in.offset : 0;
-        task_arg.eventual = task_eventuals[chnk_id_curr];
-        auto abt_ret = ABT_task_create(RPC_DATA->io_pool(), write_file_abt, &task_args[chnk_id_curr],
-                                       &abt_tasks[chnk_id_curr]);
-        if (abt_ret != ABT_SUCCESS) {
-            GKFS_DATA->spdlogger()->error("{}() task create failed", __func__);
-            cancel_abt_io(&abt_tasks, &task_eventuals, chnk_id_curr + 1);
+        try {
+            // start tasklet for writing chunk
+            chunk_op.write_async(chnk_id_curr, chnk_ids_host[chnk_id_curr], bulk_buf_ptrs[chnk_id_curr],
+                                 chnk_sizes[chnk_id_curr], (chnk_id_file == in.chunk_start) ? in.offset : 0);
+        } catch (const gkfs::data::ChunkWriteOpException& e) {
+            // This exception is caused by setup of Argobots variables. If this fails, something is really wrong
+            GKFS_DATA->spdlogger()->error("{}() while write_async err '{}'", __func__, e.what());
             return gkfs::rpc::cleanup_respond(&handle, &in, &out, &bulk_handle);
         }
         // next chunk
@@ -280,30 +178,9 @@ static hg_return_t rpc_srv_write(hg_handle_t handle) {
     /*
      * 4. Read task results and accumulate in out.io_size
      */
-    out.err = 0;
-    out.io_size = 0;
-    for (chnk_id_curr = 0; chnk_id_curr < in.chunk_n; chnk_id_curr++) {
-        ssize_t* task_written_size = nullptr;
-        // wait causes the calling ult to go into BLOCKED state, implicitly yielding to the pool scheduler
-        auto abt_ret = ABT_eventual_wait(task_eventuals[chnk_id_curr], (void**) &task_written_size);
-        if (abt_ret != ABT_SUCCESS) {
-            GKFS_DATA->spdlogger()->error(
-                    "{}() Failed to wait for write task for chunk {}",
-                    __func__, chnk_id_curr);
-            out.err = EIO;
-            break;
-        }
-        assert(task_written_size != nullptr);
-        if (*task_written_size < 0) {
-            GKFS_DATA->spdlogger()->error("{}() Write task failed for chunk {}",
-                                          __func__, chnk_id_curr);
-            out.err = -(*task_written_size);
-            break;
-        }
-
-        out.io_size += *task_written_size; // add task written size to output size
-        ABT_eventual_free(&task_eventuals[chnk_id_curr]);
-    }
+    auto write_result = chunk_op.wait_for_tasks();
+    out.err = write_result.first;
+    out.io_size = write_result.second;
 
     // Sanity check to see if all data has been written
     if (in.total_chunk_size != out.io_size) {
@@ -315,17 +192,16 @@ static hg_return_t rpc_srv_write(hg_handle_t handle) {
      * 5. Respond and cleanup
      */
     GKFS_DATA->spdlogger()->debug("{}() Sending output response {}", __func__, out.err);
-    ret = gkfs::rpc::cleanup_respond(&handle, &in, &out, &bulk_handle);
-    // free tasks after responding
-    for (auto&& task : abt_tasks) {
-        ABT_task_join(task);
-        ABT_task_free(&task);
-    }
-    return ret;
+    return gkfs::rpc::cleanup_respond(&handle, &in, &out, &bulk_handle);
 }
 
 DEFINE_MARGO_RPC_HANDLER(rpc_srv_write)
 
+/**
+ * RPC handler for an incoming read RPC
+ * @param handle
+ * @return
+ */
 static hg_return_t rpc_srv_read(hg_handle_t handle) {
     /*
      * 1. Setup
@@ -371,7 +247,6 @@ static hg_return_t rpc_srv_read(hg_handle_t handle) {
     auto const host_size = in.host_size;
     gkfs::rpc::SimpleHashDistributor distributor(host_id, host_size);
 
-    auto path = make_shared<string>(in.path);
     // chnk_ids used by this host
     vector<uint64_t> chnk_ids_host(in.chunk_n);
     // counter to track how many chunks have been assigned
@@ -387,10 +262,8 @@ static hg_return_t rpc_srv_read(hg_handle_t handle) {
     auto chnk_ptr = static_cast<char*>(bulk_buf);
     // temporary variables
     auto transfer_size = (bulk_size <= gkfs::config::rpc::chunksize) ? bulk_size : gkfs::config::rpc::chunksize;
-    // tasks structures
-    vector<ABT_task> abt_tasks(in.chunk_n);
-    vector<ABT_eventual> task_eventuals(in.chunk_n);
-    vector<struct read_chunk_args> task_args(in.chunk_n);
+    // object for asynchronous disk IO
+    gkfs::data::ChunkReadOperation chunk_read_op{in.path, in.chunk_n};
     /*
      * 3. Calculate chunk sizes that correspond to this host and start tasks to read from disk
      */
@@ -403,9 +276,11 @@ static hg_return_t rpc_srv_read(hg_handle_t handle) {
         // Only relevant in the first iteration of the loop and if the chunk hashes to this host
         if (chnk_id_file == in.chunk_start && in.offset > 0) {
             // if only 1 destination and 1 chunk (small read) the transfer_size == bulk_size
-            auto offset_transfer_size = (in.offset + bulk_size <= gkfs::config::rpc::chunksize) ? bulk_size
-                                                                                                : static_cast<size_t>(
-                                                gkfs::config::rpc::chunksize - in.offset);
+            size_t offset_transfer_size = 0;
+            if (in.offset + bulk_size <= gkfs::config::rpc::chunksize)
+                offset_transfer_size = bulk_size;
+            else
+                offset_transfer_size = static_cast<size_t>(gkfs::config::rpc::chunksize - in.offset);
             // Setting later transfer offsets
             local_offsets[chnk_id_curr] = 0;
             origin_offsets[chnk_id_curr] = 0;
@@ -432,22 +307,12 @@ static hg_return_t rpc_srv_read(hg_handle_t handle) {
             chnk_ptr += transfer_size;
             chnk_size_left_host -= transfer_size;
         }
-        // Delegate chunk I/O operation to local FS to an I/O dedicated ABT pool
-        // Starting tasklets for parallel I/O
-        ABT_eventual_create(sizeof(ssize_t), &task_eventuals[chnk_id_curr]); // written file return value
-        auto& task_arg = task_args[chnk_id_curr];
-        task_arg.path = path.get();
-        task_arg.buf = bulk_buf_ptrs[chnk_id_curr];
-        task_arg.chnk_id = chnk_ids_host[chnk_id_curr];
-        task_arg.size = chnk_sizes[chnk_id_curr];
-        // only the first chunk gets the offset. the chunks are sorted on the client side
-        task_arg.off = (chnk_id_file == in.chunk_start) ? in.offset : 0;
-        task_arg.eventual = task_eventuals[chnk_id_curr];
-        auto abt_ret = ABT_task_create(RPC_DATA->io_pool(), read_file_abt, &task_args[chnk_id_curr],
-                                       &abt_tasks[chnk_id_curr]);
-        if (abt_ret != ABT_SUCCESS) {
-            GKFS_DATA->spdlogger()->error("{}() task create failed", __func__);
-            cancel_abt_io(&abt_tasks, &task_eventuals, chnk_id_curr + 1);
+        try {
+            // start tasklet for read operation
+            chunk_read_op.read_async(chnk_id_curr, chnk_ids_host[chnk_id_curr], bulk_buf_ptrs[chnk_id_curr], chnk_sizes[chnk_id_curr], (chnk_id_file == in.chunk_start) ? in.offset : 0);
+        } catch (const gkfs::data::ChunkReadOpException& e) {
+            // This exception is caused by setup of Argobots variables. If this fails, something is really wrong
+            GKFS_DATA->spdlogger()->error("{}() while read_async err '{}'", __func__, e.what());
             return gkfs::rpc::cleanup_respond(&handle, &in, &out, &bulk_handle);
         }
         chnk_id_curr++;
@@ -459,113 +324,89 @@ static hg_return_t rpc_srv_read(hg_handle_t handle) {
     /*
      * 4. Read task results and accumulate in out.io_size
      */
-    out.err = 0;
-    out.io_size = 0;
-    for (chnk_id_curr = 0; chnk_id_curr < in.chunk_n; chnk_id_curr++) {
-        ssize_t* task_read_size = nullptr;
-        // wait causes the calling ult to go into BLOCKED state, implicitly yielding to the pool scheduler
-        auto abt_ret = ABT_eventual_wait(task_eventuals[chnk_id_curr], (void**) &task_read_size);
-        if (abt_ret != ABT_SUCCESS) {
-            GKFS_DATA->spdlogger()->error(
-                    "{}() Failed to wait for read task for chunk {}",
-                    __func__, chnk_id_curr);
-            out.err = EIO;
-            break;
-        }
-        assert(task_read_size != nullptr);
-        if (*task_read_size < 0) {
-            if (-(*task_read_size) == ENOENT) {
-                continue;
-            }
-            GKFS_DATA->spdlogger()->warn(
-                    "{}() Read task failed for chunk {}",
-                    __func__, chnk_id_curr);
-            out.err = -(*task_read_size);
-            break;
-        }
-
-        if (*task_read_size == 0) {
-            continue;
-        }
-
-        ret = margo_bulk_transfer(mid, HG_BULK_PUSH, hgi->addr, in.bulk_handle, origin_offsets[chnk_id_curr],
-                                  bulk_handle, local_offsets[chnk_id_curr], *task_read_size);
-        if (ret != HG_SUCCESS) {
-            GKFS_DATA->spdlogger()->error(
-                    "{}() Failed push chnkid {} on path {} to client. origin offset {} local offset {} chunk size {}",
-                    __func__, chnk_id_curr, in.path, origin_offsets[chnk_id_curr], local_offsets[chnk_id_curr],
-                    chnk_sizes[chnk_id_curr]);
-            out.err = EIO;
-            break;
-        }
-        out.io_size += *task_read_size; // add task read size to output size
-    }
+    gkfs::data::ChunkReadOperation::bulk_args bulk_args{};
+    bulk_args.mid = mid;
+    bulk_args.origin_addr = hgi->addr;
+    bulk_args.origin_bulk_handle = in.bulk_handle;
+    bulk_args.origin_offsets = &origin_offsets;
+    bulk_args.local_bulk_handle = bulk_handle;
+    bulk_args.local_offsets = &local_offsets;
+    bulk_args.chunk_ids = &chnk_ids_host;
+    // wait for all tasklets and push read data back to client
+    auto read_result = chunk_read_op.wait_for_tasks_and_push_back(bulk_args);
+    out.err = read_result.first;
+    out.io_size = read_result.second;
 
     /*
      * 5. Respond and cleanup
      */
     GKFS_DATA->spdlogger()->debug("{}() Sending output response, err: {}", __func__, out.err);
-    ret = gkfs::rpc::cleanup_respond(&handle, &in, &out, &bulk_handle);
-    // free tasks after responding
-    cancel_abt_io(&abt_tasks, &task_eventuals, in.chunk_n);
-    return ret;
+    return gkfs::rpc::cleanup_respond(&handle, &in, &out, &bulk_handle);
 }
 
 DEFINE_MARGO_RPC_HANDLER(rpc_srv_read)
 
+/**
+ * RPC handler for an incoming truncate RPC
+ * @param handle
+ * @return
+ */
 static hg_return_t rpc_srv_truncate(hg_handle_t handle) {
     rpc_trunc_in_t in{};
     rpc_err_out_t out{};
-
+    out.err = EIO;
+    // Getting some information from margo
     auto ret = margo_get_input(handle, &in);
     if (ret != HG_SUCCESS) {
         GKFS_DATA->spdlogger()->error("{}() Could not get RPC input data with err {}", __func__, ret);
-        throw runtime_error("Failed to get RPC input data");
+        return gkfs::rpc::cleanup_respond(&handle, &in, &out);
     }
-    GKFS_DATA->spdlogger()->debug("{}() path: '{}', length: {}", __func__, in.path, in.length);
+    GKFS_DATA->spdlogger()->debug("{}() path: '{}', length: '{}'", __func__, in.path, in.length);
 
-    unsigned int chunk_start = gkfs::util::chnk_id_for_offset(in.length, gkfs::config::rpc::chunksize);
-
-    // If we trunc in the the middle of a chunk, do not delete that chunk
-    auto left_pad = gkfs::util::chnk_lpad(in.length, gkfs::config::rpc::chunksize);
-    if (left_pad != 0) {
-        GKFS_DATA->storage()->truncate_chunk(in.path, chunk_start, left_pad);
-        ++chunk_start;
+    gkfs::data::ChunkTruncateOperation chunk_op{in.path};
+    try {
+        // start tasklet for truncate operation
+        chunk_op.truncate(0, in.length);
+    } catch (const gkfs::data::ChunkMetaOpException& e) {
+        // This exception is caused by setup of Argobots variables. If this fails, something is really wrong
+        GKFS_DATA->spdlogger()->error("{}() while read_async err '{}'", __func__, e.what());
+        return gkfs::rpc::cleanup_respond(&handle, &in, &out);
     }
 
-    GKFS_DATA->storage()->trim_chunk_space(in.path, chunk_start);
+    // wait and get output
+    out.err = chunk_op.wait_for_tasks();
 
-    GKFS_DATA->spdlogger()->debug("{}() Sending output {}", __func__, out.err);
-    auto hret = margo_respond(handle, &out);
-    if (hret != HG_SUCCESS) {
-        GKFS_DATA->spdlogger()->error("{}() Failed to respond");
-    }
-    // Destroy handle when finished
-    margo_free_input(handle, &in);
-    margo_destroy(handle);
-    return HG_SUCCESS;
+    GKFS_DATA->spdlogger()->debug("{}() Sending output response '{}'", __func__, out.err);
+    return gkfs::rpc::cleanup_respond(&handle, &in, &out);
 }
 
 DEFINE_MARGO_RPC_HANDLER(rpc_srv_truncate)
 
+/**
+ * RPC handler for an incoming chunk stat RPC
+ * @param handle
+ * @return
+ */
 static hg_return_t rpc_srv_get_chunk_stat(hg_handle_t handle) {
-    GKFS_DATA->spdlogger()->trace("{}() called", __func__);
-
+    GKFS_DATA->spdlogger()->debug("{}() enter", __func__);
     rpc_chunk_stat_out_t out{};
-    // Get input
-    auto chk_stat = GKFS_DATA->storage()->chunk_stat();
-    // Create output and send it
-    out.chunk_size = chk_stat.chunk_size;
-    out.chunk_total = chk_stat.chunk_total;
-    out.chunk_free = chk_stat.chunk_free;
-    auto hret = margo_respond(handle, &out);
-    if (hret != HG_SUCCESS) {
-        GKFS_DATA->spdlogger()->error("{}() Failed to respond", __func__);
+    out.err = EIO;
+    try {
+        auto chk_stat = GKFS_DATA->storage()->chunk_stat();
+        out.chunk_size = chk_stat.chunk_size;
+        out.chunk_total = chk_stat.chunk_total;
+        out.chunk_free = chk_stat.chunk_free;
+        out.err = 0;
+    } catch (const gkfs::data::ChunkStorageException& err) {
+        GKFS_DATA->spdlogger()->error("{}() {}", __func__, err.what());
+        out.err = err.code().value();
+    } catch (const ::exception& err) {
+        GKFS_DATA->spdlogger()->error("{}() Unexpected error when chunk stat '{}'", __func__, err.what());
+        out.err = EAGAIN;
     }
 
-    // Destroy handle when finished
-    margo_destroy(handle);
-    return hret;
+    // Create output and send it back
+    return gkfs::rpc::cleanup_respond(&handle, &out);
 }
 
 DEFINE_MARGO_RPC_HANDLER(rpc_srv_get_chunk_stat)

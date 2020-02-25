@@ -2092,11 +2092,13 @@ struct chunk_stat {
 
     public:
         output() :
+                m_err(),
                 m_chunk_size(),
                 m_chunk_total(),
                 m_chunk_free() {}
 
-        output(uint64_t chunk_size, uint64_t chunk_total, uint64_t chunk_free) :
+        output(int32_t err, uint64_t chunk_size, uint64_t chunk_total, uint64_t chunk_free) :
+                m_err(err),
                 m_chunk_size(chunk_size),
                 m_chunk_total(chunk_total),
                 m_chunk_free(chunk_free) {}
@@ -2111,9 +2113,15 @@ struct chunk_stat {
 
         explicit
         output(const rpc_chunk_stat_out_t& out) {
+            m_err = out.err;
             m_chunk_size = out.chunk_size;
             m_chunk_total = out.chunk_total;
             m_chunk_free = out.chunk_free;
+        }
+
+        int32_t
+        err() const {
+            return m_err;
         }
 
         uint64_t
@@ -2132,6 +2140,7 @@ struct chunk_stat {
         }
 
     private:
+        int32_t m_err;
         uint64_t m_chunk_size;
         uint64_t m_chunk_total;
         uint64_t m_chunk_free;

@@ -14,17 +14,16 @@
 #ifndef GEKKOFS_CHUNK_STORAGE_HPP
 #define GEKKOFS_CHUNK_STORAGE_HPP
 
-extern "C" {
-#include <abt.h>
-}
+#include <global/global_defs.hpp>
 
 #include <limits>
 #include <string>
 #include <memory>
+#include <system_error>
 
 /* Forward declarations */
 namespace spdlog {
-    class logger;
+class logger;
 }
 
 namespace gkfs {
@@ -36,42 +35,44 @@ struct ChunkStat {
     unsigned long chunk_free;
 };
 
+class ChunkStorageException : public std::system_error {
+public:
+    ChunkStorageException(const int err_code, const std::string& s) : std::system_error(err_code,
+                                                                                        std::system_category(), s) {};
+};
+
 class ChunkStorage {
 private:
     static constexpr const char* LOGGER_NAME = "ChunkStorage";
 
-    std::shared_ptr<spdlog::logger> log;
+    std::shared_ptr<spdlog::logger> log_;
 
-    std::string root_path;
-    size_t chunksize;
+    std::string root_path_;
+    size_t chunksize_;
 
     inline std::string absolute(const std::string& internal_path) const;
 
     static inline std::string get_chunks_dir(const std::string& file_path);
 
-    static inline std::string get_chunk_path(const std::string& file_path, unsigned int chunk_id);
+    static inline std::string get_chunk_path(const std::string& file_path, gkfs::types::rpc_chnk_id_t chunk_id);
 
     void init_chunk_space(const std::string& file_path) const;
 
 public:
-    ChunkStorage(const std::string& path, size_t chunksize);
-
-    void write_chunk(const std::string& file_path, unsigned int chunk_id,
-                     const char* buff, size_t size, off64_t offset,
-                     ABT_eventual& eventual) const;
-
-    void read_chunk(const std::string& file_path, unsigned int chunk_id,
-                    char* buff, size_t size, off64_t offset,
-                    ABT_eventual& eventual) const;
-
-    void trim_chunk_space(const std::string& file_path, unsigned int chunk_start,
-                          unsigned int chunk_end = std::numeric_limits<unsigned int>::max());
-
-    void delete_chunk(const std::string& file_path, unsigned int chunk_id);
-
-    void truncate_chunk(const std::string& file_path, unsigned int chunk_id, off_t length);
+    ChunkStorage(std::string path, size_t chunksize);
 
     void destroy_chunk_space(const std::string& file_path) const;
+
+    ssize_t
+    write_chunk(const std::string& file_path, gkfs::types::rpc_chnk_id_t chunk_id, const char* buff, size_t size,
+                off64_t offset) const;
+
+    ssize_t read_chunk(const std::string& file_path, gkfs::types::rpc_chnk_id_t chunk_id, char* buf, size_t size,
+                       off64_t offset) const;
+
+    void trim_chunk_space(const std::string& file_path, gkfs::types::rpc_chnk_id_t chunk_start);
+
+    void truncate_chunk_file(const std::string& file_path, gkfs::types::rpc_chnk_id_t chunk_id, off_t length);
 
     ChunkStat chunk_stat() const;
 };

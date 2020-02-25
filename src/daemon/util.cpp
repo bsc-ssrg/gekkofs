@@ -31,7 +31,7 @@ void populate_hosts_file() {
         throw runtime_error(
                 fmt::format("Failed to open hosts file '{}': {}", hosts_file, strerror(errno)));
     }
-    lfstream << fmt::format("{} {}", get_my_hostname(true), RPC_DATA->self_addr_str()) << std::endl;
+    lfstream << fmt::format("{} {}", gkfs::rpc::get_my_hostname(true), RPC_DATA->self_addr_str()) << std::endl;
     if (!lfstream) {
         throw runtime_error(
                 fmt::format("Failed to write on hosts file '{}': {}", hosts_file, strerror(errno)));

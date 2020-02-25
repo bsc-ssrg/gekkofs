@@ -17,14 +17,20 @@
 #include <string>
 #include <stdexcept>
 
+namespace gkfs {
+namespace metadata {
+
 class DBException : public std::runtime_error {
 public:
-    DBException(const std::string& s) : std::runtime_error(s) {};
+    explicit DBException(const std::string& s) : std::runtime_error(s) {};
 };
 
 class NotFoundException : public DBException {
 public:
-    NotFoundException(const std::string& s) : DBException(s) {};
+    explicit NotFoundException(const std::string& s) : DBException(s) {};
 };
+
+} // namespace metadata
+} // namespace gkfs
 
 #endif //GEKKOFS_DB_EXCEPTIONS_HPP
