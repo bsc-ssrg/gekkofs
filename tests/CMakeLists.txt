@@ -21,5 +21,5 @@ gkfs_add_python_test(
     NAME test_directories
     PYTHON_VERSION 3.7
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    COMMAND tests/test_directories.py
+    COMMAND tests/directories/test_directories.py
 )

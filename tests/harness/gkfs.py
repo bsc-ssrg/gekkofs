@@ -11,7 +11,7 @@
 #  SPDX-License-Identifier: MIT                                                #
 ################################################################################
 
-import os, sh, sys, re
+import os, sh, sys, re, pytest
 import random, socket, netifaces
 from pathlib import Path
 from itertools import islice
@@ -91,7 +91,7 @@ def get_ephemeral_address(iface):
         for the ephemeral address.
     Returns
     -------
-    A network address formed by iface's IPv4 address and an available 
+    A network address formed by iface's IPv4 address and an available
     randomly selected port.
     """
 
@@ -105,8 +105,13 @@ class Daemon:
 
         self._cmd = sh.Command(gkfs_daemon_cmd, self._workspace.bindirs)
         self._env = os.environ.copy()
+
+        libdirs = ':'.join(
+                filter(None, [os.environ.get('LD_LIBRARY_PATH', '')] +
+                             [str(p) for p in self._workspace.libdirs]))
+
         self._patched_env = {
-            'LD_LIBRARY_PATH'      : ':'.join([os.environ.get('LD_LIBRARY_PATH', '')] + [str(p) for p in self._workspace.libdirs]),
+            'LD_LIBRARY_PATH'      : libdirs,
             'GKFS_HOSTS_FILE'      : self.cwd / gkfs_hosts_file,
             'GKFS_DAEMON_LOG_PATH' : self.logdir / gkfs_daemon_log_file,
             'GKFS_LOG_LEVEL'       : gkfs_daemon_log_level,
@@ -142,9 +147,9 @@ class Daemon:
     def wait_until_active(self, pid, retries=500, max_lines=50):
         """
         Waits until a GKFS daemon is active or until a certain number of retries
-        has been exhausted. Checks if the daemon is running by searching its 
+        has been exhausted. Checks if the daemon is running by searching its
         log for a pre-defined readiness message.
-        
+
         Parameters
         ----------
         pid: `int`
@@ -186,7 +191,7 @@ class Daemon:
                 except Exception:
                     logger.error(f"daemon process {pid} is not running")
                     raise
-                
+
                 # ... or it might just be lazy. let's give it some more time
                 sh.sleep(0.05)
                 pass
@@ -237,9 +242,29 @@ class Client:
         self._cmd = sh.Command(gkfs_client_cmd, self._workspace.bindirs)
         self._env = os.environ.copy()
 
+        libdirs = ':'.join(
+                filter(None, [os.environ.get('LD_LIBRARY_PATH', '')] +
+                             [str(p) for p in self._workspace.libdirs]))
+
+        # ensure the client interception library is available:
+        # to avoid running code with potentially installed libraries,
+        # it must be found in one (and only one) of the workspace's bindirs
+        preloads = []
+        for d in self._workspace.bindirs:
+            search_path = Path(d) / gkfs_client_lib_file
+            if search_path.exists():
+                preloads.append(search_path)
+
+        if len(preloads) != 1:
+            logger.error(f'Multiple client libraries found in the test\'s binary directories:')
+            for p in preloads:
+                logger.error(f'  {p}')
+            logger.error(f'Make sure that only one copy of the client library is available.')
+            pytest.exit("Aborted due to initialization error")
+
         self._patched_env = {
-            'LD_LIBRARY_PATH'      : ':'.join([os.environ.get('LD_LIBRARY_PATH', '')] + [str(p) for p in self._workspace.libdirs]),
-            'LD_PRELOAD'           : Path(gkfs_client_lib_file),
+            'LD_LIBRARY_PATH'      : libdirs,
+            'LD_PRELOAD'           : preloads[0],
             'LIBGKFS_HOSTS_FILE'   : self.cwd / gkfs_hosts_file,
             'LIBGKFS_LOG'          : gkfs_client_log_level,
             'LIBGKFS_LOG_OUTPUT'   : self._workspace.logdir / gkfs_client_log_file

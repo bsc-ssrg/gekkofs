@@ -31,16 +31,18 @@ def test_mkdir(gkfs_daemon, gkfs_client):
     """Create a new directory in the FS's root"""
 
     topdir = gkfs_daemon.mountdir / "top"
-    longer = Path(topdir.parent, topdir.name + "_plus");
-    dir_a  = topdir / "dir_a";
-    dir_b  = topdir / "dir_b";
-    file_a = topdir / "file_a";
-    subdir_a  = dir_a / "subdir_a";
+    longer = Path(topdir.parent, topdir.name + "_plus")
+    dir_a  = topdir / "dir_a"
+    dir_b  = topdir / "dir_b"
+    file_a = topdir / "file_a"
+    subdir_a  = dir_a / "subdir_a"
 
     # create topdir
     ret = gkfs_client.mkdir(
             topdir,
             stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+
+    pprint(ret)
 
     assert ret.retval == 0
     assert ret.errno == 115 #FIXME: Should be 0!
@@ -161,7 +163,7 @@ def test_mkdir(gkfs_daemon, gkfs_client):
     # create 2nd level subdir and check it's not included in readdir()
     ret = gkfs_client.mkdir(
             subdir_a, 
-            stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO);
+            stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 
     assert ret.retval == 0
     assert ret.errno == 115 #FIXME: Should be 0!
