@@ -307,10 +307,10 @@ if check_dependency "bmi" "${DEP_CONFIG[@]}"; then
 fi
 
 # get libfabric
-if check_dependency "ofi" "${DEP_CONFIG[@]}"; then
-    if [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
+if [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
+    if check_dependency "ofi" "${DEP_CONFIG[@]}"; then
         wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.8.1/libfabric-1.8.1.tar.bz2" &
-    elif [ "${NA_LAYER}" == "ofi-experimental" ] || [ "${NA_LAYER}" == "all" ]; then
+    elif check_dependency "ofi-experimental" "${DEP_CONFIG[@]}"; then
         wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.9.1rc1/libfabric-1.9.1rc1.tar.bz2" &
     fi
 fi
