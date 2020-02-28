@@ -368,6 +368,7 @@ if check_dependency "mercury" "${DEP_CONFIG[@]}"; then
         -DMERCURY_USE_BOOST_PP:BOOL=ON \
         -DMERCURY_USE_EAGER_BULK:BOOL=ON \
         -DBUILD_SHARED_LIBS:BOOL=ON \
+        -DNA_SM_TMP_DIRECTORY:STRING="/dev/shm" \
         -DCMAKE_INSTALL_PREFIX=${INSTALL} \
         ${USE_BMI} ${USE_OFI} \
         ..
