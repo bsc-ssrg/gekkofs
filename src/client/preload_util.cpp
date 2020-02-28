@@ -16,9 +16,11 @@
 #include <client/logging.hpp>
 #include <client/rpc/forward_metadata.hpp>
 
+#include <global/global_defs.hpp>
 #include <global/rpc/distributor.hpp>
 #include <global/rpc/rpc_util.hpp>
 #include <global/env_util.hpp>
+#include <global/ofi_util.hpp>
 
 #include <hermes.hpp>
 
@@ -225,6 +227,14 @@ void load_hosts() {
             LOG(DEBUG, "Found local host: {}", hostname);
             CTX->local_host_id(id);
             local_host_found = true;
+        }
+
+        if (string(RPC_PROTOCOL) == gkfs::rpc::protocol::ofi_psm2) {
+            // convert ip address to native psm2 address that is required for the Mercury lookup address
+            LOG(INFO, "Looking up native address for host '{}'", hostname);
+            auto uri_tmp = hostname + "-opa";
+            auto native_psm2_addr = fmt::format("{}://{}", RPC_PROTOCOL, gkfs::rpc::ofi_get_psm2_address(uri));
+            LOG(INFO, "Native psm2 address for host '{}': '{}'", uri_tmp, native_psm2_addr);
         }
 
         LOG(DEBUG, "Found peer: {}", addrs[id].to_string());

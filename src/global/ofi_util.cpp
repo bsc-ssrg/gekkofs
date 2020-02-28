@@ -68,22 +68,22 @@ string ofi_get_psm2_address(const string& hostname) {
     // below is an error case
     if (fi->next) {
         while (fi->next) {
-            cerr << "Name: " << hostname << endl;
-            cerr << "Src: " << (char*) fi->src_addr << "\" [" << fi->dest_addrlen << "]" << endl;
-            cerr << "Dst: \"" << (char*) fi->dest_addr << "\" [" << fi->dest_addrlen << "]" << endl;
-            cerr << "Format: " << fi->addr_format << endl;
-            cerr << "Prov: " << fi->fabric_attr->prov_name << endl;
+            cout << "Name: " << hostname << endl;
+            cout << "Src: " << (char*) fi->src_addr << "\" [" << fi->dest_addrlen << "]" << endl;
+            cout << "Dst: \"" << (char*) fi->dest_addr << "\" [" << fi->dest_addrlen << "]" << endl;
+            cout << "Format: " << fi->addr_format << endl;
+            cout << "Prov: " << fi->fabric_attr->prov_name << endl;
             fi = fi->next;
         }
         auto err_str = fmt::format("{}() fi_getinfo: multiple results found for specific hostname", __func__);
         throw OFIException(EBUSY, err_str);
     }
 
-    cerr << "Name: " << hostname << endl;
-    cerr << "Src: " << (char*) fi->src_addr << "\" [" << fi->dest_addrlen << "]" << endl;
-    cerr << "Dst: \"" << (char*) fi->dest_addr << "\" [" << fi->dest_addrlen << "]" << endl;
-    cerr << "Format: " << fi->addr_format << endl;
-    cerr << "Prov: " << fi->fabric_attr->prov_name << endl;
+    cout << "Name: " << hostname << endl;
+    cout << "Src: " << (char*) fi->src_addr << "\" [" << fi->dest_addrlen << "]" << endl;
+    cout << "Dst: \"" << (char*) fi->dest_addr << "\" [" << fi->dest_addrlen << "]" << endl;
+    cout << "Format: " << fi->addr_format << endl;
+    cout << "Prov: " << fi->fabric_attr->prov_name << endl;
 
 /*    CTX->log()->info("{}() fi_getinfo: src_addr '{}' dest_addr '{}' domain_name '{}' fabric_name '{}' fabric_prov_name '{}' fabric_prov_version '{}'", __func__,
                      (char*) fi->src_addr,
