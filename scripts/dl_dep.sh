@@ -17,12 +17,12 @@ MOGON2_DEPS=(
 )
 
 DIRECT_DEPS=(
-  "ofi" "mercury" "argobots" "margo" "rocksdb" "syscall_intercept" "date"
+    "ofi" "mercury" "argobots" "margo" "rocksdb" "syscall_intercept" "date"
 )
 
 ALL_DEPS=(
     "zstd" "lz4" "snappy" "capstone" "bmi" "ofi" "mercury" "argobots" "margo" "rocksdb"
-     "syscall_intercept" "date"
+    "syscall_intercept" "date"
 )
 
 # Stop all backround jobs on interruption.
@@ -64,24 +64,24 @@ list_dependencies() {
 }
 
 check_dependency() {
-  local DEP=$1
-  shift
-  local DEP_CONFIG=("$@")
-  # ignore template when specific dependency is set
-  if [[ -n "${DEPENDENCY}" ]]; then
-      # check if specific dependency was set and return from function
-      if echo "${DEPENDENCY}" | grep -q "${DEP}"; then
-        return
-      fi
-  else
-      # if not check if dependency is part of dependency config
-      for e in "${DEP_CONFIG[@]}"; do
-        if [[ "${DEP}" == "${e}" ]]; then
-          return
+    local DEP=$1
+    shift
+    local DEP_CONFIG=("$@")
+    # ignore template when specific dependency is set
+    if [[ -n "${DEPENDENCY}" ]]; then
+        # check if specific dependency was set and return from function
+        if echo "${DEPENDENCY}" | grep -q "${DEP}"; then
+            return
         fi
-      done
-  fi
-  false
+    else
+        # if not check if dependency is part of dependency config
+        for e in "${DEP_CONFIG[@]}"; do
+            if [[ "${DEP}" == "${e}" ]]; then
+                return
+            fi
+        done
+    fi
+    false
 }
 
 clonedeps() {
@@ -144,7 +144,7 @@ wgetdeps() {
 }
 
 usage_short() {
-	echo "
+    echo "
 usage: dl_dep.sh [-h] [-l] [-n <NAPLUGIN>] [-c <CONFIG>] [-d <DEPENDENCY>]
                     source_path
 	"
@@ -248,17 +248,17 @@ fi
 # enable predefined dependency template
 case ${TMP_DEP_CONF} in
 mogon2)
-  DEP_CONFIG=("${MOGON2_DEPS[@]}")
-  [[ -z "${DEPENDENCY}" ]] && echo "'Mogon2' dependencies are downloaded"
-  ;;
+    DEP_CONFIG=("${MOGON2_DEPS[@]}")
+    [[ -z "${DEPENDENCY}" ]] && echo "'Mogon2' dependencies are downloaded"
+    ;;
 all)
-  DEP_CONFIG=("${ALL_DEPS[@]}")
-  [[ -z "${DEPENDENCY}" ]] && echo "'All' dependencies are downloaded"
-  ;;
+    DEP_CONFIG=("${ALL_DEPS[@]}")
+    [[ -z "${DEPENDENCY}" ]] && echo "'All' dependencies are downloaded"
+    ;;
 direct | *)
-  DEP_CONFIG=("${DIRECT_DEPS[@]}")
-  [[ -z "${DEPENDENCY}" ]] && echo "'Direct' GekkoFS dependencies are downloaded (default)"
-  ;;
+    DEP_CONFIG=("${DIRECT_DEPS[@]}")
+    [[ -z "${DEPENDENCY}" ]] && echo "'Direct' GekkoFS dependencies are downloaded (default)"
+    ;;
 esac
 
 # sanity checks
@@ -316,13 +316,13 @@ if check_dependency "ofi" "${DEP_CONFIG[@]}"; then
 fi
 
 if check_dependency "psm2" "${DEP_CONFIG[@]}"; then
-#    wgetdeps "psm2" "https://github.com/intel/opa-psm2/archive/PSM2_11.2.86.tar.gz" &
+    #    wgetdeps "psm2" "https://github.com/intel/opa-psm2/archive/PSM2_11.2.86.tar.gz" &
     wgetdeps "psm2" "https://github.com/intel/opa-psm2/archive/psm2_11.2.91.tar.gz" &
 fi
 
 # get Mercury
 if check_dependency "mercury" "${DEP_CONFIG[@]}"; then
-    clonedeps "mercury" "https://github.com/mercury-hpc/mercury" "fd410dfb9852b2b98d21113531f3058f45bfcd64"  "--recurse-submodules" &
+    clonedeps "mercury" "https://github.com/mercury-hpc/mercury" "fd410dfb9852b2b98d21113531f3058f45bfcd64" "--recurse-submodules" &
 fi
 
 # get Argobots
