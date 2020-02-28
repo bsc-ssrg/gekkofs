@@ -219,8 +219,7 @@ int hook_pwritev(unsigned long fd, const struct iovec* iov, unsigned long iovcnt
         __func__, fd, fmt::ptr(iov), iovcnt, pos_l, pos_h);
 
     if (CTX->file_map()->exist(fd)) {
-        LOG(WARNING, "{}() Not supported", __func__);
-        return -ENOTSUP;
+        return with_errno(adafs_pwritev(fd, iov, iovcnt, pos_l));
     }
     return syscall_no_intercept(SYS_pwritev, fd, iov, iovcnt);
 }
