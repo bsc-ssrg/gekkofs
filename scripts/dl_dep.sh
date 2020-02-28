@@ -12,8 +12,8 @@ VERBOSE=false
 VALID_DEP_OPTIONS="mogon2 direct all"
 
 MOGON2_DEPS=(
-    "zstd" "lz4" "snappy" "capstone" "ofi" "mercury" "argobots" "margo" "rocksdb"
-    "syscall_intercept" "date"
+    "zstd" "lz4" "snappy" "capstone" "ofi-experimental" "mercury" "argobots" "margo" "rocksdb"
+    "syscall_intercept" "date" "psm2"
 )
 
 DIRECT_DEPS=(
@@ -73,7 +73,6 @@ check_dependency() {
       if echo "${DEPENDENCY}" | grep -q "${DEP}"; then
         return
       fi
-#      [[ "${DEPENDENCY}" == "${DEP}" ]] && return
   else
       # if not check if dependency is part of dependency config
       for e in "${DEP_CONFIG[@]}"; do
@@ -311,7 +310,14 @@ fi
 if check_dependency "ofi" "${DEP_CONFIG[@]}"; then
     if [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
         wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.8.1/libfabric-1.8.1.tar.bz2" &
+    elif [ "${NA_LAYER}" == "ofi-experimental" ] || [ "${NA_LAYER}" == "all" ]; then
+        wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.9.1rc1/libfabric-1.9.1rc1.tar.bz2" &
     fi
+fi
+
+if check_dependency "psm2" "${DEP_CONFIG[@]}"; then
+#    wgetdeps "psm2" "https://github.com/intel/opa-psm2/archive/PSM2_11.2.86.tar.gz" &
+    wgetdeps "psm2" "https://github.com/intel/opa-psm2/archive/psm2_11.2.91.tar.gz" &
 fi
 
 # get Mercury

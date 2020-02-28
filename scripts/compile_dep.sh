@@ -8,26 +8,27 @@ CORES=""
 SOURCE=""
 INSTALL=""
 DEP_CONFIG=""
+USE_SYSTEM_PSM2=false
 
 VALID_DEP_OPTIONS="mogon2 direct all"
 
 MOGON2_DEPS=(
     "zstd" "lz4" "snappy" "capstone" "ofi" "mercury" "argobots" "margo" "rocksdb"
-    "syscall_intercept" "date"
+    "syscall_intercept" "date" "psm2"
 )
 
 DIRECT_DEPS=(
-  "ofi" "mercury" "argobots" "margo" "rocksdb" "syscall_intercept" "date"
+    "ofi" "mercury" "argobots" "margo" "rocksdb" "syscall_intercept" "date"
 )
 
 ALL_DEPS=(
     "zstd" "lz4" "snappy" "capstone" "bmi" "ofi" "mercury" "argobots" "margo" "rocksdb"
-     "syscall_intercept" "date"
+    "syscall_intercept" "date"
 )
 
 usage_short() {
-	echo "
-usage: compile_dep.sh [-h] [-l] [-n <NAPLUGIN>] [-c <CONFIG>] [-d <DEPENDENCY>] [-j <COMPILE_CORES>]
+    echo "
+usage: compile_dep.sh [-h] [-l] [-n <NAPLUGIN>] [-c <CONFIG>] [-d <DEPENDENCY>] [-j <COMPILE_CORES>] [--use-system-psm2]
                       source_path install_path
 	"
 }
@@ -61,6 +62,9 @@ optional arguments:
     -j <COMPILE_CORES>, --compilecores <COMPILE_CORES>
                 number of cores that are used to compile the dependencies
                 defaults to number of available cores
+    --use-system-psm2
+                Build libfabric with the system installed opa-psm2 library.
+                Otherwise the separate downloaded opa-psm2 is linked to libfabric, ignoring the system installed one
     -t, --test  Perform libraries tests.
 "
 }
@@ -85,25 +89,25 @@ list_dependencies() {
 }
 
 check_dependency() {
-  local DEP=$1
-  shift
-  local DEP_CONFIG=("$@")
-  # ignore template when specific dependency is set
-  if [[ -n "${DEPENDENCY}" ]]; then
-      # check if specific dependency was set and return from function
-      if echo "${DEPENDENCY}" | grep -q "${DEP}"; then
-        return
-      fi
-#      [[ "${DEPENDENCY}" == "${DEP}" ]] && return
-  else
-      # if not check if dependency is part of dependency config
-      for e in "${DEP_CONFIG[@]}"; do
-        if [[ "${DEP}" == "${e}" ]]; then
-          return
+    local DEP=$1
+    shift
+    local DEP_CONFIG=("$@")
+    # ignore template when specific dependency is set
+    if [[ -n "${DEPENDENCY}" ]]; then
+        # check if specific dependency was set and return from function
+        if echo "${DEPENDENCY}" | grep -q "${DEP}"; then
+            return
         fi
-      done
-  fi
-  false
+        #      [[ "${DEPENDENCY}" == "${DEP}" ]] && return
+    else
+        # if not check if dependency is part of dependency config
+        for e in "${DEP_CONFIG[@]}"; do
+            if [[ "${DEP}" == "${e}" ]]; then
+                return
+            fi
+        done
+    fi
+    false
 }
 
 prepare_build_dir() {
@@ -168,6 +172,10 @@ while [[ $# -gt 0 ]]; do
         list_dependencies
         exit
         ;;
+    --use-system-psm2)
+        USE_SYSTEM_PSM2=true
+        shift # past argument
+        ;;
     -h | --help)
         help_msg
         exit
@@ -218,17 +226,17 @@ fi
 # enable predefined dependency template
 case ${TMP_DEP_CONF} in
 mogon2)
-  DEP_CONFIG=("${MOGON2_DEPS[@]}")
-  echo "'Mogon2' dependencies are compiled"
-  ;;
+    DEP_CONFIG=("${MOGON2_DEPS[@]}")
+    echo "'Mogon2' dependencies are compiled"
+    ;;
 all)
-  DEP_CONFIG=("${ALL_DEPS[@]}")
-  echo "'All' dependencies are compiled"
-  ;;
+    DEP_CONFIG=("${ALL_DEPS[@]}")
+    echo "'All' dependencies are compiled"
+    ;;
 direct | *)
-  DEP_CONFIG=("${DIRECT_DEPS[@]}")
-  echo "'Direct' GekkoFS dependencies are compiled (default)"
-  ;;
+    DEP_CONFIG=("${DIRECT_DEPS[@]}")
+    echo "'Direct' GekkoFS dependencies are compiled (default)"
+    ;;
 esac
 
 USE_BMI="-DNA_USE_BMI:BOOL=OFF"
@@ -320,7 +328,16 @@ if check_dependency "ofi" "${DEP_CONFIG[@]}"; then
         CURR=${SOURCE}/libfabric
         prepare_build_dir ${CURR}
         cd ${CURR}/build
-        ../configure --prefix=${INSTALL} --enable-tcp=yes
+        # decide if and with which version of psm2 to build
+        if check_dependency "psm2" "${DEP_CONFIG[@]}"; then
+            if [[ "${USE_SYSTEM_PSM2}" == true ]]; then
+                ../configure --prefix=${INSTALL} --enable-tcp=yes --enable-psm2=yes
+            else
+                ../configure --prefix=${INSTALL} --enable-tcp=yes --enable-psm2=yes --with-psm2-src=${SOURCE}/psm2
+            fi
+        else
+            ../configure --prefix=${INSTALL} --enable-tcp=yes
+        fi
         make -j${CORES}
         make install
         [ "${PERFORM_TEST}" ] && make check
