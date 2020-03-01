@@ -219,9 +219,8 @@ void load_hosts() {
 
     for (const auto& id: host_ids) {
         const auto& hostname = hosts.at(id).first;
-        const auto& uri = hosts.at(id).second;
+        auto& uri = hosts.at(id).second;
 
-        addrs[id] = lookup_endpoint(uri);
 
         if (!local_host_found && hostname == local_hostname) {
             LOG(DEBUG, "Found local host: {}", hostname);
@@ -229,15 +228,20 @@ void load_hosts() {
             local_host_found = true;
         }
 
-        if (string(RPC_PROTOCOL) == gkfs::rpc::protocol::ofi_psm2) {
-            // convert ip address to native psm2 address that is required for the Mercury lookup address
-            LOG(INFO, "Looking up native address for host '{}'", hostname);
-            auto uri_tmp = hostname + "-opa";
-            auto native_psm2_addr = fmt::format("{}://{}", RPC_PROTOCOL, gkfs::rpc::ofi_get_psm2_address(uri));
-            LOG(INFO, "Native psm2 address for host '{}': '{}'", uri_tmp, native_psm2_addr);
-        }
+        //if (string(RPC_PROTOCOL) == gkfs::rpc::protocol::ofi_psm2) {
+        //    // convert ip address to native psm2 address that is required for the Mercury lookup address
+        //    LOG(INFO, "Looking up native address for host '{}'", hostname);
+        //    auto uri_tmp = hostname + "-opa";
+        //    auto native_psm2_addr = fmt::format("{}://{}", RPC_PROTOCOL, gkfs::rpc::ofi_get_psm2_address(uri_tmp));
+        //    LOG(INFO, "Native psm2 address for host '{}': '{}'", uri_tmp, native_psm2_addr);
+        //    uri = native_psm2_addr;
+        //}
 
-        LOG(DEBUG, "Found peer: {}", addrs[id].to_string());
+        LOG(INFO, "host '{}' uri '{}'", hostname, uri);
+
+        addrs[id] = lookup_endpoint(uri);
+
+        LOG(INFO, "Found peer: {}", addrs[id].to_string());
     }
 
     if (!local_host_found) {

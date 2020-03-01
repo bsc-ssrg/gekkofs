@@ -311,13 +311,13 @@ if [ "${NA_LAYER}" == "ofi" ] || [ "${NA_LAYER}" == "all" ]; then
     if check_dependency "ofi" "${DEP_CONFIG[@]}"; then
         wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.8.1/libfabric-1.8.1.tar.bz2" &
     elif check_dependency "ofi-experimental" "${DEP_CONFIG[@]}"; then
-        wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.9.1rc1/libfabric-1.9.1rc1.tar.bz2" &
+        wgetdeps "libfabric" "https://github.com/ofiwg/libfabric/releases/download/v1.9.1rc2/libfabric-1.9.1rc2.tar.bz2" &
     fi
 fi
 
 if check_dependency "psm2" "${DEP_CONFIG[@]}"; then
-    #    wgetdeps "psm2" "https://github.com/intel/opa-psm2/archive/PSM2_11.2.86.tar.gz" &
-    wgetdeps "psm2" "https://github.com/intel/opa-psm2/archive/psm2_11.2.91.tar.gz" &
+    wgetdeps "psm2" "https://github.com/intel/opa-psm2/archive/PSM2_11.2.86.tar.gz" &
+    #wgetdeps "psm2" "https://github.com/intel/opa-psm2/archive/psm2_11.2.91.tar.gz" &
 fi
 
 # get Mercury
