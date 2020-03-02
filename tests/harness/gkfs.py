@@ -18,6 +18,7 @@ from itertools import islice
 from loguru import logger
 from harness.io import IOParser
 
+### some definitions required to interface with the client/daemon
 gkfs_daemon_cmd = 'gkfs_daemon'
 gkfs_client_cmd = 'gkfs.io'
 gkfs_client_lib_file = 'libgkfs_intercept.so'
@@ -26,6 +27,7 @@ gkfs_daemon_log_file = 'gkfs_daemon.log'
 gkfs_daemon_log_level = '100'
 gkfs_client_log_file = 'gkfs_client.log'
 gkfs_client_log_level = 'all'
+gkfs_daemon_active_log_pattern = r'Startup successful. Daemon is ready.'
 
 def get_ip_addr(iface):
     return netifaces.ifaddresses(iface)[netifaces.AF_INET][0]['addr']
@@ -165,7 +167,7 @@ class Daemon:
         or the message can't be found.
         """
 
-        pattern = r'Startup successful. Daemon is ready.'
+        gkfs_daemon_active_log_pattern = r'Startup successful. Daemon is ready.'
 
         is_active = False
 
@@ -179,7 +181,7 @@ class Daemon:
                 #logger.debug(f"checking log file")
                 with open(self.logdir / gkfs_daemon_log_file) as log:
                     for line in islice(log, max_lines):
-                        if re.search(pattern, line) is not None:
+                        if re.search(gkfs_daemon_active_log_pattern, line) is not None:
                             return True
             except FileNotFoundError:
                 # Log is missing, the daemon might have crashed...
