@@ -13,8 +13,8 @@
 
 from pathlib import Path
 
-### This code is meant to be included automatically by CMake in the build 
-### directory's top-level conftest.py as well as the source directory's 
+### This code is meant to be included automatically by CMake in the build
+### directory's top-level conftest.py as well as the source directory's
 ### conftest.py, so that tests can be correctly run from both directories
 def add_cli_options(parser):
     """
@@ -47,7 +47,7 @@ def add_cli_options(parser):
                 "for libraries (multi-allowed)."
         )
     except ValueError:
-        # if the CLI args have already been added, we have been called both 
-        # from the build directory's conftest.py and from the source 
+        # if the CLI args have already been added, we have been called both
+        # from the build directory's conftest.py and from the source
         # directory's conftest.py through automatic finding, ignore the error
         pass

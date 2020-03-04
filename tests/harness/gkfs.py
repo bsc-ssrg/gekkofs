@@ -15,8 +15,9 @@ import os, sh, sys, re, pytest
 import random, socket, netifaces
 from pathlib import Path
 from itertools import islice
-from loguru import logger
+from harness.logger import logger
 from harness.io import IOParser
+from harness.cmd import CommandParser
 
 ### some definitions required to interface with the client/daemon
 gkfs_daemon_cmd = 'gkfs_daemon'
@@ -53,9 +54,11 @@ def get_ephemeral_port(port=0, host=None):
     port: `str`
         If specified, use this port as a base and the next free port after that
         base will be returned.
+
     host: `str`
         If specified, use this host. Otherwise it will use a temporary IP in
         the 127.0.0.0/24 range
+
     Returns
     -------
     Available port to use
@@ -91,6 +94,7 @@ def get_ephemeral_address(iface):
     iface: `str`
         The interface that will be used to find out the IPv4 address
         for the ephemeral address.
+
     Returns
     -------
     A network address formed by iface's IPv4 address and an available
@@ -156,8 +160,10 @@ class Daemon:
         ----------
         pid: `int`
             The PID of the daemon process to wait for.
+
         retries: `int`
             The number of retries before giving up.
+
         max_lines: `int`
             The maximum number of log lines to check for a match.
 
@@ -238,6 +244,12 @@ class _proxy_exec():
         return self._client.run(self._name, *args)
 
 class Client:
+    """
+    A class to represent a GekkoFS client process with a patched LD_PRELOAD.
+    This class allows tests to interact with the file system using I/O-related
+    function calls, be them system calls (e.g. read()) or glibc I/O functions
+    (e.g. opendir()).
+    """
     def __init__(self, workspace):
         self._parser = IOParser()
         self._workspace = workspace
@@ -264,15 +276,25 @@ class Client:
             logger.error(f'Make sure that only one copy of the client library is available.')
             pytest.exit("Aborted due to initialization error")
 
+        self._preload_library = preloads[0]
+
         self._patched_env = {
             'LD_LIBRARY_PATH'      : libdirs,
-            'LD_PRELOAD'           : preloads[0],
+            'LD_PRELOAD'           : self._preload_library,
             'LIBGKFS_HOSTS_FILE'   : self.cwd / gkfs_hosts_file,
             'LIBGKFS_LOG'          : gkfs_client_log_level,
             'LIBGKFS_LOG_OUTPUT'   : self._workspace.logdir / gkfs_client_log_file
         }
 
         self._env.update(self._patched_env)
+
+    @property
+    def preload_library(self):
+        """
+        Return the preload library detected for this client
+        """
+
+        return self._preload_library
 
     def run(self, cmd, *args):
         logger.info(f"running client")
@@ -288,6 +310,211 @@ class Client:
 
         logger.debug(f"command output: {out.stdout}")
         return self._parser.parse(cmd, out.stdout)
+
+    def __getattr__(self, name):
+        return _proxy_exec(self, name)
+
+    @property
+    def cwd(self):
+        return self._workspace.twd
+
+class ShellCommand:
+    """
+    A wrapper class for sh.RunningCommand that allows seamlessly using all
+    its methods and properties plus extending it with additional methods
+    for ease of use.
+    """
+
+    def __init__(self, cmd, proc):
+        self._parser = CommandParser()
+        self._cmd = cmd
+        self._wrapped_proc = proc
+
+    @property
+    def parsed_stdout(self):
+        return self._parser.parse(self._cmd, self._wrapped_proc.stdout.decode())
+
+    @property
+    def parsed_stderr(self):
+        return self._parser.parse(self._cmd, self._wrapped_proc.stderr.decode())
+
+    def __getattr__(self, attr):
+        if attr in self.__dict__:
+            return getattr(self, attr)
+        return getattr(self._wrapped_proc, attr)
+
+class ShellClient:
+    """
+    A class to represent a GekkoFS shell client process.
+    This class allows tests to execute shell commands or scripts via bash -c
+    on a GekkoFS instance.
+    """
+
+    def __init__(self, workspace):
+        self._workspace = workspace
+        self._cmd = sh.Command("bash")
+        self._env = os.environ.copy()
+
+        libdirs = ':'.join(
+                filter(None, [os.environ.get('LD_LIBRARY_PATH', '')] +
+                             [str(p) for p in self._workspace.libdirs]))
+
+        # ensure the client interception library is available:
+        # to avoid running code with potentially installed libraries,
+        # it must be found in one (and only one) of the workspace's bindirs
+        preloads = []
+        for d in self._workspace.bindirs:
+            search_path = Path(d) / gkfs_client_lib_file
+            if search_path.exists():
+                preloads.append(search_path)
+
+        if len(preloads) != 1:
+            logger.error(f'Multiple client libraries found in the test\'s binary directories:')
+            for p in preloads:
+                logger.error(f'  {p}')
+            logger.error(f'Make sure that only one copy of the client library is available.')
+            pytest.exit("Aborted due to initialization error")
+
+        self._preload_library = preloads[0]
+
+        self._patched_env = {
+            'LD_LIBRARY_PATH'      : libdirs,
+            'LD_PRELOAD'           : self._preload_library,
+            'LIBGKFS_HOSTS_FILE'   : self.cwd / gkfs_hosts_file,
+            'LIBGKFS_LOG'          : gkfs_client_log_level,
+            'LIBGKFS_LOG_OUTPUT'   : self._workspace.logdir / gkfs_client_log_file
+        }
+
+        self._env.update(self._patched_env)
+
+    @property
+    def patched_environ(self):
+        """
+        Return the patched environment required to run a test as a string that
+        can be prepended to a shell command.
+        """
+
+        return ' '.join(f'{k}="{v}"' for k,v in self._patched_env.items())
+
+    def script(self, code, intercept_shell=True):
+        """
+        Execute a shell script passed as an argument in bash.
+
+        For instance, the following snippet:
+
+            mountdir = pathlib.Path('/tmp')
+            file01 = 'file01'
+
+            ShellClient().script(
+                f'''
+                    expected_pathname={mountdir / file01}
+                    if [[ -e ${{expected_pathname}} ]];
+                    then
+                        exit 0
+                    fi
+                    exit 1
+                ''')
+
+        transforms into:
+
+            bash -c '
+                expected_pathname=/tmp/file01
+                if [[ -e ${expected_pathname} ]];
+                then
+                    exit 0
+                fi
+                exit 1
+            '
+
+        Note that since we are using Python's f-strings, for variable
+        expansions to work correctly, they need to be defined with double
+        braces, e.g.  ${{expected_pathname}}.
+
+        Parameters
+        ----------
+        code: `str`
+            The script code to be passed to 'bash -c'.
+
+        intercept_shell: `bool`
+            Controls whether the shell executing the script should be
+            executed with LD_PRELOAD=libgkfs_intercept.so (default: True).
+
+        Returns
+        -------
+        A sh.RunningCommand instance that allows interacting with
+        the finished process.
+        """
+
+        logger.info(f"running bash")
+        logger.info(f"cmd: bash -c '{code}'")
+
+        if intercept_shell:
+            logger.info(f"env: {self._patched_env}")
+
+        # 'sh' raises an exception if the return code is not zero;
+        # since we'd rather check for return codes explictly, we
+        # whitelist all exit codes from 1 to 255 as 'ok' using the
+        # _ok_code argument
+        return self._cmd('-c',
+            code,
+            _env = (self._env if intercept_shell else os.environ),
+    #        _out=sys.stdout,
+    #        _err=sys.stderr,
+            _ok_code=list(range(0, 256))
+            )
+
+    def run(self, cmd, *args, intercept_shell=True):
+        """
+        Execute a shell command  with arguments.
+
+        For example, the following snippet:
+
+            mountdir = pathlib.Path('/tmp')
+            file01 = 'file01'
+
+            ShellClient().stat('--terse', mountdir / file01)
+
+        transforms into:
+
+            bash -c 'stat --terse /tmp/file01'
+
+        Parameters:
+        -----------
+        cmd: `str`
+            The command to execute.
+
+        args: `list`
+            The list of arguments for the command.
+
+        intercept_shell: `bool`
+            Controls whether the shell executing the script should be
+            executed with LD_PRELOAD=libgkfs_intercept.so (default: True).
+
+        Returns
+        -------
+        A ShellCommand instance that allows interacting with the finished
+        process. Note that ShellCommand wraps sh.RunningCommand and adds s
+        extra properties to it.
+        """
+
+        bash_c_args = f"{cmd} {' '.join(str(a) for a in args)}"
+        logger.info(f"running bash")
+        logger.info(f"cmd: bash -c '{bash_c_args}'")
+        logger.info(f"env: {self._patched_env}")
+
+        # 'sh' raises an exception if the return code is not zero;
+        # since we'd rather check for return codes explictly, we
+        # whitelist all exit codes from 1 to 255 as 'ok' using the
+        # _ok_code argument
+        proc = self._cmd('-c',
+            bash_c_args,
+            _env = self._env,
+    #        _out=sys.stdout,
+    #        _err=sys.stderr,
+            _ok_code=list(range(0, 256))
+            )
+
+        return ShellCommand(cmd, proc)
 
     def __getattr__(self, name):
         return _proxy_exec(self, name)

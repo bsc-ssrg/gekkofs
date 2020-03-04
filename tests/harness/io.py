@@ -39,14 +39,14 @@ class StructTimespecSchema(Schema):
 
     @post_load
     def make_object(self, data, **kwargs):
-        return namedtuple('StructTimespec', 
+        return namedtuple('StructTimespec',
                 ['tv_sec', 'tv_nsec'])(**data)
 
 class StructStatSchema(Schema):
     """Schema that deserializes a struct stat"""
 
     st_dev = fields.Integer(required=True)
-    st_ino = fields.Integer(required=True) 
+    st_ino = fields.Integer(required=True)
     st_mode = fields.Integer(required=True)
     st_nlink = fields.Integer(required=True)
     st_uid = fields.Integer(required=True)

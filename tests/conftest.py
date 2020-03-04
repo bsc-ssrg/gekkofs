@@ -15,11 +15,11 @@ import os, sys
 import pytest
 import logging
 from _pytest.logging import caplog as _caplog
-from loguru import logger
 from pathlib import Path
+from harness.logger import logger
 from harness.cli import add_cli_options
-from harness.workspace import Workspace
-from harness.gkfs import Daemon, Client
+from harness.workspace import Workspace, FileCreator
+from harness.gkfs import Daemon, Client, ShellClient
 
 def pytest_addoption(parser):
     """
@@ -70,8 +70,26 @@ def gkfs_daemon(test_workspace, request):
 def gkfs_client(test_workspace):
     """
     Sets up a gekkofs client environment so that
-    operations (system calls, library calls, ...) can 
+    operations (system calls, library calls, ...) can
     be requested from a co-running daemon.
     """
 
     return Client(test_workspace)
+
+@pytest.fixture
+def gkfs_shell(test_workspace):
+    """
+    Sets up a gekkofs environment so that shell commands
+    (stat, ls, mkdir, etc.) can be issued to a co-running daemon.
+    """
+
+    return ShellClient(test_workspace)
+
+@pytest.fixture
+def file_factory(test_workspace):
+    """
+    Returns a factory that can create custom input files
+    in the test workspace.
+    """
+
+    return FileCreator(test_workspace)

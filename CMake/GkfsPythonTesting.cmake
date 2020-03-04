@@ -93,7 +93,7 @@ function(gkfs_add_python_test)
         set(PYTEST_VIRTUALENV ${CMAKE_CURRENT_BINARY_DIR}/pytest-venv)
     endif()
 
-    # if the test doesn't provide a list of binary or library prefix 
+    # if the test doesn't provide a list of binary or library prefix
     # directories, use the one set on gkfs_enable_python_testing()
     if(NOT PYTEST_BINARY_DIRECTORIES)
         set(PYTEST_BINARY_DIRECTORIES ${GKFS_PYTEST_BINARY_DIRECTORIES})
@@ -136,9 +136,9 @@ function(gkfs_add_python_test)
     endif()
 
     # find an appropriate python interpreter
-    find_package(Python3 
-        ${PYTEST_PYTHON_VERSION} 
-        REQUIRED 
+    find_package(Python3
+        ${PYTEST_PYTHON_VERSION}
+        REQUIRED
         COMPONENTS Interpreter)
 
     set(PYTEST_VIRTUALENV_PIP ${PYTEST_VIRTUALENV}/bin/pip)
@@ -155,18 +155,27 @@ function(gkfs_add_python_test)
         COMMAND ${PYTEST_VIRTUALENV_PIP} install -r requirements.txt --upgrade -q
     )
 
-    # ensure that the virtual environment is created by the build process
-    # (this is required because we can't add dependencies between 
-    # "test targets" and "normal targets"
-    add_custom_target(venv 
-        ALL
-        DEPENDS ${PYTEST_VIRTUALENV}
-        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/requirements.txt)
+    if(NOT TARGET venv)
+        # ensure that the virtual environment is created by the build process
+        # (this is required because we can't add dependencies between
+        # "test targets" and "normal targets"
+        add_custom_target(venv
+            ALL
+            DEPENDS ${PYTEST_VIRTUALENV}
+            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/requirements.txt)
+    endif()
 
     add_test(NAME ${PYTEST_NAME}
-             COMMAND ${PYTEST_VIRTUALENV_INTERPRETER} 
-                    -m pytest 
+             COMMAND ${PYTEST_VIRTUALENV_INTERPRETER}
+                    -m pytest -v -s
                     ${PYTEST_COMMAND_ARGS}
                     ${PYTEST_COMMAND}
              WORKING_DIRECTORY ${PYTEST_WORKING_DIRECTORY})
+
+    # instruct Python to not create __pycache__ directories,
+    # otherwise they will pollute ${PYTEST_WORKING_DIRECTORY} which
+    # is typically ${PROJECT_SOURCE_DIR}
+    set_tests_properties(${PYTEST_NAME} PROPERTIES
+        ENVIRONMENT PYTHONDONTWRITEBYTECODE=1)
+
 endfunction()

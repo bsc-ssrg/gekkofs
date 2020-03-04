@@ -21,7 +21,7 @@ import ctypes
 import sh
 import sys
 import pytest
-from loguru import logger
+from harness.logger import logger
 
 nonexisting = "nonexisting"
 
@@ -75,7 +75,7 @@ def test_mkdir(gkfs_daemon, gkfs_client):
     assert ret.retval == -1
     assert ret.errno == errno.EISDIR
 
-    
+
     # read top directory that is empty
     ret = gkfs_client.opendir(topdir)
 
@@ -104,7 +104,7 @@ def test_mkdir(gkfs_daemon, gkfs_client):
         assert ret.retval == 0
         assert ret.errno == 115 #FIXME: Should be 0!
 
-    ret = gkfs_client.open(file_a, 
+    ret = gkfs_client.open(file_a,
                            os.O_CREAT,
                            stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 
@@ -162,7 +162,7 @@ def test_mkdir(gkfs_daemon, gkfs_client):
 
     # create 2nd level subdir and check it's not included in readdir()
     ret = gkfs_client.mkdir(
-            subdir_a, 
+            subdir_a,
             stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 
     assert ret.retval == 0
@@ -212,9 +212,9 @@ def test_opendir(gkfs_daemon, gkfs_client, directory_path):
 
 # def test_stat(gkfs_daemon):
 #     pass
-# 
+#
 # def test_rmdir(gkfs_daemon):
 #     pass
-# 
+#
 # def test_closedir(gkfs_daemon):
 #     pass
