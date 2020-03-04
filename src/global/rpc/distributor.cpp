@@ -68,5 +68,56 @@ locate_directory_metadata(const string& path) const {
     return {localhost_};
 }
 
+
+GuidedDistributor::
+GuidedDistributor(host_t localhost, unsigned int hosts_size) :
+        localhost_(localhost),
+        hosts_size_(hosts_size),
+        all_hosts_(hosts_size) {
+    ::iota(all_hosts_.begin(), all_hosts_.end(), 0);
+
+    // Fill map
+    // header read 4 /fluidda-XFIEL.00000001.00000158.mpio.bin 1 8 136 3
+
+   
+    std::string op, path;
+    unsigned int original_host, destination_host;
+    unsigned int chunk_id;
+    size_t size, offset;
+    std::ifstream mapfile;
+    mapfile.open("~/mapping.txt");
+    while (mapfile >> op >> original_host >> path >> chunk_id >> size >> offset >> destination_host)
+    {
+      mapping[ std::make_pair (path, chunk_id) ] = destination_host;
+    }
+    mapfile.close();
+
+}
+
+host_t GuidedDistributor::
+localhost() const {
+    return localhost_;
+}
+
+host_t GuidedDistributor::
+locate_data(const string& path, const chunkid_t& chnk_id) const {
+    auto it = mapping.find( std::make_pair ( path, chnk_id) );
+
+    if (it != mapping.end()) 
+      return it->second;
+    else
+      return str_hash(path + ::to_string(chnk_id)) % hosts_size_;
+}
+
+host_t GuidedDistributor::
+locate_file_metadata(const string& path) const {
+    return str_hash(path) % hosts_size_;
+}
+
+::vector<host_t> GuidedDistributor::
+locate_directory_metadata(const string& path) const {
+    return all_hosts_;
+}
+
 } // namespace rpc
 } // namespace gkfs
