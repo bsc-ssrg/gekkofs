@@ -211,7 +211,7 @@ add_subdirectory(src/daemon)
 # Client library
 add_subdirectory(src/client)
 
-option(GKFS_BUILD_TESTS "Build GekkoFS self tests" ON)
+option(GKFS_BUILD_TESTS "Build GekkoFS self tests" OFF)
 
 if(GKFS_BUILD_TESTS)
     message(STATUS "[gekkofs] Preparing tests...")
