@@ -26,6 +26,9 @@ int hook_fstat(unsigned int fd, struct stat* buf);
 int hook_fstatat(int dirfd, const char * cpath, struct stat * buf, int flags);
 int hook_read(unsigned int fd, void* buf, size_t count);
 int hook_pread(unsigned int fd, char * buf, size_t count, loff_t pos);
+int hook_readv(unsigned long fd, const struct iovec * iov, unsigned long iovcnt);
+int hook_preadv(unsigned long fd, const struct iovec * iov, unsigned long iovcnt,
+                 unsigned long pos_l, unsigned long pos_h);
 int hook_write(unsigned int fd, const char * buf, size_t count);
 int hook_pwrite(unsigned int fd, const char * buf, size_t count, loff_t pos);
 int hook_writev(unsigned long fd, const struct iovec * iov, unsigned long iovcnt);

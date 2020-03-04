@@ -165,6 +165,30 @@ int hook_pread(unsigned int fd, char * buf, size_t count, loff_t pos) {
     return syscall_no_intercept(SYS_pread64, fd, buf, count, pos);
 }
 
+int hook_readv(unsigned long fd, const struct iovec* iov, unsigned long iovcnt) {
+
+    LOG(DEBUG, "{}() called with fd: {}, iov: {}, iovcnt: {}",
+        __func__, fd, fmt::ptr(iov), iovcnt);
+
+    if (CTX->file_map()->exist(fd)) {
+        return with_errno(adafs_readv(fd, iov, iovcnt));
+    }
+    return syscall_no_intercept(SYS_readv, fd, iov, iovcnt);
+}
+
+int hook_preadv(unsigned long fd, const struct iovec * iov, unsigned long iovcnt,
+                 unsigned long pos_l, unsigned long pos_h) {
+
+    LOG(DEBUG, "{}() called with fd: {}, iov: {}, iovcnt: {}, "
+        "pos_l: {}," "pos_h: {}", 
+        __func__, fd, fmt::ptr(iov), iovcnt, pos_l, pos_h);
+
+    if (CTX->file_map()->exist(fd)) {
+        return with_errno(adafs_preadv(fd, iov, iovcnt, pos_l));
+    }
+    return syscall_no_intercept(SYS_preadv, fd, iov, iovcnt, pos_l);
+}
+
 int hook_write(unsigned int fd, const char * buf, size_t count) {
 
     LOG(DEBUG, "{}() called with fd: {}, buf: {}, count {}", 
@@ -207,10 +231,9 @@ int hook_pwritev(unsigned long fd, const struct iovec * iov, unsigned long iovcn
         __func__, fd, fmt::ptr(iov), iovcnt, pos_l, pos_h);
 
     if (CTX->file_map()->exist(fd)) {
-        LOG(WARNING, "{}() Not supported", __func__);
-        return -ENOTSUP;
+        return with_errno(adafs_pwritev(fd, iov, iovcnt, pos_l));
     }
-    return syscall_no_intercept(SYS_pwritev, fd, iov, iovcnt);
+    return syscall_no_intercept(SYS_pwritev, fd, iov, iovcnt, pos_l);
 }
 
 int hook_unlinkat(int dirfd, const char * cpath, int flags) {

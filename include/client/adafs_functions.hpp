@@ -65,7 +65,8 @@ ssize_t adafs_writev(int fd, const struct iovec * iov, int iovcnt);
 ssize_t adafs_pread(std::shared_ptr<OpenFile> file, char * buf, size_t count, off64_t offset);
 ssize_t adafs_pread_ws(int fd, void* buf, size_t count, off64_t offset);
 ssize_t adafs_read(int fd, void* buf, size_t count);
-
+ssize_t adafs_preadv(int fd, const struct iovec *iov, int iovcnt, off_t offset);
+ssize_t adafs_readv(int fd, const struct iovec * iov, int iovcnt);
 
 int adafs_opendir(const std::string& path);
 
