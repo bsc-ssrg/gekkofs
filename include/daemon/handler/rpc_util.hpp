@@ -25,8 +25,8 @@ extern "C" {
 namespace gkfs {
 namespace rpc {
 
-template<typename I, typename O>
-inline hg_return_t cleanup(hg_handle_t* handle, I* input, O* output, hg_bulk_t* bulk_handle) {
+template<typename InputType, typename OutputType>
+inline hg_return_t cleanup(hg_handle_t* handle, InputType* input, OutputType* output, hg_bulk_t* bulk_handle) {
     auto ret = HG_SUCCESS;
     if (bulk_handle) {
         ret = margo_bulk_free(*bulk_handle);
@@ -51,8 +51,8 @@ inline hg_return_t cleanup(hg_handle_t* handle, I* input, O* output, hg_bulk_t* 
     return ret;
 }
 
-template<typename O>
-inline hg_return_t respond(hg_handle_t* handle, O* output) {
+template<typename OutputType>
+inline hg_return_t respond(hg_handle_t* handle, OutputType* output) {
     auto ret = HG_SUCCESS;
     if (output && handle) {
         ret = margo_respond(*handle, output);
@@ -62,21 +62,21 @@ inline hg_return_t respond(hg_handle_t* handle, O* output) {
     return ret;
 }
 
-template<typename I, typename O>
-inline hg_return_t cleanup_respond(hg_handle_t* handle, I* input, O* output, hg_bulk_t* bulk_handle) {
+template<typename InputType, typename OutputType>
+inline hg_return_t cleanup_respond(hg_handle_t* handle, InputType* input, OutputType* output, hg_bulk_t* bulk_handle) {
     auto ret = respond(handle, output);
     if (ret != HG_SUCCESS)
         return ret;
-    return cleanup(handle, input, static_cast<O*>(nullptr), bulk_handle);
+    return cleanup(handle, input, static_cast<OutputType*>(nullptr), bulk_handle);
 }
 
-template<typename I, typename O>
-inline hg_return_t cleanup_respond(hg_handle_t* handle, I* input, O* output) {
+template<typename InputType, typename OutputType>
+inline hg_return_t cleanup_respond(hg_handle_t* handle, InputType* input, OutputType* output) {
     return cleanup_respond(handle, input, output, nullptr);
 }
 
-template<typename O>
-inline hg_return_t cleanup_respond(hg_handle_t* handle, O* output) {
+template<typename OutputType>
+inline hg_return_t cleanup_respond(hg_handle_t* handle, OutputType* output) {
     auto ret = respond(handle, output);
     if (ret != HG_SUCCESS)
         return ret;
