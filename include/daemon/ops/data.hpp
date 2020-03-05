@@ -111,7 +111,7 @@ private:
     struct chunk_write_args {
         const std::string* path;
         const char* buf;
-        gkfs::types::rpc_chnk_id_t chnk_id;
+        gkfs::rpc::chnk_id_t chnk_id;
         size_t size;
         off64_t off;
         ABT_eventual eventual;
@@ -141,7 +141,7 @@ private:
     struct chunk_read_args {
         const std::string* path;
         char* buf;
-        gkfs::types::rpc_chnk_id_t chnk_id;
+        gkfs::rpc::chnk_id_t chnk_id;
         size_t size;
         off64_t off;
         ABT_eventual eventual;

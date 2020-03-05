@@ -44,7 +44,7 @@ string ChunkStorage::get_chunks_dir(const string& file_path) {
     return chunk_dir;
 }
 
-string ChunkStorage::get_chunk_path(const string& file_path, gkfs::types::rpc_chnk_id_t chunk_id) {
+string ChunkStorage::get_chunk_path(const string& file_path, gkfs::rpc::chnk_id_t chunk_id) {
     return fmt::format("{}/{}", get_chunks_dir(file_path), chunk_id);
 }
 
@@ -120,7 +120,7 @@ void ChunkStorage::destroy_chunk_space(const string& file_path) const {
  * @throws ChunkStorageException (caller will handle eventual signalling)
  */
 ssize_t
-ChunkStorage::write_chunk(const string& file_path, gkfs::types::rpc_chnk_id_t chunk_id, const char* buff, size_t size,
+ChunkStorage::write_chunk(const string& file_path, gkfs::rpc::chnk_id_t chunk_id, const char* buff, size_t size,
                           off64_t offset) const {
 
     assert((offset + size) <= chunksize_);
@@ -163,7 +163,7 @@ ChunkStorage::write_chunk(const string& file_path, gkfs::types::rpc_chnk_id_t ch
  * @param eventual
  */
 ssize_t
-ChunkStorage::read_chunk(const string& file_path, gkfs::types::rpc_chnk_id_t chunk_id, char* buf, size_t size,
+ChunkStorage::read_chunk(const string& file_path, gkfs::rpc::chnk_id_t chunk_id, char* buf, size_t size,
                          off64_t offset) const {
     assert((offset + size) <= chunksize_);
     auto chunk_path = absolute(get_chunk_path(file_path, chunk_id));
@@ -230,7 +230,7 @@ ChunkStorage::read_chunk(const string& file_path, gkfs::types::rpc_chnk_id_t chu
  * @param chunk_end
  * @throws ChunkStorageException
  */
-void ChunkStorage::trim_chunk_space(const string& file_path, gkfs::types::rpc_chnk_id_t chunk_start) {
+void ChunkStorage::trim_chunk_space(const string& file_path, gkfs::rpc::chnk_id_t chunk_start) {
 
     auto chunk_dir = absolute(get_chunks_dir(file_path));
     const bfs::directory_iterator end;
@@ -259,9 +259,9 @@ void ChunkStorage::trim_chunk_space(const string& file_path, gkfs::types::rpc_ch
  * @param length
  * @throws ChunkStorageException
  */
-void ChunkStorage::truncate_chunk_file(const string& file_path, gkfs::types::rpc_chnk_id_t chunk_id, off_t length) {
+void ChunkStorage::truncate_chunk_file(const string& file_path, gkfs::rpc::chnk_id_t chunk_id, off_t length) {
     auto chunk_path = absolute(get_chunk_path(file_path, chunk_id));
-    assert(length > 0 && static_cast<gkfs::types::rpc_chnk_id_t>(length) <= chunksize_);
+    assert(length > 0 && static_cast<gkfs::rpc::chnk_id_t>(length) <= chunksize_);
     int ret = truncate64(chunk_path.c_str(), length);
     if (ret == -1) {
         auto err_str = fmt::format("Failed to truncate chunk file. File: '{}', Error: '{}'", chunk_path,

@@ -54,7 +54,7 @@ private:
 
     static inline std::string get_chunks_dir(const std::string& file_path);
 
-    static inline std::string get_chunk_path(const std::string& file_path, gkfs::types::rpc_chnk_id_t chunk_id);
+    static inline std::string get_chunk_path(const std::string& file_path, gkfs::rpc::chnk_id_t chunk_id);
 
     void init_chunk_space(const std::string& file_path) const;
 
@@ -64,15 +64,15 @@ public:
     void destroy_chunk_space(const std::string& file_path) const;
 
     ssize_t
-    write_chunk(const std::string& file_path, gkfs::types::rpc_chnk_id_t chunk_id, const char* buff, size_t size,
+    write_chunk(const std::string& file_path, gkfs::rpc::chnk_id_t chunk_id, const char* buff, size_t size,
                 off64_t offset) const;
 
-    ssize_t read_chunk(const std::string& file_path, gkfs::types::rpc_chnk_id_t chunk_id, char* buf, size_t size,
+    ssize_t read_chunk(const std::string& file_path, gkfs::rpc::chnk_id_t chunk_id, char* buf, size_t size,
                        off64_t offset) const;
 
-    void trim_chunk_space(const std::string& file_path, gkfs::types::rpc_chnk_id_t chunk_start);
+    void trim_chunk_space(const std::string& file_path, gkfs::rpc::chnk_id_t chunk_start);
 
-    void truncate_chunk_file(const std::string& file_path, gkfs::types::rpc_chnk_id_t chunk_id, off_t length);
+    void truncate_chunk_file(const std::string& file_path, gkfs::rpc::chnk_id_t chunk_id, off_t length);
 
     ChunkStat chunk_stat() const;
 };

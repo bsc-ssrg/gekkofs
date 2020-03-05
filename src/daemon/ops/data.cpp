@@ -162,7 +162,7 @@ int ChunkTruncateOperation::wait_for_tasks() {
  * Used by an argobots tasklet. Argument args has the following fields:
  * const string* path;
    const char* buf;
-   const gkfs::types::rpc_chnk_id_t* chnk_id;
+   const gkfs::rpc::chnk_id_t* chnk_id;
    size_t size;
    off64_t off;
    ABT_eventual* eventual;
@@ -281,7 +281,7 @@ pair<int, size_t> ChunkWriteOperation::wait_for_tasks() {
  * Used by an argobots tasklet. Argument args has the following fields:
  * const string* path;
    char* buf;
-   const gkfs::types::rpc_chnk_id_t* chnk_id;
+   const gkfs::rpc::chnk_id_t* chnk_id;
    size_t size;
    off64_t off;
    ABT_eventual* eventual;
