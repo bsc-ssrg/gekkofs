@@ -59,7 +59,7 @@ private:
     void init_chunk_space(const std::string& file_path) const;
 
 public:
-    ChunkStorage(std::string path, size_t chunksize);
+    ChunkStorage(std::string& path, size_t chunksize);
 
     void destroy_chunk_space(const std::string& file_path) const;
 

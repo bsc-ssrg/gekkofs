@@ -64,14 +64,14 @@ class ChunkOperation {
 
 protected:
 
-    std::string path_;
+    const std::string path_;
 
     std::vector<ABT_task> abt_tasks_;
     std::vector<ABT_eventual> task_eventuals_;
 
     virtual void cancel_all_tasks();
 
-    explicit ChunkOperation(std::string path);
+    explicit ChunkOperation(const std::string& path);
 
     ChunkOperation(std::string path, size_t n);
 
@@ -94,9 +94,9 @@ private:
 
 public:
 
-    explicit ChunkTruncateOperation(std::string path);
+    explicit ChunkTruncateOperation(const std::string& path);
 
-    ChunkTruncateOperation(std::string path, size_t n);
+    ChunkTruncateOperation(const std::string& path, size_t n);
 
     void cancel_all_tasks() override;
 
@@ -123,7 +123,7 @@ private:
 
 public:
 
-    ChunkWriteOperation(std::string path, size_t n);
+    ChunkWriteOperation(const std::string& path, size_t n);
 
     void cancel_all_tasks() override;
 
@@ -163,7 +163,7 @@ public:
         std::vector<uint64_t>* chunk_ids;
     };
 
-    ChunkReadOperation(std::string path, size_t n);
+    ChunkReadOperation(const std::string& path, size_t n);
 
     void cancel_all_tasks() override;
 

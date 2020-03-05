@@ -46,9 +46,9 @@ void ChunkOperation::cancel_all_tasks() {
     task_eventuals_.clear();
 }
 
-ChunkOperation::ChunkOperation(string path) : ChunkOperation(move(path), 1) {}
+ChunkOperation::ChunkOperation(const string& path) : ChunkOperation(path, 1) {}
 
-ChunkOperation::ChunkOperation(string path, size_t n) : path_(::move(path)) {
+ChunkOperation::ChunkOperation(string path, size_t n) : path_(std::move(path)) {
     // Knowing n beforehand is important and cannot be dynamic. Otherwise eventuals cause seg faults
     abt_tasks_.resize(n);
     task_eventuals_.resize(n);
@@ -67,6 +67,7 @@ ChunkOperation::~ChunkOperation() {
  * @return error<int> is put into eventual to signal that it finished
  */
 void ChunkTruncateOperation::truncate_abt(void* _arg) {
+    assert(_arg);
     // Unpack args
     auto* arg = static_cast<struct chunk_truncate_args*>(_arg);
     const string& path = *(arg->path);
@@ -93,9 +94,9 @@ void ChunkTruncateOperation::truncate_abt(void* _arg) {
     ABT_eventual_set(arg->eventual, &err_response, sizeof(int));
 }
 
-ChunkTruncateOperation::ChunkTruncateOperation(string path) : ChunkTruncateOperation{move(path), 1} {}
+ChunkTruncateOperation::ChunkTruncateOperation(const string& path) : ChunkTruncateOperation{path, 1} {}
 
-ChunkTruncateOperation::ChunkTruncateOperation(string path, size_t n) : ChunkOperation{move(path), n} {
+ChunkTruncateOperation::ChunkTruncateOperation(const string& path, size_t n) : ChunkOperation{path, n} {
     task_args_.resize(n);
 }
 
@@ -171,6 +172,7 @@ int ChunkTruncateOperation::wait_for_tasks() {
  * @return written_size<ssize_t> is put into eventual to signal that it finished
  */
 void ChunkWriteOperation::write_file_abt(void* _arg) {
+    assert(_arg);
     // Unpack args
     auto* arg = static_cast<struct chunk_write_args*>(_arg);
     const string& path = *(arg->path);
@@ -179,7 +181,7 @@ void ChunkWriteOperation::write_file_abt(void* _arg) {
         wrote = GKFS_DATA->storage()->write_chunk(path, arg->chnk_id, arg->buf, arg->size, arg->off);
     } catch (const ChunkStorageException& err) {
         GKFS_DATA->spdlogger()->error("{}() {}", __func__, err.what());
-        wrote = -(err.code().value());;
+        wrote = -(err.code().value());
     } catch (const ::exception& err) {
         GKFS_DATA->spdlogger()->error("{}() Unexpected error writing chunk {} of file {}", __func__, arg->chnk_id,
                                       path);
@@ -188,7 +190,7 @@ void ChunkWriteOperation::write_file_abt(void* _arg) {
     ABT_eventual_set(arg->eventual, &wrote, sizeof(ssize_t));
 }
 
-ChunkWriteOperation::ChunkWriteOperation(string path, size_t n) : ChunkOperation{move(path), n} {
+ChunkWriteOperation::ChunkWriteOperation(const string& path, size_t n) : ChunkOperation{path, n} {
     task_args_.resize(n);
 }
 
@@ -224,7 +226,7 @@ ChunkWriteOperation::write_async(size_t idx, const uint64_t chunk_id, const char
 
     auto& task_arg = task_args_[idx];
     task_arg.path = &path_;
-    task_arg.buf = bulk_buf_ptr; // write_file_abt will treat buf as const and will not modify it
+    task_arg.buf = bulk_buf_ptr;
     task_arg.chnk_id = chunk_id;
     task_arg.size = size;
     task_arg.off = offset;
@@ -290,6 +292,7 @@ pair<int, size_t> ChunkWriteOperation::wait_for_tasks() {
  * @return read_size<ssize_t> is put into eventual to signal that it finished
  */
 void ChunkReadOperation::read_file_abt(void* _arg) {
+    assert(_arg);
     //unpack args
     auto* arg = static_cast<struct chunk_read_args*>(_arg);
     const string& path = *(arg->path);
@@ -299,7 +302,7 @@ void ChunkReadOperation::read_file_abt(void* _arg) {
         read = GKFS_DATA->storage()->read_chunk(path, arg->chnk_id, arg->buf, arg->size, arg->off);
     } catch (const ChunkStorageException& err) {
         GKFS_DATA->spdlogger()->error("{}() {}", __func__, err.what());
-        read = -(err.code().value());;
+        read = -(err.code().value());
     } catch (const ::exception& err) {
         GKFS_DATA->spdlogger()->error("{}() Unexpected error reading chunk {} of file {}", __func__, arg->chnk_id,
                                       path);
@@ -308,7 +311,7 @@ void ChunkReadOperation::read_file_abt(void* _arg) {
     ABT_eventual_set(arg->eventual, &read, sizeof(ssize_t));
 }
 
-ChunkReadOperation::ChunkReadOperation(string path, size_t n) : ChunkOperation{move(path), n} {
+ChunkReadOperation::ChunkReadOperation(const string& path, size_t n) : ChunkOperation{path, n} {
     task_args_.resize(n);
 }
 

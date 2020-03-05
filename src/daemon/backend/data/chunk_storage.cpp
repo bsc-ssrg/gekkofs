@@ -49,10 +49,10 @@ string ChunkStorage::get_chunk_path(const string& file_path, gkfs::rpc::chnk_id_
 }
 
 /**
- * Creates a chunk directories are all chunk files are placed in.
+ * Creates a chunk directory that all chunk files are placed in.
  * The path to the real file will be used as the directory name
  * @param file_path
- * @returns 0 on success or errno on failure
+ * @throws ChunkStorageException on error
  */
 void ChunkStorage::init_chunk_space(const string& file_path) const {
     auto chunk_dir = absolute(get_chunks_dir(file_path));
@@ -72,8 +72,8 @@ void ChunkStorage::init_chunk_space(const string& file_path) const {
  * @param chunksize
  * @throws ChunkStorageException
  */
-ChunkStorage::ChunkStorage(string path, const size_t chunksize) :
-        root_path_(std::move(path)),
+ChunkStorage::ChunkStorage(string& path, const size_t chunksize) :
+        root_path_(path),
         chunksize_(chunksize) {
     /* Initialize logger */
     log_ = spdlog::get(LOGGER_NAME);
@@ -107,7 +107,7 @@ void ChunkStorage::destroy_chunk_space(const string& file_path) const {
 
 /**
  * Writes a chunk file.
- * On failure returns a negative error code corresponding to `-errno`.
+ * On failure throws ChunkStorageException with encapsulated error code
  *
  * Refer to https://www.gnu.org/software/libc/manual/html_node/I_002fO-Primitives.html for pwrite behavior
  *
@@ -152,7 +152,7 @@ ChunkStorage::write_chunk(const string& file_path, gkfs::rpc::chnk_id_t chunk_id
 
 /**
  * Read from a chunk file.
- * On failure returns a negative error code corresponding to `-errno`.
+ * On failure throws ChunkStorageException with encapsulated error code
  *
  * Refer to https://www.gnu.org/software/libc/manual/html_node/I_002fO-Primitives.html for pread behavior
  * @param file_path
@@ -161,6 +161,7 @@ ChunkStorage::write_chunk(const string& file_path, gkfs::rpc::chnk_id_t chunk_id
  * @param size
  * @param offset
  * @param eventual
+ * @throws ChunkStorageException (caller will handle eventual signalling)
  */
 ssize_t
 ChunkStorage::read_chunk(const string& file_path, gkfs::rpc::chnk_id_t chunk_id, char* buf, size_t size,
@@ -217,17 +218,15 @@ ChunkStorage::read_chunk(const string& file_path, gkfs::rpc::chnk_id_t chunk_id,
 }
 
 /**
- * Delete all chunks starting with chunk a chunk id.
- * Note eventual consistency here: While chunks are removed, there is no lock that prevents
- * other processes from modifying anything in that directory.
- * It is the application's responsibility to stop modifying the file while truncate is executed
- *
- * If an error is encountered when removing a chunk file, the function will still remove all files and
- * report the error afterwards with ChunkStorageException.
- *
+* Delete all chunks starting with chunk a chunk id.
+* Note eventual consistency here: While chunks are removed, there is no lock that prevents
+* other processes from modifying anything in that directory.
+* It is the application's responsibility to stop modifying the file while truncate is executed
+*
+* If an error is encountered when removing a chunk file, the function will still remove all files and
+* report the error afterwards with ChunkStorageException.
  * @param file_path
  * @param chunk_start
- * @param chunk_end
  * @throws ChunkStorageException
  */
 void ChunkStorage::trim_chunk_space(const string& file_path, gkfs::rpc::chnk_id_t chunk_start) {
@@ -237,7 +236,7 @@ void ChunkStorage::trim_chunk_space(const string& file_path, gkfs::rpc::chnk_id_
     auto err_flag = false;
     for (bfs::directory_iterator chunk_file(chunk_dir); chunk_file != end; ++chunk_file) {
         auto chunk_path = chunk_file->path();
-        auto chunk_id = ::stoul(chunk_path.filename().c_str());
+        auto chunk_id = std::stoul(chunk_path.filename().c_str());
         if (chunk_id >= chunk_start) {
             auto err = unlink(chunk_path.c_str());
             if (err == -1 && errno != ENOENT) {
@@ -262,7 +261,7 @@ void ChunkStorage::trim_chunk_space(const string& file_path, gkfs::rpc::chnk_id_
 void ChunkStorage::truncate_chunk_file(const string& file_path, gkfs::rpc::chnk_id_t chunk_id, off_t length) {
     auto chunk_path = absolute(get_chunk_path(file_path, chunk_id));
     assert(length > 0 && static_cast<gkfs::rpc::chnk_id_t>(length) <= chunksize_);
-    int ret = truncate64(chunk_path.c_str(), length);
+    int ret = truncate(chunk_path.c_str(), length);
     if (ret == -1) {
         auto err_str = fmt::format("Failed to truncate chunk file. File: '{}', Error: '{}'", chunk_path,
                                    ::strerror(errno));
