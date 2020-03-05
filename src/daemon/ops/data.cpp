@@ -26,39 +26,6 @@ namespace gkfs {
 namespace data {
 
 /**
- * Cleans up and cancels all tasks in flight
- */
-void ChunkOperation::cancel_all_tasks() {
-    GKFS_DATA->spdlogger()->trace("{}() enter", __func__);
-    for (auto& task : abt_tasks_) {
-        if (task) {
-            ABT_task_cancel(task);
-            ABT_task_free(&task);
-        }
-    }
-    for (auto& eventual : task_eventuals_) {
-        if (eventual) {
-            ABT_eventual_reset(eventual);
-            ABT_eventual_free(&eventual);
-        }
-    }
-    abt_tasks_.clear();
-    task_eventuals_.clear();
-}
-
-ChunkOperation::ChunkOperation(const string& path) : ChunkOperation(path, 1) {}
-
-ChunkOperation::ChunkOperation(string path, size_t n) : path_(std::move(path)) {
-    // Knowing n beforehand is important and cannot be dynamic. Otherwise eventuals cause seg faults
-    abt_tasks_.resize(n);
-    task_eventuals_.resize(n);
-}
-
-ChunkOperation::~ChunkOperation() {
-    cancel_all_tasks();
-}
-
-/**
  * Used by an argobots tasklet. Argument args has the following fields:
  * const string* path;
    size_t size;
@@ -94,15 +61,14 @@ void ChunkTruncateOperation::truncate_abt(void* _arg) {
     ABT_eventual_set(arg->eventual, &err_response, sizeof(int));
 }
 
+void ChunkTruncateOperation::clear_task_args() {
+    task_args_.clear();
+}
+
 ChunkTruncateOperation::ChunkTruncateOperation(const string& path) : ChunkTruncateOperation{path, 1} {}
 
 ChunkTruncateOperation::ChunkTruncateOperation(const string& path, size_t n) : ChunkOperation{path, n} {
     task_args_.resize(n);
-}
-
-void ChunkTruncateOperation::cancel_all_tasks() {
-    ChunkOperation::cancel_all_tasks();
-    task_args_.clear();
 }
 
 /**
@@ -190,13 +156,12 @@ void ChunkWriteOperation::write_file_abt(void* _arg) {
     ABT_eventual_set(arg->eventual, &wrote, sizeof(ssize_t));
 }
 
-ChunkWriteOperation::ChunkWriteOperation(const string& path, size_t n) : ChunkOperation{path, n} {
-    task_args_.resize(n);
+void ChunkWriteOperation::clear_task_args() {
+    task_args_.clear();
 }
 
-void ChunkWriteOperation::cancel_all_tasks() {
-    ChunkOperation::cancel_all_tasks();
-    task_args_.clear();
+ChunkWriteOperation::ChunkWriteOperation(const string& path, size_t n) : ChunkOperation{path, n} {
+    task_args_.resize(n);
 }
 
 /**
@@ -311,13 +276,12 @@ void ChunkReadOperation::read_file_abt(void* _arg) {
     ABT_eventual_set(arg->eventual, &read, sizeof(ssize_t));
 }
 
-ChunkReadOperation::ChunkReadOperation(const string& path, size_t n) : ChunkOperation{path, n} {
-    task_args_.resize(n);
+void ChunkReadOperation::clear_task_args() {
+    task_args_.clear();
 }
 
-void ChunkReadOperation::cancel_all_tasks() {
-    ChunkOperation::cancel_all_tasks();
-    task_args_.clear();
+ChunkReadOperation::ChunkReadOperation(const string& path, size_t n) : ChunkOperation{path, n} {
+    task_args_.resize(n);
 }
 
 /**
@@ -403,7 +367,6 @@ pair<int, size_t> ChunkReadOperation::wait_for_tasks_and_push_back(const bulk_ar
                     "ChunkReadOperation::{}() BULK_TRANSFER_PUSH file '{}' chnkid '{}' origin offset '{}' local offset '{}' transfersize '{}'",
                     __func__, path_, args.chunk_ids->at(idx), args.origin_offsets->at(idx), args.local_offsets->at(idx),
                     *task_size);
-            // TODO try, repeat do-while
             assert(task_args_[idx].chnk_id == args.chunk_ids->at(idx));
             auto margo_err = margo_bulk_transfer(args.mid, HG_BULK_PUSH, args.origin_addr, args.origin_bulk_handle,
                                                  args.origin_offsets->at(idx), args.local_bulk_handle,

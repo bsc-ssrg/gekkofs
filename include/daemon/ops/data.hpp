@@ -58,8 +58,9 @@ public:
  *
  * In the future, this class may be used to provide failure tolerance for IO tasks
  *
- * Abstract base class without public constructor:
+ * Base class using the CRTP idiom
  */
+template<class OperationType>
 class ChunkOperation {
 
 protected:
@@ -69,17 +70,46 @@ protected:
     std::vector<ABT_task> abt_tasks_;
     std::vector<ABT_eventual> task_eventuals_;
 
-    virtual void cancel_all_tasks();
+public:
 
-    explicit ChunkOperation(const std::string& path);
+    explicit ChunkOperation(const std::string& path) : ChunkOperation(path, 1) {};
 
-    ChunkOperation(std::string path, size_t n);
+    ChunkOperation(std::string path, size_t n) : path_(std::move(path)) {
+        // Knowing n beforehand is important and cannot be dynamic. Otherwise eventuals cause seg faults
+        abt_tasks_.resize(n);
+        task_eventuals_.resize(n);
+    };
 
-    ~ChunkOperation();
+    ~ChunkOperation() {
+        cancel_all_tasks();
+    }
+
+    /**
+     * Cleans up and cancels all tasks in flight
+     */
+    void cancel_all_tasks() {
+        GKFS_DATA->spdlogger()->trace("{}() enter", __func__);
+        for (auto& task : abt_tasks_) {
+            if (task) {
+                ABT_task_cancel(task);
+                ABT_task_free(&task);
+            }
+        }
+        for (auto& eventual : task_eventuals_) {
+            if (eventual) {
+                ABT_eventual_reset(eventual);
+                ABT_eventual_free(&eventual);
+            }
+        }
+        abt_tasks_.clear();
+        task_eventuals_.clear();
+        static_cast<OperationType*>(this)->clear_task_args();
+    }
 };
 
 
-class ChunkTruncateOperation : public ChunkOperation {
+class ChunkTruncateOperation : public ChunkOperation<ChunkTruncateOperation> {
+    friend class ChunkOperation<ChunkTruncateOperation>;
 
 private:
     struct chunk_truncate_args {
@@ -92,20 +122,24 @@ private:
 
     static void truncate_abt(void* _arg);
 
+    void clear_task_args();
+
 public:
 
     explicit ChunkTruncateOperation(const std::string& path);
 
     ChunkTruncateOperation(const std::string& path, size_t n);
 
-    void cancel_all_tasks() override;
+    ~ChunkTruncateOperation() = default;
 
     void truncate(size_t idx, size_t size);
 
     int wait_for_tasks();
 };
 
-class ChunkWriteOperation : public ChunkOperation {
+class ChunkWriteOperation : public ChunkOperation<ChunkWriteOperation> {
+    friend class ChunkOperation<ChunkWriteOperation>;
+
 private:
 
     struct chunk_write_args {
@@ -121,11 +155,13 @@ private:
 
     static void write_file_abt(void* _arg);
 
+    void clear_task_args();
+
 public:
 
     ChunkWriteOperation(const std::string& path, size_t n);
 
-    void cancel_all_tasks() override;
+    ~ChunkWriteOperation() = default;
 
     void write_async(size_t idx, uint64_t chunk_id, const char* bulk_buf_ptr, size_t size, off64_t offset);
 
@@ -134,7 +170,8 @@ public:
 };
 
 
-class ChunkReadOperation : public ChunkOperation {
+class ChunkReadOperation : public ChunkOperation<ChunkReadOperation> {
+    friend class ChunkOperation<ChunkReadOperation>;
 
 private:
 
@@ -151,6 +188,8 @@ private:
 
     static void read_file_abt(void* _arg);
 
+    void clear_task_args();
+
 public:
 
     struct bulk_args {
@@ -165,7 +204,7 @@ public:
 
     ChunkReadOperation(const std::string& path, size_t n);
 
-    void cancel_all_tasks() override;
+    ~ChunkReadOperation() = default;
 
     void read_async(size_t idx, uint64_t chunk_id, char* bulk_buf_ptr, size_t size, off64_t offset);
 
