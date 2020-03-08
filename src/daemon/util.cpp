@@ -50,7 +50,7 @@ void gkfs::util::destroy_hosts_file() {
 }
 
 /**
- * Creates a pid file
+ * Creates a pid file and checks that a daemon is not already running
  * @param rpc_self_addr
  */
 void gkfs::util::create_pid_file() {

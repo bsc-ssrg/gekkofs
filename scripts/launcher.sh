@@ -7,6 +7,7 @@ DAEMON_PATH=""
 GKFS_HOSTFILE_PATH=""
 LISTEN=""
 USE_MPI=false
+USE_SRUN=false
 NODES=""
 NODENUM=1
 MPI_HOSTS_ARGS=""
@@ -63,7 +64,7 @@ help_msg() {
 
   usage_short
   echo "
-This script starts and stops GekkoFS daemons on multiple nodes
+This script starts and stops GekkoFS daemons on multiple nodes by using pdsh
 
 positional arguments:
         command                   Command to interact with the script: {start, stop, restart, status}
@@ -76,7 +77,8 @@ optional arguments:
         -p, --gkfs_daemon_path    Path to gkfs_deamon executable
         -H, --gkfs_hostfile       Path to where gkfs_daemons register their RPC endpoints (default: ./gkfs_hosts.txt)
         -l, --listen              Hostname suffix to listen on a specific network device (e.g., ib0 or eth0)
-        --use_mpi                 Use orterun instead of srun to start the daemons
+        --use_mpi                 Use orterun to start the daemons (EXPERIMENTAL)
+        --use_srun                 Use srun to start the daemons (EXPERIMENTAL)
         -n, --nodes               Comma-separated list of nodes or a host file on where the daemons are/should run
         --pretend                 Doesn't execute commands, only prints what would be executed
         "
@@ -119,6 +121,10 @@ while [[ $# -gt 0 ]]; do
     ;;
   --use_mpi)
     USE_MPI=true
+    shift # past argument
+    ;;
+  --use_srun)
+    USE_SRUN=true
     shift # past argument
     ;;
   -n | --nodes)
